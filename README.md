@@ -123,7 +123,9 @@ docs/                 LAYOUT-SPEC.md (normative) · STAGE-SIGNATURES.md · HTTP-
 ## Known ceilings
 
 - `direction: 'LR'` only; `TB` is rejected with a named error rather than drawn wrong.
-- A pure chain renders as a long strip (aspect > 8): add the real branches or split the level.
+- A pure chain renders as a long strip (aspect > 8): add the real branches or split the level. The grid
+  thumbnail letterboxes the whole drawing, so such a level shows as a thin strip — that is the aspect
+  warning showing up in the preview, not a rendering bug.
 - Boundaries require contiguous members; the audit reports when they are not.
 - Self-loops are rejected (a self-relationship belongs in `tech`/`desc`).
 - PNG export needs a Chromium binary (`/usr/bin/chromium`, or `C4_CHROMIUM`).
