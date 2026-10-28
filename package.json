@@ -1,10 +1,12 @@
 {
   "name": "c4-view",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Agent-driven C4 renderer: JSON model in, deterministic SVG / PNG / live viewer out. No editing UI.",
-  "bin": { "c4v": "./src/cli.ts" },
+  "description": "Agent-driven C4 renderer: a JSON model in, deterministic SVG / PNG / live viewer out. No editing UI — the layout is computed and gated.",
+  "bin": {
+    "c4v": "./bin/c4v.mjs"
+  },
   "scripts": {
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info",
@@ -13,10 +15,31 @@
     "render": "node src/cli.ts render",
     "serve": "node src/cli.ts serve",
     "fixtures": "node scripts/export-fixtures.ts",
-    "sonar": "sonar-scanner -Dsonar.host.url=http://127.0.0.1:9000"
+    "sonar": "sonar-scanner -Dsonar.host.url=http://127.0.0.1:9000",
+    "doctor": "node src/cli.ts doctor",
+    "install-skill": "bash scripts/install-skill.sh",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "src/",
+    "public/",
+    "data/",
+    "docs/",
+    "skill/",
+    "examples/",
+    "README.md",
+    "LICENSE"
+  ]
 }

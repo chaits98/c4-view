@@ -21,7 +21,9 @@ interface MetricsFile {
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
-export const FONT_FAMILY = 'DejaVu Sans, Inter, ui-sans-serif, system-ui, sans-serif'
+// Widths are measured from DejaVu (committed table). The fallbacks are equal-or-narrower, so a
+// machine without DejaVu renders text slightly airy inside its box — never overflowing it.
+export const FONT_FAMILY = 'DejaVu Sans, Verdana, Liberation Sans, Inter, ui-sans-serif, system-ui, sans-serif'
 
 const data = JSON.parse(readFileSync(join(HERE, '..', 'data', 'font-metrics.json'), 'utf8')) as MetricsFile
 

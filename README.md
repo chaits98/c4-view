@@ -10,7 +10,34 @@ node src/cli.ts render examples/shop.json --out out/shop --png --strict
 node src/cli.ts serve  --port 8788                        # grid at http://127.0.0.1:8788/ , one diagram at /d/shop
 ```
 
-No runtime dependencies. Node 26 runs the TypeScript directly; nothing is built, bundled or transpiled.
+
+## Install on a fresh machine
+
+```bash
+git clone <this repo> c4-view && cd c4-view
+npm install -g .          # or: npm link
+c4v doctor                # says exactly what this machine is missing, if anything
+```
+
+Requirements, and nothing else:
+
+| | |
+|---|---|
+| **Node 22.18+** | for a source checkout — Node runs the `.ts` files directly, nothing is transpiled |
+| **Node 18+** | for an install from a packed tarball, which ships prebuilt JS in `dist/` (`npm run build`) |
+| **Chromium / Chrome** | *optional*. Only PNG export uses it; found at `$C4_CHROMIUM`, then the usual install paths, then `PATH`. Without one, `--png` fails with the fix in the message and everything else works |
+| **A font** | the widths come from a committed DejaVu table, so measurement is identical everywhere; the browser substitutes a narrower fallback if DejaVu is missing, which cannot overflow the boxes |
+
+No runtime dependencies, no post-install downloads, no config file. `c4v` and `node src/cli.ts` are the
+same program; the skill uses whichever is on the machine.
+
+```bash
+c4v audit  examples/shop.json --strict      # the gate
+c4v render examples/shop.json --out out --png --strict
+c4v serve  --port 8788                      # grid at / , one diagram at /d/shop
+npm run install-skill                       # copy the skill into ~/.hermes/skills
+```
+
 
 ## Why it exists
 

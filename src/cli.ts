@@ -5,6 +5,7 @@
  *   c4v render <model.json> [--level <path>] [--out <dir|file.svg>] [--png] [--scale <n>] [--strict]
  *   c4v audit  <model.json> [--json] [--strict]
  *   c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1]
+  c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
  *
  * `--strict` exits 1 when any geometry gate fails, so a skill can make "deliver
  * only a clean diagram" mechanical instead of a promise.
@@ -29,6 +30,7 @@ const USAGE = `c4v — agent-driven C4 renderer
   c4v render <model.json> [--level <path>] [--out <dir|file.svg>] [--png] [--scale <n>] [--strict]
   c4v audit  <model.json> [--json] [--strict]
   c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1]
+  c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
 
   --level   render one level by path (root is "")           [default: every level]
   --out     a directory, or a .svg file when one level is rendered [default: ./out/<id>]
@@ -129,7 +131,7 @@ function argumentError(args: Args): number | null {
     console.log(USAGE)
     return 0
   }
-  if (args.command === 'serve') return null
+  if (args.command === 'serve' || args.command === 'doctor') return null
   if (!args.file) {
     console.error(`missing <model.json>\n\n${USAGE}`)
     return 2
@@ -152,6 +154,10 @@ export async function run(argv: string[]): Promise<number> {
   const early = argumentError(args)
   if (early !== null) return early
   if (args.command === 'serve') return serveCommand(args)
+  if (args.command === 'doctor') {
+    const { doctor } = await import('./doctor.ts')
+    return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1
+  }
 
   const report = args.file ? loadReport(args.file, args.opt('level')) : null
   if (!report) return 2
