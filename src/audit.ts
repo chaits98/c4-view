@@ -168,9 +168,13 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
   const { chipChip, chipNode } = countChips(chips, boxes)
   const groupNode = countGroupNode(placed, level, byId)
   const aspect = routed.size.h > 0 ? Math.round((routed.size.w / routed.size.h) * 100) / 100 : 0
+  // a backward edge is legal (a real loop), but an UNINTENDED one means a rank hint fights an edge,
+  // and the router will answer with a corridor under the whole drawing — so it is always reported
+  const backward = placed.chains.filter((chain) => chain.backward).length
   const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0
   return {
     level: level.path,
+    backward,
     nodes: level.nodes.length,
     edges: level.edges.length,
     nodeNode,
@@ -188,5 +192,5 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
 /** One-line human form, used by the CLI and the workbook. */
 export function auditLine(r: AuditReport): string {
   const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode} group∧node=${r.groupNode}`
-  return `${r.ok ? 'OK  ' : 'FAIL'} level="${r.level || '(root)'}" nodes=${r.nodes} edges=${r.edges} ${gates} crossings=${r.crossings} aspect=${r.aspect}`
+  return `${r.ok ? 'OK  ' : 'FAIL'} level="${r.level || '(root)'}" nodes=${r.nodes} edges=${r.edges} ${gates} crossings=${r.crossings} backward=${r.backward} aspect=${r.aspect}`
 }

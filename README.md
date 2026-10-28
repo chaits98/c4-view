@@ -39,6 +39,11 @@ npm run install-skill                       # copy the skill into ~/.hermes/skil
 ```
 
 
+## This repo's own C4
+
+`docs/c4/c4-view.json` — the agent-written model of this tool (context, containers, and the pipeline), kept
+next to the code it describes. Rendered and gated like any other: `c4v render docs/c4/c4-view.json --strict`.
+
 ## Why it exists
 
 The renderer inside `droid-desktop` fights its layout: mermaid/dagre places boxes, then ~1,600 lines of
@@ -74,7 +79,7 @@ two agent runs can be diffed. Text is measured from `data/font-metrics.json` (ge
 ## The audit is the product
 
 ```
-OK level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chip=0 chip∧node=0 group∧node=0 crossings=1 aspect=5.2
+OK level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chip=0 chip∧node=0 group∧node=0 crossings=1 backward=0 aspect=5.2
 ```
 
 Gated at zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires sharing a collinear segment),

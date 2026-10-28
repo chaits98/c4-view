@@ -194,6 +194,8 @@ export interface AuditReport {
   wireWire: number
   /** proper orthogonal crossings — unavoidable, minimised, reported */
   crossings: number
+  /** edges the ranking draws right-to-left; usually a `rank` hint that collides with an edge. Reported, never gated. */
+  backward: number
   /** label chip ∩ label chip */
   chipChip: number
   /** label chip ∩ node */

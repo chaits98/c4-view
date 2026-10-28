@@ -5,6 +5,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { audit, auditLine, overlapArea } from '../src/audit.ts'
+import { parseModel } from '../src/model.ts'
+import { renderModel } from '../src/render.ts'
 import type { Box, LevelSpec, Placed, Route, Routed } from '../src/types.ts'
 
 const level = (nodes: number, edges = 0): LevelSpec => ({
@@ -147,4 +149,43 @@ test('a boundary box over a non-member is a gate, not a note', () => {
   const report = audit(p, routed([{ key: 'a->b', pts: [[100, 20], [300, 20]] }]), spec)
   assert.equal(report.groupNode, 1, auditLine(report))
   assert.equal(report.ok, false)
+})
+
+test('a rank hint that sits level with its predecessor is reported as backward', () => {
+  // b is hinted into a's column: a -> b is now drawn right-to-left, through a corridor.
+  const model = parseModel({
+    id: 'hinted',
+    title: 'Hinted',
+    levels: [
+      {
+        path: '',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system' },
+          { id: 'b', label: 'B', subtype: 'system', rank: 0 },
+          { id: 'c', label: 'C', subtype: 'system' },
+        ],
+        edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }],
+      },
+    ],
+  })
+  const report = renderModel(model).levels[0].audit
+  assert.equal(report.backward, 1, `audit line: ${auditLine(report)}`)
+})
+
+test('a plain chain has no backward edges', () => {
+  const model = parseModel({
+    id: 'chain',
+    title: 'Chain',
+    levels: [
+      {
+        path: '',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system' },
+          { id: 'b', label: 'B', subtype: 'system' },
+        ],
+        edges: [{ from: 'a', to: 'b' }],
+      },
+    ],
+  })
+  assert.equal(renderModel(model).levels[0].audit.backward, 0)
 })

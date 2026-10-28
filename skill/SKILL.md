@@ -115,7 +115,7 @@ node src/cli.ts serve  --port 8788                     # prints its URL; add --h
 | `subtype` | one of the 49 C4 subtypes (`person`, `system`, `external-system`, `web-application`, `microservice`, `database`, `cache`, `message-queue`, `api-gateway`, `service-logic`, `repository`, `adapter`, `class`, `function`, …). It decides shape and colour — pick the honest one; `rect` for everything is a tell. |
 | `tech` | the second line: technology only, ≤ 5 words. |
 | `identity` | stable human id (`SHP-3`). Keep it across edits; it is what the user refers to. |
-| `rank` | absolute column hint. Use ONLY when the computed order fights the truth (an external system that must sit right of everything). |
+| `rank` | absolute column hint. Use ONLY when the computed order fights the truth (an external system that must sit right of everything). A hint is a promise about columns, not tidiness: hint a node to sit LEFT of its predecessor and you have declared that edge backward, and the router will answer with a corridor under the whole drawing. |
 | `flow` | the linear narration, every edge key once. Omit and the tool derives it depth-first from the source nodes. |
 | `groups` | C4 boundaries. Their members must be **adjacent in the drawing** — see the gates. |
 
@@ -131,6 +131,8 @@ node src/cli.ts serve  --port 8788                     # prints its URL; add --h
    forces a return corridor and reads as a loop.
 6. **Groups are physical boundaries, not topics.** Members must form one contiguous block of the
    drawing; if `group∧node` is non-zero the boundary swallows a stranger — regroup or split the level.
+   If a level mixes what you run with what you only call (a browser, an external API, a rented database),
+   that split earns a boundary. A level with no such seam needs none — do not draw boxes for decoration.
 7. **Declare `flow` whenever the true order is not "walk the graph depth-first."** The audience is
    following one packet.
 8. **Never encode state in the diagram** (counts, statuses, dates) — those rot. Architecture only.
@@ -151,9 +153,13 @@ OK   level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧c
 ```
 
 Gates that must be zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires sharing a segment),
-`chip∧chip`, `chip∧node`, `group∧node`. `crossings` and `aspect` are reported, not gated — but a
-crossings count above ~2 per edge means the level is too tangled to read, and an aspect beyond ~8
-means a chain that should be split.
+`chip∧chip`, `chip∧node`, `group∧node`. `crossings`, `backward` and `aspect` are reported, not gated.
+
+- `crossings` above ~2 per edge: the level is too tangled to read — split it.
+- `backward` above zero: an edge drawn right-to-left. Legal if the loop is real; if you did not ask for
+  it, a `rank` hint caused it.
+- `aspect` past ~8: the level is a long chain. That is fine when the sequence IS the point (a pipeline is
+  explained left to right); split when the strip is wide because you flattened a hierarchy.
 
 ## Delivering
 
@@ -174,7 +180,8 @@ audit line.
 1. `node src/cli.ts audit <model> --strict` exits 0 on **every** level. Paste the lines.
 2. Every level declares `flow`; every node has ≥ 1 edge; no level is over 20 nodes.
 3. `group∧node=0` and every boundary's members are contiguous.
-4. `aspect` sits between ~1.5 and ~4 on C1/C2 — a long strip means the level is a chain, not a system.
+4. `aspect` is under ~8 (4–7 is normal for a genuine chain; a strip past 8 means split the level), and
+   `backward` is the number of loops you MEANT — not one you accidentally created with a hint.
 5. You rendered it and looked at the PNG of the level that carries the point.
 
 ## Troubleshooting (symptom → cause → fix)
@@ -191,6 +198,7 @@ audit line.
 | text clipped inside a diamond | label too long for a sloped shape | shorten the label |
 | `direction: "TB" is not implemented` | portrait layout requested | use `LR`; split the level if it is too wide |
 | flow animation jumps around | no `flow` declared, so the order is derived | declare `flow` in the order a person would explain it |
+| a wire dives under the whole drawing, or an edge you meant left-to-right reads right-to-left | the audit line says `backward=N`: a `rank` hint sits level with or left of a node feeding it, so that edge became a backward chain | remove the hint (the ranking was already right) or move it past its predecessors |
 
 ## What this is not
 
