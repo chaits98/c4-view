@@ -1,0 +1,14 @@
+{
+  "id": "W8",
+  "title": "Viewer behaviour: pan/zoom, hover, drill, legend, minimap",
+  "owner": "B2",
+  "status": "todo",
+  "estMin": 60,
+  "files": [
+    "public/viewer.js"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

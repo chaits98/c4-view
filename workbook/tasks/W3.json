@@ -1,0 +1,15 @@
+{
+  "id": "W3",
+  "title": "place stage (node measurement, columns, rows, boundary groups)",
+  "owner": "A2",
+  "status": "todo",
+  "estMin": 60,
+  "files": [
+    "src/layout/place.ts",
+    "test/place.test.ts"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

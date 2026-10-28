@@ -1,0 +1,14 @@
+{
+  "id": "W10",
+  "title": "Worked examples: 3 agent-authored models rendered + audited",
+  "owner": "orchestrator",
+  "status": "todo",
+  "estMin": 30,
+  "files": [
+    "examples/"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

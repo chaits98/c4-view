@@ -1,0 +1,12 @@
+{
+  "id": "W14",
+  "title": "VERIFY static: gate, tsc, node tests, 300-LOC cap, SonarQube scan",
+  "owner": "V4",
+  "status": "todo",
+  "estMin": 45,
+  "files": [],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

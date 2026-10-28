@@ -1,0 +1,16 @@
+{
+  "id": "W2",
+  "title": "rank + order stages (module DAG, dummies, barycenter sweeps)",
+  "owner": "A1",
+  "status": "todo",
+  "estMin": 60,
+  "files": [
+    "src/layout/rank.ts",
+    "src/layout/order.ts",
+    "test/rank.test.ts"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

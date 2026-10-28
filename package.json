@@ -1,0 +1,21 @@
+{
+  "name": "c4-view",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent-driven C4 renderer: JSON model in, deterministic SVG / PNG / live viewer out. No editing UI.",
+  "bin": { "c4v": "./src/cli.ts" },
+  "scripts": {
+    "test": "node --test",
+    "check": "tsc --noEmit",
+    "gate": "node tools/gate.mjs && tsc --noEmit && node --test",
+    "render": "node src/cli.ts render",
+    "serve": "node src/cli.ts serve",
+    "fixtures": "node scripts/export-fixtures.ts",
+    "sonar": "sonar-scanner -Dsonar.host.url=http://127.0.0.1:9000"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}

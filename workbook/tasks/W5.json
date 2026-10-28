@@ -1,0 +1,17 @@
+{
+  "id": "W5",
+  "title": "SVG emitter + shapes + theme (13 shapes, self-contained svg)",
+  "owner": "A4",
+  "status": "todo",
+  "estMin": 75,
+  "files": [
+    "src/svg/shapes.ts",
+    "src/svg/emit.ts",
+    "src/theme.ts",
+    "test/emit.test.ts"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

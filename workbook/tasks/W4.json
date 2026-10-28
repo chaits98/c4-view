@@ -1,0 +1,16 @@
+{
+  "id": "W4",
+  "title": "route + labels stages (track-per-jog orthogonal routing, chip placement, return corridor)",
+  "owner": "A3",
+  "status": "todo",
+  "estMin": 75,
+  "files": [
+    "src/layout/route.ts",
+    "src/layout/labels.ts",
+    "test/route.test.ts"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

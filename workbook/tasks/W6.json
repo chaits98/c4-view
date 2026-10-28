@@ -1,0 +1,16 @@
+{
+  "id": "W6",
+  "title": "Integration: render pipeline, CLI, PNG via headless chromium",
+  "owner": "orchestrator",
+  "status": "todo",
+  "estMin": 60,
+  "files": [
+    "src/render.ts",
+    "src/cli.ts",
+    "src/png.ts"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

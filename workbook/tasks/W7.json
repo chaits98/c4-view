@@ -1,0 +1,16 @@
+{
+  "id": "W7",
+  "title": "Server: model store, viewer page, deep links, exports",
+  "owner": "B1",
+  "status": "todo",
+  "estMin": 60,
+  "files": [
+    "src/server.ts",
+    "public/viewer.html",
+    "public/viewer.css"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}

@@ -1,0 +1,19 @@
+{
+  "id": "W1",
+  "title": "Foundation: frozen types, model validation, metrics, audit, fixtures, gate, workbook",
+  "owner": "orchestrator",
+  "status": "todo",
+  "estMin": 90,
+  "files": [
+    "src/types.ts",
+    "src/model.ts",
+    "src/metrics.ts",
+    "src/audit.ts",
+    "tools/gate.mjs",
+    "tools/wb.mjs"
+  ],
+  "evidence": "",
+  "notes": [],
+  "startedAt": null,
+  "endedAt": null
+}
