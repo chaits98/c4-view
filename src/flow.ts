@@ -18,24 +18,20 @@ export const edgeKey = (from: string, to: string): string => `${from}->${to}`
  * Always covers every edge exactly once; declared keys that no longer exist are
  * dropped, and edges the declaration missed are appended in input order.
  */
-export function flowOrder(level: LevelSpec): string[] {
-  const all = level.edges.map((e) => edgeKey(e.from, e.to))
-  const known = new Set(all)
+/** The author's order, de-duplicated, then whatever it missed in input order. */
+function declaredOrder(level: LevelSpec, all: string[], known: Set<string>): string[] {
   const declared = (level.flow ?? []).filter((k, i, arr) => known.has(k) && arr.indexOf(k) === i)
-  if (declared.length) {
-    const seen = new Set(declared)
-    return [...declared, ...all.filter((k) => !seen.has(k))]
-  }
+  if (!declared.length) return []
+  return [...declared, ...all.filter((k) => !declared.includes(k))]
+}
 
+/** Depth-first from every source node, then any edge the walk could not reach. */
+function graphOrder(level: LevelSpec, all: string[]): string[] {
   const out: string[] = []
   const seen = new Set<string>()
   const byFrom = new Map<string, string[]>()
-  level.edges.forEach((e) => {
-    const list = byFrom.get(e.from) ?? []
-    list.push(edgeKey(e.from, e.to))
-    byFrom.set(e.from, list)
-  })
-  const hasIncoming = new Set(level.edges.map((e) => e.to))
+  for (const e of level.edges) byFrom.set(e.from, [...(byFrom.get(e.from) ?? []), edgeKey(e.from, e.to)])
+  const incoming = new Set(level.edges.map((e) => e.to))
   const walk = (id: string): void => {
     for (const key of byFrom.get(id) ?? []) {
       if (seen.has(key)) continue
@@ -45,9 +41,14 @@ export function flowOrder(level: LevelSpec): string[] {
     }
   }
   // ponytail: recursion depth = path length; a 500-node chain would need an explicit stack
-  for (const node of level.nodes) if (!hasIncoming.has(node.id)) walk(node.id)
-  for (const key of all) if (!seen.has(key)) out.push(key)
-  return out
+  for (const node of level.nodes) if (!incoming.has(node.id)) walk(node.id)
+  return [...out, ...all.filter((k) => !seen.has(k))]
+}
+
+export function flowOrder(level: LevelSpec): string[] {
+  const all = level.edges.map((e) => edgeKey(e.from, e.to))
+  const declared = declaredOrder(level, all, new Set(all))
+  return declared.length ? declared : graphOrder(level, all)
 }
 
 /** 1-based position per edge key — what the emitter writes as `data-flow`. */

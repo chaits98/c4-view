@@ -13,5 +13,11 @@ export const CORRIDOR_PAD = 18
 export const SEP = '\u0001'
 
 export const round1 = (n: number): number => Math.round(n * 10) / 10
+
+/** Deterministic string order. `localeCompare` is machine-dependent, so never use it here. */
+export function compareKeys(a: string, b: string): number {
+  if (a === b) return 0
+  return a < b ? -1 : 1
+}
 export const centreY = (it: PlacedItem): number => it.y + it.h / 2
 export const centreX = (it: PlacedItem): number => it.x + it.w / 2

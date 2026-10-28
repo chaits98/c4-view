@@ -1,0 +1,11 @@
+fixtures/agent-org.json# 2f6b260421c582ed ok
+fixtures/droid.json# 75f29ff5de735c6f ok
+fixtures/droid.json#droid 66f5c5f18ff388dc ok
+fixtures/droid.json#droid/frontend a21828b34bba4560 ok
+fixtures/droid.json#droid/org_bridge ac946341eeefe679 ok
+fixtures/droid.json#droid/rust_core ce91424ae237a71e ok
+fixtures/droid.json#droid/rust_core/cmd_map 833e6499963fa69a ok
+fixtures/not-magic.json# a0ffed428690bb80 ok
+examples/shop.json# 4526b51e8950ec55 ok
+examples/shop.json#api 71d00ede353ba5b6 ok
+examples/two-groups.json# 016d19b4a2b6cced ok

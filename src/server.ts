@@ -1,11 +1,13 @@
 /** HTTP surface: `/` is the grid, `/d/<id>` one diagram; a bad id or level segment is a 404. */
+import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ModelError, levelOrder, parseModel } from './model.ts'
+import { ModelError, levelOf, levelOrder, parseModel } from './model.ts'
 import { indexEntries, indexPage } from './index-page.ts'
 import { renderModel } from './render.ts'
+import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
 import { levelSlug } from './slug.ts'
 import type { Model } from './types.ts'
@@ -54,20 +56,25 @@ function safePath(raw: string): string | null {
   }
 }
 
-function routeOf(pathname: string): Route | null {
+/** `/`, `/health`, `/api/diagrams` and the public assets — no id, no level. */
+function fixedRoute(pathname: string): Route | null {
   if (pathname === '/') return { kind: 'index' }
   if (pathname === '/health') return { kind: 'health' }
   if (pathname === '/api/diagrams' || pathname === '/api/diagrams/') return { kind: 'diagrams' }
   const asset = /^\/([a-z0-9][a-z0-9-]*\.(?:js|css))$/.exec(pathname)
-  if (asset) return { kind: 'asset', name: asset[1] }
+  return asset ? { kind: 'asset', name: asset[1] } : null
+}
 
+/** `/api/diagrams/<id>[/audit]`. */
+function apiRoute(pathname: string): Route | null {
   const api = /^\/api\/diagrams\/([^/]+)(\/audit)?$/.exec(pathname)
-  if (api) {
-    if (!ID.test(api[1])) return null
-    return { kind: api[2] ? 'audit' : 'model', id: api[1] }
-  }
-  if (!pathname.startsWith('/d/')) return null
+  if (!api || !ID.test(api[1])) return null
+  return { kind: api[2] ? 'audit' : 'model', id: api[1] }
+}
 
+/** `/d/<id>.svg`, `/d/<id>.png`, and `/d/<id>[/<level…>]`. */
+function diagramRoute(pathname: string): Route | null {
+  if (!pathname.startsWith('/d/')) return null
   const rest = pathname.slice(3)
   const exported = /^([^/]+)\.(svg|png)$/.exec(rest)
   if (exported) {
@@ -82,9 +89,48 @@ function routeOf(pathname: string): Route | null {
   return { kind: 'page', id, level }
 }
 
+function routeOf(pathname: string): Route | null {
+  return fixedRoute(pathname) ?? apiRoute(pathname) ?? diagramRoute(pathname)
+}
+
 /** A level path: '' or segments that each match ID (so no `..`, no absolute paths). */
 function validLevel(path: string): boolean {
   return path === '' || path.split('/').every((segment) => ID.test(segment))
+}
+
+function sendModel(root: string, res: ServerResponse, id: string): void {
+  const file = modelFile(root, id)
+  if (!existsSync(file)) return missing(res, id)
+  send(res, 200, 'application/json; charset=utf-8', readFileSync(file))
+}
+
+function sendAudit(root: string, res: ServerResponse, id: string, level: string | null): void {
+  const model = loadModel(root, id)
+  if (!model) return missing(res, id)
+  if (level === null) return json(res, 200, renderModel(model).levels.map((l) => l.audit))
+  if (!findLevel(model, level)) return noLevel(res, level, model)
+  json(res, 200, renderModel(model, level).levels[0].audit)
+}
+
+function sendPage(root: string, res: ServerResponse, id: string, level: string): void {
+  const model = loadModel(root, id)
+  if (!model) return missing(res, id)
+  if (!findLevel(model, level)) return noLevel(res, level, model)
+  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level))
+}
+
+function sendExport(root: string, res: ServerResponse, id: string, level: string, format: 'svg' | 'png'): void {
+  const model = loadModel(root, id)
+  if (!model) return missing(res, id)
+  if (!findLevel(model, level)) return noLevel(res, level, model)
+  if (format === 'svg') return send(res, 200, 'image/svg+xml; charset=utf-8', renderModel(model, level).levels[0].svg)
+  send(res, 200, 'image/png', readFileSync(pngFor(root, model, level)))
+}
+
+function sendAsset(res: ServerResponse, name: string): void {
+  const file = join(PUBLIC, name)
+  if (!existsSync(file)) return send(res, 404, 'text/plain; charset=utf-8', `${name} is not installed yet`)
+  send(res, 200, name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8', readFileSync(file))
 }
 
 async function handle(root: string, req: IncomingMessage, res: ServerResponse, pathname: string | null): Promise<void> {
@@ -98,7 +144,7 @@ async function handle(root: string, req: IncomingMessage, res: ServerResponse, p
     res.setHeader('Allow', allow)
     return json(res, 405, { error: `${method} is not allowed here` })
   }
-  const query = new URL(req.url ?? '/', 'http://localhost')
+  const level = new URL(req.url ?? '/', 'http://localhost').searchParams.get('level')
 
   switch (route.kind) {
     case 'index':
@@ -107,38 +153,16 @@ async function handle(root: string, req: IncomingMessage, res: ServerResponse, p
       return json(res, 200, { ok: true, diagrams: list(root).length })
     case 'diagrams':
       return method === 'POST' ? create(root, req, res) : json(res, 200, list(root))
-    case 'model': {
-      const file = modelFile(root, route.id)
-      if (!existsSync(file)) return missing(res, route.id)
-      return send(res, 200, 'application/json; charset=utf-8', readFileSync(file))
-    }
-    case 'audit': {
-      const model = loadModel(root, route.id)
-      if (!model) return missing(res, route.id)
-      const level = query.searchParams.get('level')
-      if (level === null) return json(res, 200, renderModel(model).levels.map((l) => l.audit))
-      if (!findLevel(model, level)) return noLevel(res, level, model)
-      return json(res, 200, renderModel(model, level).levels[0].audit)
-    }
-    case 'page': {
-      const model = loadModel(root, route.id)
-      if (!model) return missing(res, route.id)
-      if (!findLevel(model, route.level)) return noLevel(res, route.level, model)
-      return send(res, 200, 'text/html; charset=utf-8', viewerPage(model, route.level))
-    }
-    case 'export': {
-      const model = loadModel(root, route.id)
-      if (!model) return missing(res, route.id)
-      const level = query.searchParams.get('level') ?? ''
-      if (!findLevel(model, level)) return noLevel(res, level, model)
-      if (route.format === 'svg') return send(res, 200, 'image/svg+xml; charset=utf-8', renderModel(model, level).levels[0].svg)
-      return send(res, 200, 'image/png', readFileSync(pngFor(root, model, level)))
-    }
-    case 'asset': {
-      const file = join(PUBLIC, route.name)
-      if (!existsSync(file)) return send(res, 404, 'text/plain; charset=utf-8', `${route.name} is not installed yet`)
-      return send(res, 200, route.name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8', readFileSync(file))
-    }
+    case 'model':
+      return sendModel(root, res, route.id)
+    case 'audit':
+      return sendAudit(root, res, route.id, level)
+    case 'page':
+      return sendPage(root, res, route.id, route.level)
+    case 'export':
+      return sendExport(root, res, route.id, level ?? '', route.format)
+    case 'asset':
+      return sendAsset(res, route.name)
   }
 }
 
@@ -148,7 +172,9 @@ const modelFile = (root: string, id: string): string => join(root, id, 'model.js
 function save(root: string, id: string, raw: string): void {
   const dir = join(root, id)
   mkdirSync(dir, { recursive: true })
-  const tmp = join(dir, `.model.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`)
+  // uniqueness, not unpredictability: a uuid ends the "insecure PRNG" hotspot and cannot
+  // collide between two processes writing the same id
+  const tmp = join(dir, `.model.${randomUUID()}.tmp`)
   writeFileSync(tmp, raw)
   renameSync(tmp, modelFile(root, id))
 }
@@ -174,7 +200,7 @@ function list(root: string): Summary[] {
   return out.sort((a, b) => a.id.localeCompare(b.id))
 }
 function findLevel(model: Model, path: string) {
-  return validLevel(path) ? model.levels.find((level) => level.path === path) : undefined
+  return validLevel(path) ? levelOf(model, path) : undefined
 }
 
 /** One cached png per level path — `levelSlug` is injective, so `a/b` and `a-b` never share. */
@@ -238,45 +264,6 @@ function readBody(req: IncomingMessage, res: ServerResponse): Promise<string | n
       done(null)
     })
   })
-}
-
-const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-
-/** Every untrusted string in the page goes through this; the svg is already escaped. */
-function esc(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => ENTITIES[c] as string)
-}
-
-function viewerPage(model: Model, level: string): string {
-  const drawn = renderModel(model, level).levels[0]
-  const levels = levelOrder(model)
-  const root = `/d/${model.id}`
-  const crumbs = [`<a href="/">all</a>`, `<a href="${esc(root)}">${esc(model.id)}</a>`]
-  let at = ''
-  for (const segment of level ? level.split('/') : []) {
-    at = at ? `${at}/${segment}` : segment
-    const found = findLevel(model, at)
-    if (!found) continue
-    const title = esc(found.title ?? found.path)
-    crumbs.push(at === level ? `<span>${title}</span>` : `<a href="${esc(`${root}/${at}`)}">${title}</a>`)
-  }
-  if (level === '') crumbs.push(`<span>${esc(findLevel(model, '')?.title ?? 'Overview')}</span>`)
-  const options = levels
-    .map((l) => `<option value="${esc(l.path)}"${l.path === level ? ' selected' : ''}>${esc(l.title ?? l.path)}</option>`)
-    .join('')
-
-  // ONE template: public/viewer.html. A second, hardcoded copy in this file silently dropped
-  // /flow.js from the page and the animation never ran (measured 2026-10-28).
-  const template = readFileSync(join(PUBLIC, 'viewer.html'), 'utf8')
-  return template
-    .replace('<title>C4 viewer</title>', () => `<title>${esc(drawn.title)} — ${esc(model.title)}</title>`)
-    .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
-    .replace('<!--LEVELS-->', () => options)
-    .replace('<!--SVG-->', () => drawn.svg)
-    .replace(
-      ' data-diagram="" data-level="" data-root=""',
-      () => ` data-diagram="${esc(model.id)}" data-level="${esc(level)}" data-root="${esc(root)}"`,
-    )
 }
 
 function send(res: ServerResponse, status: number, type: string, body: string | Buffer): void {

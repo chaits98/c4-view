@@ -11,11 +11,12 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { renderModel } from './render.ts'
+import { compareKeys } from './layout/geometry.ts'
 import type { Model } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] as string)
+const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
 
 export interface IndexEntry {
   id: string
@@ -43,7 +44,10 @@ export function indexEntries(
 }
 
 /** Newest first; ties by id so the grid is stable between requests. */
-const byUpdated = (a: IndexEntry, b: IndexEntry): number => (a.updated === b.updated ? a.id.localeCompare(b.id) : a.updated < b.updated ? 1 : -1)
+function byUpdated(a: IndexEntry, b: IndexEntry): number {
+  if (a.updated === b.updated) return compareKeys(a.id, b.id)
+  return a.updated < b.updated ? 1 : -1
+}
 
 function card(entry: IndexEntry): string {
   const levels = entry.levels.length === 1 ? '1 level' : `${entry.levels.length} levels`

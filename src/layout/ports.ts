@@ -8,15 +8,15 @@
  * @module c4-view/layout/ports
  */
 import type { Chain, PlacedItem } from '../types.ts'
-import { SEP, centreY, centreX } from './geometry.ts'
+import { SEP, centreY, centreX, compareKeys } from './geometry.ts'
 
 /** One chain touching one item side; `other` is the far end's centre, for port order. */
 interface Touch { key: string; other: number }
 
 const portKey = (chainKey: string, id: string, side: string): string => `${chainKey}${SEP}${id}${SEP}${side}`
 
-/** Port y (sides l/r) and port x (bottom) for every chain touching a real item. */
-export function buildPorts(chains: Chain[], items: Map<string, PlacedItem>): Map<string, number> {
+/** One entry per (item, side): the chains touching it and where the far end sits. */
+function collectTouches(chains: Chain[], items: Map<string, PlacedItem>): Map<string, Touch[]> {
   const groups = new Map<string, Touch[]>()
   const add = (chainKey: string, id: string, side: string, other: number): void => {
     const k = `${id}${SEP}${side}`
@@ -31,24 +31,33 @@ export function buildPorts(chains: Chain[], items: Map<string, PlacedItem>): Map
     if (c.backward) {
       add(c.key, first.id, 'b', centreX(last))
       add(c.key, last.id, 'b', centreX(first))
-    } else {
-      add(c.key, first.id, 'r', centreY(last))
-      add(c.key, last.id, 'l', centreY(first))
+      continue
     }
+    add(c.key, first.id, 'r', centreY(last))
+    add(c.key, last.id, 'l', centreY(first))
   }
+  return groups
+}
 
+/** Spread each side's chains evenly along it, ordered by where they head. */
+function spreadPorts(groups: Map<string, Touch[]>, items: Map<string, PlacedItem>): Map<string, number> {
   const ports = new Map<string, number>()
   for (const [k, list] of groups) {
     const [id, side] = k.split(SEP)
     const it = items.get(id)
     if (!it) continue
-    const sorted = [...list].sort((a, b) => a.other - b.other || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+    const sorted = [...list].sort((a, b) => a.other - b.other || compareKeys(a.key, b.key))
     sorted.forEach((t, i) => {
       const frac = (i + 1) / (sorted.length + 1)
       ports.set(portKey(t.key, id, side), side === 'b' ? it.x + frac * it.w : it.y + frac * it.h)
     })
   }
   return ports
+}
+
+/** Port y (sides l/r) and port x (bottom) for every chain touching a real item. */
+export function buildPorts(chains: Chain[], items: Map<string, PlacedItem>): Map<string, number> {
+  return spreadPorts(collectTouches(chains, items), items)
 }
 
 export const portY = (it: PlacedItem, side: 'l' | 'r', key: string, ports: Map<string, number>): number =>

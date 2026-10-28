@@ -84,6 +84,18 @@ function reorder(row: string[], key: (id: string, own: number) => number): strin
     .map((entry) => entry.id)
 }
 
+/** Inversions in one column pair's position list. */
+function inversions(pairs: Array<[number, number]>): number {
+  let total = 0
+  // ponytail: O(n²), swap for a BIT when a level exceeds a few hundred items
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i + 1; j < pairs.length; j++) {
+      if ((pairs[i][0] - pairs[j][0]) * (pairs[i][1] - pairs[j][1]) < 0) total += 1
+    }
+  }
+  return total
+}
+
 /** Inversions between adjacent columns — the cost `order` minimises. */
 export function countCrossings(ranked: Ranked): number {
   const pos = ranked.ranks.map((_, r) => positionsOf(ranked.ranks, r))
@@ -96,16 +108,25 @@ export function countCrossings(ranked: Ranked): number {
     if (pa === undefined || pb === undefined) continue
     edges[item.rank].push([pa, pb])
   }
-  let total = 0
-  for (const bucket of edges) {
-    // ponytail: O(n²), swap for a BIT when a level exceeds a few hundred items
-    for (let i = 0; i < bucket.length; i++) {
-      for (let j = i + 1; j < bucket.length; j++) {
-        if ((bucket[i][0] - bucket[j][0]) * (bucket[i][1] - bucket[j][1]) < 0) total += 1
-      }
+  return edges.reduce((total, bucket) => total + inversions(bucket), 0)
+}
+
+/**
+ * One pass. `forward` walks columns left to right and orders each by the mean position of the
+ * neighbours behind it (the `up` map); the reverse pass uses the ones ahead (the `down` map).
+ */
+function sweep(rows: string[][], up: Map<string, string[]>, down: Map<string, string[]>, forward: boolean): void {
+  if (forward) {
+    for (let r = 1; r < rows.length; r++) {
+      const prev = positionsOf(rows, r - 1)
+      rows[r] = reorder(rows[r], (id, own) => barycentre(up.get(id), prev, own))
     }
+    return
   }
-  return total
+  for (let r = rows.length - 2; r >= 0; r--) {
+    const next = positionsOf(rows, r + 1)
+    rows[r] = reorder(rows[r], (id, own) => barycentre(down.get(id), next, own))
+  }
 }
 
 /** Barycenter-ordered copy of `ranked`; the input is never touched. */
@@ -119,17 +140,7 @@ export function order(ranked: Ranked, _cfg: LayoutConfig): Ranked {
   let bestScore = score(rows)
 
   for (let s = 0; s < SWEEPS; s++) {
-    if (s % 2 === 0) {
-      for (let r = 1; r < rows.length; r++) {
-        const prev = positionsOf(rows, r - 1)
-        rows[r] = reorder(rows[r], (id, own) => barycentre(up.get(id), prev, own))
-      }
-    } else {
-      for (let r = rows.length - 2; r >= 0; r--) {
-        const next = positionsOf(rows, r + 1)
-        rows[r] = reorder(rows[r], (id, own) => barycentre(down.get(id), next, own))
-      }
-    }
+    sweep(rows, up, down, s % 2 === 0)
     const sc = score(rows)
     if (sc < bestScore) {
       bestScore = sc

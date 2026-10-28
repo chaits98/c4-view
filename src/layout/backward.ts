@@ -8,8 +8,8 @@
  *
  * @module c4-view/layout/backward
  */
-import type { LayoutConfig, Placed, PlacedItem } from '../types.ts'
-import { EPS, CORRIDOR_PAD } from './geometry.ts'
+import type { Chain, LayoutConfig, Placed, PlacedItem } from '../types.ts'
+import { EPS, CORRIDOR_PAD, compareKeys } from './geometry.ts'
 import { portX } from './ports.ts'
 
 export interface Back { sx: number; sy: number; exit: number; gx: number; row: number; rx: number; ty: number; px: number }
@@ -66,36 +66,43 @@ export function gutterTrack(placed: Placed, cfg: LayoutConfig, g: number, used: 
  * node stacked below that port in the same column, so a blocked side leaves the
  * column through the gap below it and travels in a gutter instead.
  */
+function corridorFor(chain: Chain, k: number, ctx: {
+  placed: Placed; cfg: LayoutConfig; ports: Map<string, number>; used: Map<number, Set<number>>; lastRank: number
+}): Back | null {
+  const { placed, cfg, ports, used, lastRank } = ctx
+  const src = placed.items.get(chain.items[0])
+  const dst = placed.items.get(chain.items[chain.items.length - 1])
+  if (!src || !dst) return null
+  const row = placed.size.h + CORRIDOR_PAD + k * (cfg.lane + 4)
+  const sx = portX(src, chain.key, ports)
+  const sy = src.y + src.h
+  const px = portX(dst, chain.key, ports)
+  const ty = dst.y + dst.h
+  const skip = new Set([src.id, dst.id])
+  const exit = blocked(placed, sx, sy, row, skip) ? exitY(placed, src) : sy
+  const dropG = src.rank > 0 ? src.rank - 1 : src.rank
+  const riseG = dst.rank < lastRank ? dst.rank : Math.max(0, dst.rank - 1)
+  return {
+    sx,
+    sy,
+    exit,
+    gx: exit === sy ? sx : gutterTrack(placed, cfg, dropG, used),
+    row,
+    rx: blocked(placed, px, ty, row, skip) ? gutterTrack(placed, cfg, riseG, used) : px,
+    ty,
+    px,
+  }
+}
+
 export function planBackward(placed: Placed, cfg: LayoutConfig, ports: Map<string, number>, tracks: Map<number, Map<string, number>>): Map<string, Back> {
-  const items = placed.items
-  const lastRank = Math.max(...[...items.values()].map((it) => it.rank))
   const used = new Map<number, Set<number>>()
   for (const [g, t] of tracks) used.set(g, new Set(t.values()))
-  const chains = placed.chains.filter((c) => c.backward).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  const lastRank = Math.max(...[...placed.items.values()].map((it) => it.rank))
+  const chains = placed.chains.filter((c) => c.backward).sort((a, b) => compareKeys(a.key, b.key))
   const out = new Map<string, Back>()
-  chains.forEach((c, k) => {
-    const src = items.get(c.items[0])
-    const dst = items.get(c.items[c.items.length - 1])
-    if (!src || !dst) return
-    const row = placed.size.h + CORRIDOR_PAD + k * (cfg.lane + 4)
-    const sx = portX(src, c.key, ports)
-    const sy = src.y + src.h
-    const px = portX(dst, c.key, ports)
-    const ty = dst.y + dst.h
-    const skip = new Set([src.id, dst.id])
-    const exit = blocked(placed, sx, sy, row, skip) ? exitY(placed, src) : sy
-    const dropG = src.rank > 0 ? src.rank - 1 : src.rank
-    const riseG = dst.rank < lastRank ? dst.rank : Math.max(0, dst.rank - 1)
-    out.set(c.key, {
-      sx,
-      sy,
-      exit,
-      gx: exit === sy ? sx : gutterTrack(placed, cfg, dropG, used),
-      row,
-      rx: blocked(placed, px, ty, row, skip) ? gutterTrack(placed, cfg, riseG, used) : px,
-      ty,
-      px,
-    })
+  chains.forEach((chain, k) => {
+    const back = corridorFor(chain, k, { placed, cfg, ports, used, lastRank })
+    if (back) out.set(chain.key, back)
   })
   return out
 }

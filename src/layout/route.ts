@@ -8,11 +8,11 @@
  *
  * @module c4-view/layout/route
  */
-import type { LayoutConfig, Measure, Placed, PlacedItem, Point, Route, Routed } from '../types.ts'
+import type { Chain, LayoutConfig, Measure, Placed, PlacedItem, Point, Route, Routed } from '../types.ts'
 import { placeLabels } from './labels.ts'
 import { EPS, CORRIDOR_PAD, round1 } from './geometry.ts'
 import { buildPorts, portY } from './ports.ts'
-import { planBackward } from './backward.ts'
+import { planBackward, type Back } from './backward.ts'
 
 /** left/right border of an item; a dummy is a point on the corridor at its own x */
 const edgeX = (it: PlacedItem, side: 'l' | 'r'): number => (it.dummy || side === 'l' ? it.x : it.x + it.w)
@@ -91,14 +91,12 @@ function allocateTracks(placed: Placed, cfg: LayoutConfig, joggers: Map<number, 
 }
 
 
-export function route(placed: Placed, cfg: LayoutConfig, m: Measure): Routed {
-  const items = placed.items
-  const ports = buildPorts(placed.chains, items)
-
-  // pass 1 — the pieces, and which gutters they need a track in
+/** Pass 1 — one piece per chain hop, and the gutters that need a jog track. */
+function planPieces(chainList: Chain[], items: Map<string, PlacedItem>, ports: Map<string, number>):
+  { pieces: Map<string, Piece[]>; joggers: Map<number, Jog[]> } {
   const pieces = new Map<string, Piece[]>()
   const joggers = new Map<number, Jog[]>()
-  for (const c of placed.chains) {
+  for (const c of chainList) {
     if (c.backward) continue
     const list: Piece[] = []
     for (let i = 0; i < c.items.length - 1; i += 1) {
@@ -119,58 +117,58 @@ export function route(placed: Placed, cfg: LayoutConfig, m: Measure): Routed {
     }
     pieces.set(c.key, list)
   }
+  return { pieces, joggers }
+}
+
+/** Pass 2 — one polyline per chain: horizontals at port y, verticals at track x. */
+function buildPolyline(c: Chain, pieces: Piece[], tracks: Map<number, Map<string, number>>, back: Back | undefined): Point[] {
+  const pts: Point[] = []
+  const push = (x: number, y: number): void => {
+    const p = { x: round1(x), y: round1(y) }
+    const last = pts[pts.length - 1]
+    if (last && last.x === p.x && last.y === p.y) return
+    pts.push(p)
+  }
+
+  if (back) {
+    const spine: Array<[number, number]> = [
+      [back.sx, back.sy], [back.sx, back.exit], [back.gx, back.exit], [back.gx, back.row],
+      [back.rx, back.row], [back.rx, back.ty], [back.px, back.ty],
+    ]
+    for (const [x, y] of spine) push(x, y)
+    return pts
+  }
+
+  for (const p of pieces) {
+    if (Math.abs(p.y0 - p.y1) < EPS) {
+      push(p.x0, p.y0)
+      push(p.x1, p.y1)
+      continue
+    }
+    const tx = tracks.get(p.gutter)?.get(c.key) ?? p.x0
+    push(p.x0, p.y0)
+    push(tx, p.y0)
+    push(tx, p.y1)
+    push(p.x1, p.y1)
+  }
+  return pts
+}
+
+export function route(placed: Placed, cfg: LayoutConfig, m: Measure): Routed {
+  const ports = buildPorts(placed.chains, placed.items)
+  const { pieces, joggers } = planPieces(placed.chains, placed.items, ports)
   const tracks = allocateTracks(placed, cfg, joggers)
   const backs = planBackward(placed, cfg, ports, tracks)
 
-  // pass 2 — one polyline per chain, consecutive duplicates dropped
-  const polylines = new Map<string, Point[]>()
-  for (const c of placed.chains) {
-    const pts: Point[] = []
-    const push = (x: number, y: number): void => {
-      const p = { x: round1(x), y: round1(y) }
-      const last = pts[pts.length - 1]
-      if (last && last.x === p.x && last.y === p.y) return
-      pts.push(p)
-    }
-
-    const back = backs.get(c.key)
-    if (back) {
-      for (const p of [
-        [back.sx, back.sy],
-        [back.sx, back.exit],
-        [back.gx, back.exit],
-        [back.gx, back.row],
-        [back.rx, back.row],
-        [back.rx, back.ty],
-        [back.px, back.ty],
-      ]) push(p[0], p[1])
-    } else {
-      for (const p of pieces.get(c.key) ?? []) {
-        if (Math.abs(p.y0 - p.y1) < EPS) {
-          push(p.x0, p.y0)
-          push(p.x1, p.y1)
-          continue
-        }
-        const tx = tracks.get(p.gutter)?.get(c.key) ?? p.x0
-        push(p.x0, p.y0)
-        push(tx, p.y0)
-        push(tx, p.y1)
-        push(p.x1, p.y1)
-      }
-    }
-    polylines.set(c.key, pts)
-  }
-
-  const lastRow = backs.size ? placed.size.h + CORRIDOR_PAD + (backs.size - 1) * (cfg.lane + 4) : 0
-  const size = { w: placed.size.w, h: Math.max(placed.size.h, lastRow + cfg.lane) }
-
   const routes: Route[] = placed.chains.map((c) => {
-    const pts = polylines.get(c.key) ?? []
+    const pts = buildPolyline(c, pieces.get(c.key) ?? [], tracks, backs.get(c.key))
     // a zero box is a placeholder: placeLabels owns every real chip position
     return c.label
       ? { key: c.key, pts, label: { text: c.label, box: { x: 0, y: 0, w: 0, h: 0 } } }
       : { key: c.key, pts }
   })
 
+  const lastRow = backs.size ? placed.size.h + CORRIDOR_PAD + (backs.size - 1) * (cfg.lane + 4) : 0
+  const size = { w: placed.size.w, h: Math.max(placed.size.h, lastRow + cfg.lane) }
   return { routes: placeLabels(routes, placed, cfg, m), size }
 }

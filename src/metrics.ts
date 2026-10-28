@@ -33,6 +33,22 @@ export function textWidth(text: string, size: number): number {
   return Math.round((units / 1000) * size * 2) / 2
 }
 
+/** Break one word that cannot fit at all — a box must never clip. */
+function hardSplit(word: string, maxWidth: number, size: number): string[] {
+  const parts: string[] = []
+  let piece = ''
+  for (const ch of word) {
+    if (piece && textWidth(piece + ch, size) > maxWidth) {
+      parts.push(piece)
+      piece = ch
+    } else {
+      piece += ch
+    }
+  }
+  parts.push(piece)
+  return parts
+}
+
 /** Greedy word wrap at `maxWidth` px. A single over-long word is hard-split. */
 export function wrapText(text: string, maxWidth: number, size: number): string[] {
   const clean = text.trim()
@@ -48,19 +64,11 @@ export function wrapText(text: string, maxWidth: number, size: number): string[]
     if (line) lines.push(line)
     if (textWidth(word, size) <= maxWidth) {
       line = word
-    } else {
-      // hard split a word that cannot fit at all — a box must never clip
-      let piece = ''
-      for (const ch of word) {
-        if (textWidth(piece + ch, size) > maxWidth && piece) {
-          lines.push(piece)
-          piece = ch
-        } else {
-          piece += ch
-        }
-      }
-      line = piece
+      continue
     }
+    const parts = hardSplit(word, maxWidth, size)
+    lines.push(...parts.slice(0, -1))
+    line = parts[parts.length - 1] ?? ''
   }
   if (line) lines.push(line)
   return lines.length ? lines : ['']

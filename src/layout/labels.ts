@@ -8,6 +8,7 @@
  * @module c4-view/layout/labels
  */
 import type { Box, LayoutConfig, Measure, Placed, Point, Route } from '../types.ts'
+import { compareKeys } from './geometry.ts'
 
 const EPS = 0.5
 const CHIP_H = 18
@@ -50,6 +51,8 @@ function runsOf(pts: Point[]): Run[] {
  * the run and let the box overhang, then sweep the run coarsely so the overhang
  * can still land in the gutter instead of on a node.
  */
+const SPREADS = [1, 2, 3] as const
+
 function candidates(pts: Point[], w: number): Point[] {
   const out: Point[] = []
   for (const run of runsOf(pts)) {
@@ -59,14 +62,26 @@ function candidates(pts: Point[], w: number): Point[] {
     const hi = fits ? run.x2 - w / 2 : run.x2
     const at = (x: number): Point => ({ x: Math.min(hi, Math.max(lo, x)), y: run.y })
     out.push(at(mid))
-    for (let j = 1; j <= 3; j += 1) {
-      out.push(at(mid + w * 0.6 * j))
-      out.push(at(mid - w * 0.6 * j))
-    }
-    for (let j = 0; j <= 8; j += 1) out.push(at(run.x1 + (run.len * j) / 8))
+    // near the centre first (±0.6w, ±1.2w, ±1.8w), then a coarse sweep of the whole run
+    const near = SPREADS.flatMap((step) => [mid + w * 0.6 * step, mid - w * 0.6 * step]).map(at)
+    const coarse = Array.from({ length: 9 }, (_, i) => at(run.x1 + (run.len * i) / 8))
+    out.push(...near, ...coarse)
   }
   if (!out.length && pts.length) out.push({ x: pts[0].x, y: pts[0].y })
   return out
+}
+
+/** The box for one candidate centre. */
+const boxAt = (c: Point, w: number): Box => ({ x: c.x - w / 2, y: c.y - CHIP_H / 2, w, h: CHIP_H })
+
+/** First candidate that hits neither a placed chip nor a node; the first candidate otherwise. */
+function pickBox(pts: Point[], w: number, chips: Box[], nodes: Box[]): Box {
+  const cands = candidates(pts, w)
+  const free = cands.find((c) => {
+    const box = boxAt(c, w)
+    return !chips.some((o) => hits(o, box)) && !nodes.some((o) => hits(o, box))
+  })
+  return boxAt(free ?? cands[0], w)
 }
 
 /** Fill every label's box. Chips are placed widest first, never dropped. */
@@ -81,25 +96,18 @@ export function placeLabels(routes: Route[], placed: Placed, cfg: LayoutConfig, 
   // spots than a narrow one, so key order alone lets a narrow chip block it
   const ordered = [...routes].sort(
     (a, b) =>
-      (widthOf.get(b.key) ?? 0) - (widthOf.get(a.key) ?? 0) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
+      (widthOf.get(b.key) ?? 0) - (widthOf.get(a.key) ?? 0) || compareKeys(a.key, b.key),
   )
   for (const route of ordered) {
     if (!route.label) continue
-    const w = widthOf.get(route.key) ?? 0
-    const cands = candidates(route.pts, w)
-    const boxOf = (c: Point): Box => ({ x: c.x - w / 2, y: c.y - CHIP_H / 2, w, h: CHIP_H })
-    const free = cands.find((c) => {
-      const b = boxOf(c)
-      return !chips.some((o) => hits(o, b)) && !nodes.some((o) => hits(o, b))
-    })
-    const box = boxOf(free ?? cands[0])
+    const box = pickBox(route.pts, widthOf.get(route.key) ?? 0, chips, nodes)
     chips.push(box)
     boxes.set(route.key, box)
   }
 
   return routes.map((route) =>
     route.label
-      ? { key: route.key, pts: route.pts, label: { text: route.label.text, box: boxes.get(route.key) as Box } }
+      ? { key: route.key, pts: route.pts, label: { text: route.label.text, box: boxes.get(route.key) ?? { x: 0, y: 0, w: 0, h: 0 } } }
       : { key: route.key, pts: route.pts },
   )
 }

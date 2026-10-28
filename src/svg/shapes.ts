@@ -98,8 +98,10 @@ export function shapeOf(subtype: Subtype): ShapeId {
 }
 
 const n = (v: number): string => String(Math.round(v * 10) / 10)
-const poly = (pts: Array<[number, number]>): string =>
-  `M${pts.map(([px, py]) => `${n(px)} ${n(py)}`).join('L')}Z`
+const poly = (pts: Array<[number, number]>): string => {
+  const body = pts.map(([px, py]) => `${n(px)} ${n(py)}`).join('L')
+  return `M${body}Z`
+}
 const arc = (r: number): string => `A${n(r)} ${n(r)} 0 0 1 `
 
 /** One outline, rounded to 1 decimal. `w`/`h` are floored at 1 so a degenerate box stays finite. */

@@ -95,9 +95,16 @@ document an agent reads.
 ```bash
 node tools/gate.mjs   # ≤300 lines per file, purity, no `any`, no placeholders
 npx tsc --noEmit      # strict
-node --test           # 70 tests
-sonar-scanner         # 0 bugs / 0 vulnerabilities (needs a SONAR token, see below)
+node --test           # 89 tests
+pnpm test:coverage    # lcov → coverage/lcov.info
+sonar-scanner         # 0 issues, quality gate OK (needs a SONAR token)
 ```
+
+SonarQube (9.9, local) reads `tsconfig.sonar.json`, not `tsconfig.json`: its bundled TypeScript
+cannot parse `es2023`, `allowImportingTsExtensions`, `verbatimModuleSyntax` or `erasableSyntaxOnly`,
+and when the program fails it **silently skips every file** — the first scan reported a clean project
+because it had analyzed nothing. Current state: 2,282 ncloc, 0 bugs / 0 vulnerabilities / 0 hotspots /
+0 code smells / 0 duplicated lines / 0 debt, 92.6% line coverage, gate **OK**.
 
 `tools/wb.mjs` is the task ledger the build was tracked in (`WORKBOOK.md`); `done` refuses without
 evidence.
