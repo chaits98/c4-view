@@ -16,6 +16,50 @@ it is deliverable, and the user opens a link.
 **A diagram is delivered only when the audit is green.** The layout is computed — never nudge
 coordinates, never hand-place a box. If the picture is wrong, the model is wrong.
 
+## The brief is one line
+
+Expect *"make a C4 of this repo: /path/to/repo"* and nothing else. You do not need to ask anything —
+this section is the rest of the brief. Work in this order.
+
+### 1. Survey the repo (before any JSON)
+
+Read `README.md`, the manifest (`package.json` / `pyproject.toml` / `Cargo.toml` / `pom.xml`), then the
+entry points (`src/main.*`, `src/cli.*`, `cmd/**`, `app.py`). Look at top-level directories only to learn
+what each one is. You are hunting RUNTIME pieces, not files:
+
+- processes that start and stop (a CLI, a server, a worker, a scheduled job),
+- stores that outlive a process (database, a directory of files, a queue),
+- what sits on the far side of a network edge (an API you call, a caller, a browser),
+- the human who drives it.
+
+Leave out: build tooling, tests, CI config, folder structure, `utils`. If deleting it would not change what
+runs at 3am, it is not in the diagram.
+
+### 2. Plan the levels, then walk the plan
+
+| level | path | what earns a box |
+|---|---|---|
+| C1 context | `""` | the system as one box, its people, outside stores and services. 4–7 boxes. |
+| C2 containers | `<id>` | every process, store, browser app, scheduled job. 6–12 boxes. |
+| C3 components | `<id>/<container>` | the stages inside the one container that carries the point. 8–16 boxes. |
+| C4 code | deeper | only when the owner asks about a specific module. ≤ 12 boxes. |
+
+Ship **C1 + C2 always**, plus **one C3** for the container that carries the point (the pipeline, the request
+path, the thing that broke). One C3, not five. Put the model in the target repo at `docs/c4/<id>.json` so it
+versions with the code it describes; `<id>` is the repo folder name in lower-kebab.
+
+### 3. Decide every edge by asking what crosses it
+
+If a noun crosses the line, that noun is the label: `Ranked`, `AuditReport`, `orders.json`, `8 KB SVG`.
+Otherwise the shortest true verb: `writes`, `charges`, `polls`. An edge you cannot label with cargo or a
+verb is not an edge — delete it. This one habit is the difference between a diagram and a drawing.
+
+### 4. Then the normal loop
+
+Write the JSON, run `audit --strict`, fix the model until it is green, render, publish. Nothing changes
+about the commands below — the survey only decides what goes in the file.
+
+
 ## Commands
 
 ```bash
@@ -81,8 +125,8 @@ node src/cli.ts serve  --port 8788                     # prints its URL; add --h
    modeling mistake, not a layout problem — split it.
 2. **Every node needs an edge.** An orphan box means the level mixes two stories.
 3. **Labels are 1–3 words.** The long explanation belongs in `desc` (hover) or in a child level.
-4. **Edge labels are verbs** (`writes`, `charges`, `publishes`), ≤ 3 words, and they are what the flow
-   animation narrates.
+4. **Edge labels are the cargo or the verb** (`Ranked`, `AuditReport`, `writes`, `polls`), ≤ 3 words,
+   and they are exactly what the flow animation narrates.
 5. **Point edges the way data moves.** A consumer that pulls is `queue -> worker`; drawing it backwards
    forces a return corridor and reads as a loop.
 6. **Groups are physical boundaries, not topics.** Members must form one contiguous block of the
@@ -124,6 +168,14 @@ Give the user three things and nothing else:
 State which level answers which question ("C2 for the trust boundaries, `api` for the write path").
 Never paste the JSON into chat unless asked; never claim a diagram "renders correctly" without the
 audit line.
+
+## Before you deliver — all five, or it is not done
+
+1. `node src/cli.ts audit <model> --strict` exits 0 on **every** level. Paste the lines.
+2. Every level declares `flow`; every node has ≥ 1 edge; no level is over 20 nodes.
+3. `group∧node=0` and every boundary's members are contiguous.
+4. `aspect` sits between ~1.5 and ~4 on C1/C2 — a long strip means the level is a chain, not a system.
+5. You rendered it and looked at the PNG of the level that carries the point.
 
 ## Troubleshooting (symptom → cause → fix)
 
