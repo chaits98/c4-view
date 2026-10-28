@@ -22,6 +22,9 @@ export function overlapArea(a: Box, b: Box): number {
 const inside = (p: Point, b: Box, inset = 0.5): boolean =>
   p.x > b.x + inset && p.x < b.x + b.w - inset && p.y > b.y + inset && p.y < b.y + b.h - inset
 
+/** How far from its own port a wire may still be "touching" its end node. */
+const PORT_RADIUS = 8
+
 interface Seg { a: Point; b: Point; horizontal: boolean }
 
 function segmentsOf(route: Route): Seg[] {
@@ -92,14 +95,18 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
     }
   }
 
-  const own = new Map(routed.routes.map((r) => [r.key, new Set(r.key.split('->'))]))
+  // A wire legitimately touches its ends — but only AT the port. Exempting a route's whole
+  // end nodes (the old rule) hid a wire that ran 107.5px through its own source and audited
+  // clean; the exemption is now a radius around the two endpoints, nothing else.
+  const NOTHING: ReadonlySet<string> = new Set()
   let wireNode = 0
   for (const route of routed.routes) {
-    const skip = own.get(route.key) as Set<string>
+    const ends = [route.pts[0], route.pts[route.pts.length - 1]].filter(Boolean)
     let hit = false
     for (const seg of segmentsOf(route)) {
       for (const p of samplePoints(seg)) {
-        if (nodesHit(p, boxes, skip)) { hit = true; break }
+        if (ends.some((e) => Math.hypot(e.x - p.x, e.y - p.y) <= PORT_RADIUS)) continue
+        if (nodesHit(p, boxes, NOTHING)) { hit = true; break }
       }
       if (hit) break
     }
@@ -145,7 +152,7 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
   }
 
   const aspect = routed.size.h > 0 ? Math.round((routed.size.w / routed.size.h) * 100) / 100 : 0
-  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0
+  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0
   return {
     level: level.path,
     nodes: level.nodes.length,

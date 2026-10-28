@@ -139,11 +139,14 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
 Already implemented against these rules; stages must satisfy it, not the reverse.
 
 - `nodeNode`: pairwise box intersection area > 0.5.
-- `wireNode`: any route interior point (or segment sample at 2px steps) strictly inside a node box that is
-  not one of that route's own end nodes.
+- `wireNode`: any route point (sampled at 2px) strictly inside a node box, **including the route's own end
+  nodes** beyond a radius of 8px around its two endpoints. The port-touch is the only exemption: a wire may
+  leave or enter at its port, it may not travel inside the box.
 - `wireWire`: any two routes sharing a collinear segment longer than 2px (same y ±0.5 for horizontals,
   same x ±0.5 for verticals, with overlapping ranges).
 - `chipChip`, `chipNode`: box intersection area > 0.5.
 - `crossings`: orthogonal crossings between two routes (a vertical of one crossing a horizontal of the
   other) — reported, never gated.
-- `ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0`.
+- `groupNode`: a boundary box covering a node that is not one of its members — a modelling defect the
+  router cannot fix, so it is gated: the author regroups or splits the level.
+- `ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0`.

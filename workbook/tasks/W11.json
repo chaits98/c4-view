@@ -2,11 +2,16 @@
   "id": "W11",
   "title": "VERIFY geometry truth: audit gates on 8 real levels, planted-defect negative test",
   "owner": "V1",
-  "status": "wip",
+  "status": "done",
   "estMin": 45,
   "files": [],
-  "evidence": "",
-  "notes": [],
+  "evidence": "PASS WITH FINDINGS — 21 levels × 6 metrics + 11 synthetic probes: CLI audit == independent SVG measurement (0 disagreements, crossings included); byte-identical across processes and after node --test. Blockers/should-fix: F1 dummy-only/empty rank collapses routing tracks to x=lane·k → wire loops back across the drawing and 95.5px through its own source node while the audit prints OK (models/h-backward.json, models/j-empty-ranks.json); F2 wire∧node own-end exemption is a blind spot (spec §6); F3 skill/SKILL.md lists group∧node as a gate but --strict exits 0 with group∧node=4. Report: /home/canand/Desktop/agent_workspace/default/c4-view/verify-geometry/REPORT.md",
+  "notes": [
+    {
+      "at": "2026-10-28T15:21:21Z",
+      "text": "V1 found F1 (dummy-only rank collapsed rankEdges -> 95.5px wire through its own source) and F2 (whole-node own-end exemption). Fixed: rankEdges falls back to the dummy column; the exemption is now an 8px port radius; group∧node promoted to a gate (F3 doc/gate mismatch). Regression tests added (audit x2, render x1); i-xss chip∧node fixed by sizing gutters to the widest chip."
+    }
+  ],
   "startedAt": "2026-10-28T15:06:18Z",
-  "endedAt": null
+  "endedAt": "2026-10-28T15:17:26Z"
 }

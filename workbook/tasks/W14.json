@@ -2,11 +2,11 @@
   "id": "W14",
   "title": "VERIFY static: gate, tsc, node tests, 300-LOC cap, SonarQube scan",
   "owner": "V4",
-  "status": "todo",
+  "status": "wip",
   "estMin": 45,
   "files": [],
   "evidence": "",
   "notes": [],
-  "startedAt": null,
+  "startedAt": "2026-10-28T15:17:36Z",
   "endedAt": null
 }

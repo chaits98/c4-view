@@ -54,18 +54,26 @@ function groupBox(members: Box[]): Box {
   }
 }
 
-/** Chains crossing each gutter — the gutter must be wide enough to give each one a track. */
-function gutterLoad(ranked: Ranked): number[] {
-  const load = new Array<number>(ranked.ranks.length).fill(0)
+/**
+ * What each gutter has to hold: one track per crossing chain, and the widest label chip
+ * riding one of them. A gutter that cannot fit its own label pushes the chip onto a node
+ * (measured: a 150px chip on a 120px run overlapped both boxes).
+ */
+function gutterLoad(ranked: Ranked, cfg: LayoutConfig, m: Measure): { chains: number[]; chip: number[] } {
+  const chains = new Array<number>(ranked.ranks.length).fill(0)
+  const chip = new Array<number>(ranked.ranks.length).fill(0)
   for (const c of ranked.chains) {
     if (c.backward) continue
+    const label = c.label ? m.width(c.label, Math.max(9, cfg.fontSize - 1)) + 12 : 0
     for (let i = 0; i < c.items.length - 1; i += 1) {
       const a = ranked.items.get(c.items[i])
       const b = ranked.items.get(c.items[i + 1])
-      if (a && b && b.rank === a.rank + 1) load[a.rank] += 1
+      if (!a || !b || b.rank !== a.rank + 1) continue
+      chains[a.rank] += 1
+      chip[a.rank] = Math.max(chip[a.rank], label)
     }
   }
-  return load
+  return { chains, chip }
 }
 
 /** Place measured items into columns/rows; emit node boxes, item points, group boxes. */
@@ -90,13 +98,13 @@ export function place(ranked: Ranked, level: LevelSpec, cfg: LayoutConfig, m: Me
   }
 
   const x: number[] = []
-  const load = gutterLoad(ranked)
+  const load = gutterLoad(ranked, cfg, m)
   let cursorX = 0
   for (let r = 0; r < ranks.length; r += 1) {
     x[r] = cursorX
     // a gutter carries one track per chain crossing it, one lane apart: rankGap is the floor,
     // the wire load is the truth (measured failure: 12 chains in a 120u gutter overflowed)
-    const gap = Math.max(cfg.rankGap, cfg.lane * ((load[r] ?? 0) + 4))
+    const gap = Math.max(cfg.rankGap, cfg.lane * ((load.chains[r] ?? 0) + 4), (load.chip[r] ?? 0) + 2 * cfg.lane)
     cursorX += W[r] + gap
   }
 

@@ -53,9 +53,11 @@ OK level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chi
 Gated at zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires sharing a collinear segment),
 `chip∧chip`, `chip∧node`, `group∧node`. Reported: `crossings`, `aspect`.
 
-`group∧node` is reported rather than gated because it is a *modelling* defect — a boundary box over
-non-adjacent members swallows strangers, and no router can fix that. `tests/audit.test.ts` plants one
-defect per gate, because a grader that only prints zeroes proves nothing.
+All six are gated: `group∧node` included, because a boundary box over non-adjacent members swallows
+strangers and only the author can fix that — a tool that passes such a picture is lying. A wire may
+touch its own end nodes **only within 8px of its port**; the old blanket exemption let a wire run 107px
+through its own source and still audit clean. `test/audit.test.ts` plants one defect per gate, because a
+grader that only prints zeroes proves nothing.
 
 ## The viewer
 

@@ -118,3 +118,33 @@ test('auditLine names every gate', () => {
     assert.ok(line.includes(token), `missing ${token} in: ${line}`)
   }
 })
+
+test('a wire running through its OWN source beyond the port is caught', () => {
+  // the old rule exempted a route's whole end node, so a 100px loop-back inside its own
+  // source audited clean (found by an external verifier on a rank-hint model)
+  const report = audit(
+    placed({ a: { x: 0, y: 0, w: 200, h: 100 }, b: { x: 600, y: 0, w: 100, h: 40 } }),
+    routed([{ key: 'a->b', pts: [[200, 50], [300, 50], [300, 90], [100, 90], [100, 50], [300, 50], [600, 50]] }]),
+    level(2, 1),
+  )
+  assert.equal(report.wireNode, 1, auditLine(report))
+  assert.equal(report.ok, false)
+})
+
+test('a boundary box over a non-member is a gate, not a note', () => {
+  const spec: LevelSpec = {
+    path: '',
+    nodes: [
+      { id: 'a', label: 'A', subtype: 'system' },
+      { id: 'b', label: 'B', subtype: 'system' },
+      { id: 'x', label: 'X', subtype: 'system' },
+    ],
+    edges: [{ from: 'a', to: 'b', style: 'flow' }],
+    groups: [{ id: 'g', label: 'edge', members: ['a'] }],
+  }
+  const p = placed({ a: { x: 0, y: 0, w: 100, h: 40 }, b: { x: 300, y: 0, w: 100, h: 40 }, x: { x: 110, y: 60, w: 100, h: 40 } })
+  p.groups = [{ id: 'g', label: 'edge', box: { x: -10, y: -10, w: 220, h: 80 } }]
+  const report = audit(p, routed([{ key: 'a->b', pts: [[100, 20], [300, 20]] }]), spec)
+  assert.equal(report.groupNode, 1, auditLine(report))
+  assert.equal(report.ok, false)
+})

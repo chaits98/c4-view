@@ -10,7 +10,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { renderFile } from '../src/render.ts'
+import { renderFile, renderModel } from '../src/render.ts'
+import { parseModel } from '../src/model.ts'
 import { auditLine } from '../src/audit.ts'
 
 const FIXTURES = join(new URL('..', import.meta.url).pathname, 'fixtures')
@@ -43,4 +44,35 @@ test('every level path in the corpus is unique and root is renderable by path', 
   const root = renderFile(join(FIXTURES, files[0]), '')
   assert.equal(root.levels.length, 1)
   assert.equal(root.levels[0].path, '')
+})
+
+test('a rank hint that leaves empty ranks still routes inside the drawing', () => {
+  // regression: rankEdges() returned {0,0} for a dummy-only rank, tracks collapsed to
+  // x=24 and a wire looped back 95.5px through its own source node while auditing OK
+  const model = {
+    id: 'gaps',
+    title: 'Rank gaps',
+    levels: [
+      {
+        path: '',
+        nodes: [
+          { id: 'a', label: 'Start', subtype: 'microservice', rank: 0 },
+          { id: 'b', label: 'End', subtype: 'microservice', rank: 5 },
+          { id: 'c', label: 'Other', subtype: 'microservice', rank: 5 },
+        ],
+        edges: [
+          { from: 'a', to: 'b', label: 'long haul' },
+          { from: 'a', to: 'c', label: 'other haul' },
+        ],
+      },
+    ],
+  }
+  const report = renderModel(parseModel(model))
+  assert.equal(report.levels[0].audit.ok, true, auditLine(report.levels[0].audit))
+  // every path point must sit inside the drawing, and the drawing must be wider than a gutter
+  const width = Number(/width="([\d.]+)"/.exec(report.levels[0].svg)?.[1])
+  assert.ok(width > 300, `drawing collapsed to ${width}px`)
+  const coords = [...report.levels[0].svg.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map((m) => Number(m[1]))
+  assert.ok(Math.max(...coords) <= width, 'a route leaves the drawing')
+  assert.ok(Math.min(...coords) >= 0, 'a route has a negative x')
 })
