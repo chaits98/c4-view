@@ -198,8 +198,8 @@ export interface AuditReport {
   chipChip: number
   /** label chip ∩ node */
   chipNode: number
-  /** a boundary box covering a node that is NOT one of its members — reported, not gated:
-   *  the fix is the model's membership or a level split, never a renderer nudge */
+  /** a boundary box covering a node that is NOT one of its members. Gated: only the model's
+   *  membership or a level split fixes it, and a picture that hides that is lying */
   groupNode: number
   /** every gate at zero */
   ok: boolean

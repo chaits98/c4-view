@@ -10,6 +10,32 @@ export type ShapeId =
   | 'rect' | 'rounded' | 'stadium' | 'subroutine' | 'cylinder' | 'circle'
   | 'diamond' | 'hexagon' | 'parallelogram' | 'trapezoid' | 'trapezoidAlt' | 'bars' | 'actor'
 
+/**
+ * Where text may live inside a shape, in px. A sloped or headed outline eats the box's
+ * outer band; text laid out from the raw box top lands on an actor's head (measured:
+ * 58.9px outside the silhouette on a `person` node).
+ */
+export function shapeTextInset(shape: ShapeId, box: Box): { top: number; bottom: number; left: number; right: number } {
+  switch (shape) {
+    case 'actor': {
+      const r = Math.min(box.w * 0.22, box.h * 0.2)
+      return { top: 2.35 * r + 3, bottom: 5, left: 6, right: 6 }
+    }
+    case 'diamond':
+      return { top: box.h * 0.2, bottom: box.h * 0.2, left: box.w * 0.2, right: box.w * 0.2 }
+    case 'hexagon':
+    case 'circle':
+      return { top: box.h * 0.14, bottom: box.h * 0.14, left: box.w * 0.12, right: box.w * 0.12 }
+    case 'cylinder':
+      return { top: 10, bottom: 12, left: 6, right: 6 }
+    case 'trapezoid':
+    case 'trapezoidAlt':
+      return { top: 5, bottom: 5, left: box.w * 0.1, right: box.w * 0.1 }
+    default:
+      return { top: 0, bottom: 0, left: 0, right: 0 }
+  }
+}
+
 /** Every subtype, spelled out: a new Subtype becomes a compile error, not a silent rect. */
 const SHAPE: Record<Subtype, ShapeId> = {
   'system': 'stadium',

@@ -9,7 +9,7 @@ import { measure } from '../src/metrics.ts'
 import { measureNode } from '../src/layout/measure-node.ts'
 import { DEFAULT_LAYOUT, SUBTYPE_KIND, type Box, type LayoutConfig, type LevelSpec, type NodeSpec, type Placed, type PlacedItem, type Route, type Routed, type Subtype } from '../src/types.ts'
 import { DARK } from '../src/theme.ts'
-import { shapeOf, shapePath, type ShapeId } from '../src/svg/shapes.ts'
+import { shapeOf, shapePath, shapeTextInset, type ShapeId } from '../src/svg/shapes.ts'
 import { emit } from '../src/svg/emit.ts'
 
 const cfg: LayoutConfig = DEFAULT_LAYOUT
@@ -148,9 +148,19 @@ test('untrusted text cannot break out of the markup', () => {
 
 test('each node draws only its own text inside its own group', () => {
   for (const node of NODES) {
-    const start = svg.indexOf(`<g data-id="${node.id}"`)
+    const start = svg.indexOf(`<g class="node" data-id="${node.id}"`)
     assert.ok(start >= 0, node.id)
     const slice = svg.slice(start, svg.indexOf('</g>', start))
     for (const line of measureNode(node, cfg, measure).lines) assert.ok(slice.includes(esc(line)), `${node.id}: ${line}`)
   }
+})
+
+test('actor and diamond text stays inside the shape silhouette', () => {
+  // measured defect: a `person` node wrote its id on the head circle and the label across
+  // the neck notch, 58.9px outside the filled silhouette
+  const actor = measureNode({ id: 'p', label: 'Customer browser', subtype: 'person', tech: 'mobile' }, cfg, measure)
+  const inset = shapeTextInset('actor', { x: 0, y: 0, w: actor.w, h: actor.h })
+  assert.ok(inset.top >= 24, `actor text inset too small: ${inset.top}`)
+  const diamond = shapeTextInset('diamond', { x: 0, y: 0, w: 200, h: 100 })
+  assert.ok(diamond.left >= 30 && diamond.top >= 18, `diamond inset too small: ${JSON.stringify(diamond)}`)
 })

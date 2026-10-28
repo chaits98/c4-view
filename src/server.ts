@@ -7,6 +7,7 @@ import { ModelError, levelOrder, parseModel } from './model.ts'
 import { indexEntries, indexPage } from './index-page.ts'
 import { renderModel } from './render.ts'
 import { svgToPng } from './png.ts'
+import { levelSlug } from './slug.ts'
 import type { Model } from './types.ts'
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -176,14 +177,9 @@ function findLevel(model: Model, path: string) {
   return validLevel(path) ? model.levels.find((level) => level.path === path) : undefined
 }
 
-/** `'' -> root`, `a/b -> a-b` — the same stem the CLI writes. */
-function slugOf(path: string): string {
-  return path === '' ? 'root' : path.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
-/** ponytail: one png per slug; 'a/b' and 'a-b' share a file, same as the CLI. */
+/** One cached png per level path — `levelSlug` is injective, so `a/b` and `a-b` never share. */
 function pngFor(root: string, model: Model, level: string): string {
-  const out = join(root, model.id, 'out', `${slugOf(level)}.png`)
+  const out = join(root, model.id, 'out', `${levelSlug(level)}.png`)
   const source = modelFile(root, model.id)
   if (existsSync(out) && statSync(out).mtimeMs >= statSync(source).mtimeMs) return out
   return svgToPng(renderModel(model, level).levels[0].svg, out)

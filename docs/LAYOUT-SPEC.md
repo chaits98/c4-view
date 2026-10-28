@@ -121,7 +121,7 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
 
 `emit(placed, routed, level, cfg, theme): string` returns one self-contained `<svg>` element.
 
-- viewBox `0 0 ceil(w+16) ceil(h+16)`, root translated by `8,8`.
+- viewBox `0 0 (w+16) (h+16)` rounded to one decimal (the emitter's `n()`), root translated by `8,8`.
 - Layer order (back to front): groups → routes → nodes → chips.
 - Every number goes through `n = (v) => String(Math.round(v*10)/10)`.
 - No `<style>` block: colours are attributes (`fill`, `stroke`) taken from `theme`, so an exported SVG

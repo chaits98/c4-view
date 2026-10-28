@@ -8,7 +8,7 @@
  * @module c4-view/png
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 const CHROMIUM = process.env.C4_CHROMIUM ?? '/usr/bin/chromium'
@@ -32,13 +32,15 @@ export function svgToPng(svg: string, out: string, scale = 2): string {
   const target = resolve(out)
   mkdirSync(dirname(target), { recursive: true })
   const { w, h } = sizeOf(svg)
-  const html = `${target}.html`
+  // the page chromium loads is scaffolding, not an artifact: it is removed however we exit
+  const html = `${target}.page.html`
   writeFileSync(
     html,
     `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#0a111b;overflow:hidden}</style>${svg}`,
   )
 
-  execFileSync(
+  try {
+    execFileSync(
     CHROMIUM,
     [
       '--headless',
@@ -50,8 +52,11 @@ export function svgToPng(svg: string, out: string, scale = 2): string {
       `--screenshot=${target}`,
       `file://${html}`,
     ],
-    { stdio: 'pipe', timeout: 60_000 },
-  )
+      { stdio: 'pipe', timeout: 60_000 },
+    )
+  } finally {
+    rmSync(html, { force: true })
+  }
 
   if (!existsSync(target)) throw new Error(`png: chromium wrote nothing to ${target}`)
   const bytes = statSync(target).size

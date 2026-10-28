@@ -27,6 +27,8 @@
   let x = 0
   let y = 0
   let drag = null
+  /** the user took the view over: a resize must not throw their framing away */
+  let touched = false
 
   const cardTitle = document.createElement('div')
   const cardDesc = document.createElement('div')
@@ -38,16 +40,24 @@
   const view = () => ({ k, x, y })
   const root = () => document.body.dataset.root || location.pathname.replace(/\/+$/, '')
 
-  /** The stage's box in the svg's user units, and the user→css scale. */
+  /** The stage's box in the svg's user units, and the user→css scale.
+   *  The corners come from the svg's CLIENT RECT, not from (0,0): (0,0) is the viewport's
+   *  top-left, so the whole fit sat 49px high (the header's height) and clipped at short
+   *  viewports (measured: a node's top border sliced 25px at 1400x300). */
   function visible() {
-    const cw = svg.clientWidth
-    const ch = svg.clientHeight
+    const r = svg.getBoundingClientRect()
     const m = svg.getScreenCTM()
     const s = m && Math.abs(m.a) > 0 ? Math.abs(m.a) : 1
-    if (!m || !(cw > 0 && ch > 0)) return { x: 0, y: 0, w: 0, h: 0, s }
-    const a = new DOMPoint(0, 0).matrixTransform(m.inverse())
-    const b = new DOMPoint(cw, ch).matrixTransform(m.inverse())
-    return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: cw / s, h: ch / s, s }
+    if (!m || !(r.width > 0 && r.height > 0)) return { x: 0, y: 0, w: 0, h: 0, s }
+    const a = new DOMPoint(r.left, r.top).matrixTransform(m.inverse())
+    const b = new DOMPoint(r.right, r.bottom).matrixTransform(m.inverse())
+    return {
+      x: Math.min(a.x, b.x),
+      y: Math.min(a.y, b.y),
+      w: Math.abs(b.x - a.x),
+      h: Math.abs(b.y - a.y),
+      s,
+    }
   }
 
   /** The drawing's bounds in viewBox units, the emitter's base transform applied. */
@@ -65,7 +75,8 @@
     rootG.setAttribute('transform', `translate(${round(x)} ${round(y)}) scale(${round(k, 4)})${BASE ? ` ${BASE}` : ''}`)
   }
 
-  function fit() {
+  function fit(manual = false) {
+    if (manual) touched = false
     const v = visible()
     const b = drawingBox()
     if (!(v.w > 0 && v.h > 0 && b.w > 0 && b.h > 0)) return view()
@@ -84,6 +95,7 @@
     if (!u) return view()
     const next = Math.min(3, Math.max(0.3, k * factor))
     if (next === k) return view()
+    touched = true
     x = u.x - (u.x - x) * (next / k)
     y = u.y - (u.y - y) * (next / k)
     k = next
@@ -206,6 +218,8 @@
     if (done.moved < 4) {
       const url = drillUrl(done.node)
       if (url) location.href = url
+    } else {
+      touched = true
     }
   })
 
@@ -235,7 +249,7 @@
     const cy = box.top + box.height / 2
     if (e.key === '+' || e.key === '=') zoomAt(cx, cy, 1.2)
     else if (e.key === '-' || e.key === '_') zoomAt(cx, cy, 1 / 1.2)
-    else if (e.key === '0') fit()
+    else if (e.key === '0') fit(true)
     else return
     e.preventDefault()
   })
@@ -245,6 +259,11 @@
       location.href = levels.value ? `${root()}/${levels.value}` : root()
     })
   }
+
+  // a resize keeps the user's framing once they have moved it, and refits until then
+  addEventListener('resize', () => {
+    if (!touched) fit()
+  })
 
   window.__c4 = { fit, zoomAt, toWorld, view, drillUrl }
 

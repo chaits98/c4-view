@@ -18,6 +18,7 @@ import { renderFile, type Rendered, type RenderedLevel } from './render.ts'
 import { svgToPng } from './png.ts'
 import { auditLine } from './audit.ts'
 import { ModelError } from './model.ts'
+import { levelSlug } from './slug.ts'
 
 const USAGE = `c4v — agent-driven C4 renderer
 
@@ -28,7 +29,8 @@ const USAGE = `c4v — agent-driven C4 renderer
   --level   render one level by path (root is "")           [default: every level]
   --out     a directory, or a .svg file when one level is rendered [default: ./out/<id>]
   --png     also write a PNG beside each SVG (--scale, default 2)
-  --strict  exit 1 when any geometry gate fails (node∧node, wire∧node, wire∧wire, chip∧chip, chip∧node)
+  --strict  exit 1 when any geometry gate fails (node∧node, wire∧node, wire∧wire, chip∧chip,
+            chip∧node, group∧node)
 `
 
 const argv = process.argv.slice(2)
@@ -41,10 +43,8 @@ const opt = (name: string, fallback?: string): string | undefined => {
 /** The model path is the first argument after the command. */
 const fileArg = (): string | undefined => (argv[1] && !argv[1].startsWith('--') ? argv[1] : undefined)
 
-/** `'' -> root`, `a/b -> a-b`: a file-safe stem for one level. */
-export function slugOf(path: string): string {
-  return path === '' ? 'root' : path.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
+/** `'' -> root`, `a/b -> a~b`: a file-safe, injective stem for one level. */
+export { levelSlug as slugOf } from './slug.ts'
 
 function writeLevels(report: Rendered, out: string | undefined, png: boolean, scale: number): string[] {
   const written: string[] = []
@@ -55,7 +55,7 @@ function writeLevels(report: Rendered, out: string | undefined, png: boolean, sc
   for (const level of report.levels) {
     const target = outIsFile
       ? (isAbsolute(out as string) ? (out as string) : resolve(out as string))
-      : join(out ?? join('out', report.id), `${slugOf(level.path)}.svg`)
+      : join(out ?? join('out', report.id), `${levelSlug(level.path)}.svg`)
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, level.svg)
     written.push(target)
@@ -102,6 +102,13 @@ async function main(): Promise<number> {
   }
   if (cmd !== 'render' && cmd !== 'audit') {
     console.error(`unknown command "${cmd}"\n\n${USAGE}`)
+    return 2
+  }
+
+  // an unsatisfiable --out is an argument error, not something to discover after rendering
+  const out = opt('out')
+  if (out !== undefined && extname(out) === '.svg' && opt('level') === undefined) {
+    console.error('--out <file.svg> needs --level (one level per file)\n')
     return 2
   }
 

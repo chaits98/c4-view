@@ -54,7 +54,12 @@ export function renderModel(model: Model, only?: string): Rendered {
 
 /** Read + validate + render a model file. */
 export function renderFile(file: string, only?: string): Rendered {
-  const raw: unknown = JSON.parse(readFileSync(file, 'utf8'))
+  let raw: unknown
+  try {
+    raw = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    throw new Error(`${file}: ${error instanceof Error ? error.message : String(error)}`)
+  }
   return renderModel(parseModel(raw), only)
 }
 

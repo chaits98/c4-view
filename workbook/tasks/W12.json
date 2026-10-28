@@ -6,7 +6,12 @@
   "estMin": 45,
   "files": [],
   "evidence": "PASS WITH FINDINGS — 6/7 SKILL.md commands verbatim (doc example model rejected, S1), 12 CLI checks, 47 HTTP assertions, 8 injection/traversal groups; 1 blocker found live at 76125fe (group-and-node not gated) now fixed in worktree, 3 should-fix (S1 doc model, S2 png slug collision a/b==a-b, S3 calm:8788 link dead), 5 notes; report: /home/canand/Desktop/agent_workspace/default/c4-view/verify-e2e/REPORT.md",
-  "notes": [],
+  "notes": [
+    {
+      "at": "2026-10-28T16:15:08Z",
+      "text": "S1 skill example fixed (empty level removed). S2 png cache collision fixed via injective levelSlug (a~b vs a-b, proven by differing bytes). S3 skill now says: hand over the URL serve printed. Notes fixed: --out refusal exits 2 before rendering; JSON errors name the file; png page scaffolding deleted after capture."
+    }
+  ],
   "startedAt": "2026-10-28T15:14:29Z",
   "endedAt": "2026-10-28T15:20:29Z"
 }

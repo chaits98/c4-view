@@ -24,7 +24,7 @@ cd ~/Desktop/Projects/c4-view
 node src/cli.ts audit  <model.json> --strict            # gates, exit 1 on any failure
 node src/cli.ts render <model.json> --out out/<id> --png --strict
 node src/cli.ts render <model.json> --level api --out ./api.svg
-node src/cli.ts serve  --port 8788                     # http://calm:8788/d/<id>
+node src/cli.ts serve  --port 8788                     # prints its URL; add --host 0.0.0.0 for other machines
 ```
 
 - `--strict` is not optional in practice: without it a failed diagram still writes files.
@@ -58,7 +58,9 @@ node src/cli.ts serve  --port 8788                     # http://calm:8788/d/<id>
       ],
       "flow": ["browser->api", "api->db"]
     },
-    { "path": "api", "title": "Orders API", "nodes": [], "edges": [] }
+    { "path": "api", "title": "Orders API",
+      "nodes": [{ "id": "handler", "label": "Order handler", "subtype": "api-controller", "tech": "FastAPI" }],
+      "edges": [] }
   ]
 }
 ```
@@ -113,8 +115,9 @@ means a chain that should be split.
 
 Give the user three things and nothing else:
 
-1. **the link** — `http://calm:8788/d/<id>` for one diagram, or `http://calm:8788/` for the grid when the
-   user has several concepts (each card is a live thumbnail with its audit state),
+1. **the link** the serve command printed — `<base>/d/<id>` for one diagram, `<base>/` for the grid when the
+   user has several concepts (each card is a live thumbnail with its audit state). Hand over the URL the
+   process printed; do not invent a hostname.
 2. **one PNG** — the level that carries the point, inline where the surface supports it,
 3. **the audit line(s)** — the proof it is clean.
 

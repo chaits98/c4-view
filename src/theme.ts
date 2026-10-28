@@ -20,7 +20,7 @@ export const DARK: Theme = {
   line: '#2a3a4f',
   chipBg: '#0f1a27',
   chipFg: '#cfe3f2',
-  groupStroke: '#33506e',
+  groupStroke: '#4a6f95',
   groupFill: 'rgba(40,70,105,.12)',
   kinds: {
     concept: { fill: 'rgba(139,92,246,.16)', stroke: '#8b5cf6' },

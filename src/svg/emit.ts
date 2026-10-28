@@ -11,7 +11,7 @@ import { SUBTYPE_KIND, type Box, type EdgeStyle, type LayoutConfig, type LevelSp
 import type { Theme } from '../theme.ts'
 import { FONT_FAMILY, lineHeight, measure } from '../metrics.ts'
 import { measureNode } from '../layout/measure-node.ts'
-import { shapeOf, shapePath } from './shapes.ts'
+import { shapeOf, shapePath, shapeTextInset } from './shapes.ts'
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** labels/tech/identity/id/desc/drill are agent-written: escape every one of them. */
@@ -71,22 +71,30 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     const box = placed.boxes.get(node.id)
     if (!box) return []
     const t = measureNode(node, cfg, measure)
+    const shape = shapeOf(node.subtype)
     const kind = SUBTYPE_KIND[node.subtype] ?? 'concept'
     const k = theme.kinds[kind]
     const attrs = [`data-id="${esc(node.id)}"`, `data-kind="${kind}"`]
     if (node.desc) attrs.push(`data-desc="${esc(node.desc)}"`)
     const child = drill.get(node.id)
     if (child) attrs.push(`data-drill="${esc(child)}"`)
-    const parts = [`<g ${attrs.join(' ')}>`]
-    parts.push(`<path d="${shapePath(shapeOf(node.subtype), box)}" fill="${k.fill}" stroke="${k.stroke}" stroke-width="1.4"/>`)
-    let y = box.y + cfg.nodePadY + 6
+    const parts = [`<g class="node" ${attrs.join(' ')}>`]
+    parts.push(`<path d="${shapePath(shape, box)}" fill="${k.fill}" stroke="${k.stroke}" stroke-width="1.4"/>`)
+    // text lives in the shape's own text band and is centred in it — an actor's head is
+    // part of the box, not something to write over
+    const inset = shapeTextInset(shape, box)
+    const textH = (t.identity ? slh : 0) + t.lines.length * lh + (t.tech ? slh : 0)
+    const bandTop = box.y + inset.top
+    const bandH = box.h - inset.top - inset.bottom
+    let cursor = bandTop + Math.max(0, (bandH - textH) / 2)
+    const cx = box.x + box.w / 2
     if (t.identity) {
-      parts.push(text(box.x + box.w / 2, y, small, theme.dim, t.identity))
-      y += slh
+      parts.push(text(cx, cursor + slh / 2, small, theme.dim, t.identity))
+      cursor += slh
     }
-    t.lines.forEach((line, i) => parts.push(text(box.x + box.w / 2, y + i * lh, cfg.fontSize, theme.fg, line)))
-    y += t.lines.length * lh
-    if (t.tech) parts.push(text(box.x + box.w / 2, y, small, theme.dim, t.tech))
+    t.lines.forEach((line, i) => parts.push(text(cx, cursor + lh / 2 + i * lh, cfg.fontSize, theme.fg, line)))
+    cursor += t.lines.length * lh
+    if (t.tech) parts.push(text(cx, cursor + slh / 2, small, theme.dim, t.tech))
     parts.push('</g>')
     return parts
   })
@@ -119,5 +127,5 @@ export function emit(
   ]
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +
     `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}` +
-    `<g transform="translate(8,8)">${body.join('')}</g></svg>`
+    `<g class="c4-root" transform="translate(8,8)">${body.join('')}</g></svg>`
 }
