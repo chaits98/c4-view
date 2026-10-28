@@ -98,9 +98,10 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
    horizontal runs only at port y values, verticals only at track x values.
 3. **Track allocation, per gutter.** A gutter is `[left, right]` = `[x of rank r's right edge,
    x of rank r+1's left edge]`. Chains needing a jog in that gutter are sorted by (chain key) and get
-   `tx = left + cfg.lane * (i + 1)`, `i` from 0. **Assert** `tx <= right - cfg.lane`; if the gutter is too
-   narrow for its jogs, spread the tracks evenly across `[left + lane, right - lane]` instead
-   (deterministic, still distinct).
+   `tx = left + cfg.lane * (i + 2)`, `i` from 0 — **two lanes of clearance from the column edge**, because
+   a wire hugging a box reads to a human as a wire through it (measured: 12px clear was reported as
+   "routed through/behind the box"; 24px is not). If the gutter is too narrow for its jogs, spread the
+   tracks evenly across `[left + 2·lane, right - 2·lane]` instead (deterministic, still distinct).
 4. **Backward chain** (`chain.backward`): source leaves from its **bottom** border at a port, drops into
    the return corridor below the drawing, runs left to the target's column, and rises into the target's
    **bottom** border port. Corridor row = `size.h + 18 + k * (cfg.lane + 4)` where `k` is the index of the

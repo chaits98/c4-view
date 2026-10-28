@@ -2,11 +2,11 @@
   "id": "W12",
   "title": "VERIFY CLI + server end-to-end: render/audit/serve/export bytes and HTTP",
   "owner": "V2",
-  "status": "todo",
+  "status": "wip",
   "estMin": 45,
   "files": [],
   "evidence": "",
   "notes": [],
-  "startedAt": null,
+  "startedAt": "2026-10-28T15:14:29Z",
   "endedAt": null
 }

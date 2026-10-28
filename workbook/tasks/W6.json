@@ -2,15 +2,15 @@
   "id": "W6",
   "title": "Integration: render pipeline, CLI, PNG via headless chromium",
   "owner": "orchestrator",
-  "status": "todo",
+  "status": "done",
   "estMin": 60,
   "files": [
     "src/render.ts",
     "src/cli.ts",
     "src/png.ts"
   ],
-  "evidence": "",
+  "evidence": "render.ts+cli.ts+png.ts; node src/cli.ts render fixtures/droid.json --strict: 6/6 levels OK; PNG 2x via chromium; serve verified on :8788 (health/POST/page/svg/png/deep-link/404)",
   "notes": [],
   "startedAt": null,
-  "endedAt": null
+  "endedAt": "2026-10-28T15:14:34Z"
 }

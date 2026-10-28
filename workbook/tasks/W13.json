@@ -2,11 +2,11 @@
   "id": "W13",
   "title": "VERIFY visual: PNG/HTML inspected, no clipping/overlap by eye",
   "owner": "V3",
-  "status": "todo",
+  "status": "wip",
   "estMin": 45,
   "files": [],
   "evidence": "",
   "notes": [],
-  "startedAt": null,
+  "startedAt": "2026-10-28T15:14:16Z",
   "endedAt": null
 }
