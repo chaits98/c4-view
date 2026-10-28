@@ -100,6 +100,20 @@ export function parseModel(raw: unknown): Model {
       groups.push({ id: String(group.id), label: String(group.label), members })
     }
 
+    const flow: string[] = []
+    if (entry.flow !== undefined) {
+      if (!Array.isArray(entry.flow)) bad.push(`${at}.flow: must be an array of "from->to" edge keys`)
+      else {
+        for (const [fi, key] of entry.flow.entries()) {
+          if (!str(key) || !seenEdges.has(key)) {
+            bad.push(`${at}.flow[${fi}]: "${String(key)}" is not an edge of this level`)
+          } else if (!flow.includes(key)) {
+            flow.push(key)
+          }
+        }
+      }
+    }
+
     levels.push({
       path,
       ...(str(entry.title) && entry.title.trim() ? { title: entry.title } : { title: path || 'Overview' }),
@@ -115,6 +129,7 @@ export function parseModel(raw: unknown): Model {
       }),
       edges,
       groups,
+      ...(flow.length ? { flow } : {}),
     })
   }
 

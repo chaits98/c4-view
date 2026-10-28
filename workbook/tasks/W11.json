@@ -2,11 +2,11 @@
   "id": "W11",
   "title": "VERIFY geometry truth: audit gates on 8 real levels, planted-defect negative test",
   "owner": "V1",
-  "status": "todo",
+  "status": "wip",
   "estMin": 45,
   "files": [],
   "evidence": "",
   "notes": [],
-  "startedAt": null,
+  "startedAt": "2026-10-28T15:06:18Z",
   "endedAt": null
 }

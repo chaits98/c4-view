@@ -74,6 +74,12 @@ export interface LevelSpec {
   edges: EdgeSpec[]
   /** C4 boundaries; drawn behind the graph, may be crossed by external edges */
   groups?: GroupSpec[]
+  /**
+   * The linear order a viewer animates, as edge keys `"from->to"` — the true data
+   * flow only the author knows. Absent, the order is derived (flowOrder): depth
+   * first from the source nodes. Every edge animates exactly once, one at a time.
+   */
+  flow?: string[]
 }
 
 export interface LayoutConfig {
@@ -192,6 +198,9 @@ export interface AuditReport {
   chipChip: number
   /** label chip ∩ node */
   chipNode: number
+  /** a boundary box covering a node that is NOT one of its members — reported, not gated:
+   *  the fix is the model's membership or a level split, never a renderer nudge */
+  groupNode: number
   /** every gate at zero */
   ok: boolean
   /** width / height of the drawing */

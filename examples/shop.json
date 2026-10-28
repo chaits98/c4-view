@@ -1,0 +1,192 @@
+{
+  "id": "shop",
+  "title": "Shop \u2014 container view",
+  "layout": {
+    "rankGap": 120,
+    "nodeGap": 36
+  },
+  "levels": [
+    {
+      "path": "",
+      "title": "Containers",
+      "nodes": [
+        {
+          "id": "browser",
+          "label": "Customer browser",
+          "subtype": "person",
+          "tech": "mobile + desktop",
+          "identity": "SHP-1"
+        },
+        {
+          "id": "web",
+          "label": "Storefront",
+          "subtype": "web-application",
+          "tech": "React 19",
+          "group": "cloud",
+          "identity": "SHP-2"
+        },
+        {
+          "id": "api",
+          "label": "Orders API",
+          "subtype": "microservice",
+          "tech": "FastAPI",
+          "group": "cloud",
+          "identity": "SHP-3"
+        },
+        {
+          "id": "worker",
+          "label": "Fulfilment worker",
+          "subtype": "batch-job",
+          "tech": "Celery",
+          "group": "cloud",
+          "identity": "SHP-4"
+        },
+        {
+          "id": "db",
+          "label": "Orders db",
+          "subtype": "database",
+          "tech": "Postgres 16",
+          "group": "data",
+          "identity": "SHP-5"
+        },
+        {
+          "id": "queue",
+          "label": "Job queue",
+          "subtype": "message-queue",
+          "tech": "Redis streams",
+          "group": "data",
+          "identity": "SHP-6"
+        },
+        {
+          "id": "stripe",
+          "label": "Stripe",
+          "subtype": "external-system",
+          "tech": "payments",
+          "identity": "SHP-7"
+        }
+      ],
+      "edges": [
+        {
+          "from": "browser",
+          "to": "web",
+          "label": "https",
+          "style": "flow"
+        },
+        {
+          "from": "web",
+          "to": "api",
+          "label": "REST",
+          "style": "flow"
+        },
+        {
+          "from": "api",
+          "to": "db",
+          "label": "writes orders",
+          "style": "flow"
+        },
+        {
+          "from": "api",
+          "to": "queue",
+          "label": "enqueues",
+          "style": "flow"
+        },
+        {
+          "from": "queue",
+          "to": "worker",
+          "label": "delivers",
+          "style": "dep"
+        },
+        {
+          "from": "worker",
+          "to": "db",
+          "label": "marks shipped",
+          "style": "flow"
+        },
+        {
+          "from": "api",
+          "to": "stripe",
+          "label": "charges",
+          "style": "tent"
+        },
+        {
+          "from": "stripe",
+          "to": "api",
+          "label": "webhook",
+          "style": "dep"
+        }
+      ],
+      "flow": [
+        "browser->web",
+        "web->api",
+        "api->stripe",
+        "stripe->api",
+        "api->db",
+        "api->queue",
+        "queue->worker",
+        "worker->db"
+      ]
+    },
+    {
+      "path": "api",
+      "title": "Orders API",
+      "nodes": [
+        {
+          "id": "routes",
+          "label": "HTTP routes",
+          "subtype": "api-controller",
+          "tech": "FastAPI routers"
+        },
+        {
+          "id": "service",
+          "label": "Order service",
+          "subtype": "service-logic",
+          "tech": "domain rules"
+        },
+        {
+          "id": "repo",
+          "label": "Order repo",
+          "subtype": "repository",
+          "tech": "SQLAlchemy"
+        },
+        {
+          "id": "pay",
+          "label": "Payment adapter",
+          "subtype": "adapter",
+          "tech": "stripe SDK"
+        },
+        {
+          "id": "db",
+          "label": "Orders db",
+          "subtype": "database",
+          "tech": "Postgres 16"
+        }
+      ],
+      "edges": [
+        {
+          "from": "routes",
+          "to": "service",
+          "label": "validate",
+          "style": "flow"
+        },
+        {
+          "from": "service",
+          "to": "repo",
+          "label": "persist",
+          "style": "flow"
+        },
+        {
+          "from": "service",
+          "to": "pay",
+          "label": "authorise",
+          "style": "flow"
+        },
+        {
+          "from": "repo",
+          "to": "db",
+          "label": "SQL",
+          "style": "flow"
+        }
+      ]
+    }
+  ]
+}

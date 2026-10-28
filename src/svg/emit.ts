@@ -1,0 +1,123 @@
+/**
+ * The SVG emitter. One self-contained `<svg>` element: no `<style>`, no
+ * external refs, every colour an attribute, every string escaped.
+ *
+ * Layer order (back to front): groups → routes → nodes → chips.
+ * Node/route `data-*` attributes are the viewer's only contract.
+ *
+ * @module c4-view/svg/emit
+ */
+import { SUBTYPE_KIND, type Box, type EdgeStyle, type LayoutConfig, type LevelSpec, type NodeSpec, type Placed, type Route, type Routed } from '../types.ts'
+import type { Theme } from '../theme.ts'
+import { FONT_FAMILY, lineHeight, measure } from '../metrics.ts'
+import { measureNode } from '../layout/measure-node.ts'
+import { shapeOf, shapePath } from './shapes.ts'
+
+const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+/** labels/tech/identity/id/desc/drill are agent-written: escape every one of them. */
+const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c] ?? '')
+const n = (v: number): string => String(Math.round((Number.isFinite(v) ? v : 0) * 10) / 10)
+const STYLES: readonly EdgeStyle[] = ['flow', 'dep', 'tent', 'dir']
+
+function text(x: number, y: number, size: number, fill: string, body: string): string {
+  return `<text x="${n(x)}" y="${n(y)}" font-family="${FONT_FAMILY}" font-size="${n(size)}" ` +
+    `text-anchor="middle" dominant-baseline="central" fill="${fill}">${esc(body)}</text>`
+}
+
+function defs(theme: Theme): string {
+  const markers = STYLES.map((style) => {
+    const stroke = theme.edges[style].stroke
+    return `<marker id="arrow-${style}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">` +
+      `<path d="M0 0L10 5L0 10Z" fill="${stroke}"/></marker>`
+  })
+  return `<defs>${markers.join('')}</defs>`
+}
+
+function groupLayer(placed: Placed, theme: Theme): string[] {
+  return placed.groups.map((g) => {
+    const b = g.box
+    return `<g data-group="${esc(g.id)}">` +
+      `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}" rx="6" ` +
+      `fill="${theme.groupFill}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/>` +
+      `<text x="${n(b.x + 10)}" y="${n(b.y + 12)}" font-family="${FONT_FAMILY}" font-size="11" ` +
+      `text-anchor="start" dominant-baseline="central" fill="${theme.dim}">${esc(g.label)}</text></g>`
+  })
+}
+
+function pathD(r: Route): string {
+  return r.pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${n(p.x)} ${n(p.y)}`).join('')
+}
+
+function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<string, number>): string[] {
+  const styleOf = new Map(placed.chains.map((c) => [c.key, c.style]))
+  return routed.routes.map((r) => {
+    const style = styleOf.get(r.key) ?? 'flow'
+    const e = theme.edges[style]
+    const dash = e.dash ? ` stroke-dasharray="${e.dash}"` : ''
+    // data-flow is 1-based position in the linear narration order: the viewer animates
+    // exactly one edge at a time, in this order.
+    const step = flow.get(r.key)
+    const flowAttr = step === undefined ? '' : ` data-flow="${step}"`
+    return `<path data-key="${esc(r.key)}"${flowAttr} d="${pathD(r)}" stroke="${e.stroke}" stroke-width="${n(e.width)}"${dash} ` +
+      `fill="none" marker-end="url(#arrow-${style})"/>`
+  })
+}
+
+function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>): string[] {
+  const small = Math.max(9, cfg.fontSize - 2)
+  const lh = lineHeight(cfg.fontSize)
+  const slh = lineHeight(small)
+  return level.nodes.flatMap((node: NodeSpec) => {
+    const box = placed.boxes.get(node.id)
+    if (!box) return []
+    const t = measureNode(node, cfg, measure)
+    const kind = SUBTYPE_KIND[node.subtype] ?? 'concept'
+    const k = theme.kinds[kind]
+    const attrs = [`data-id="${esc(node.id)}"`, `data-kind="${kind}"`]
+    if (node.desc) attrs.push(`data-desc="${esc(node.desc)}"`)
+    const child = drill.get(node.id)
+    if (child) attrs.push(`data-drill="${esc(child)}"`)
+    const parts = [`<g ${attrs.join(' ')}>`]
+    parts.push(`<path d="${shapePath(shapeOf(node.subtype), box)}" fill="${k.fill}" stroke="${k.stroke}" stroke-width="1.4"/>`)
+    let y = box.y + cfg.nodePadY + 6
+    if (t.identity) {
+      parts.push(text(box.x + box.w / 2, y, small, theme.dim, t.identity))
+      y += slh
+    }
+    t.lines.forEach((line, i) => parts.push(text(box.x + box.w / 2, y + i * lh, cfg.fontSize, theme.fg, line)))
+    y += t.lines.length * lh
+    if (t.tech) parts.push(text(box.x + box.w / 2, y, small, theme.dim, t.tech))
+    parts.push('</g>')
+    return parts
+  })
+}
+
+function chipLayer(routed: Routed, cfg: LayoutConfig, theme: Theme): string[] {
+  return routed.routes.flatMap((r) => {
+    const label = r.label
+    if (!label) return []
+    const b: Box = label.box
+    return [`<g data-chip="1" data-key="${esc(r.key)}">` +
+      `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}" rx="4" ` +
+      `fill="${theme.chipBg}" stroke="${theme.line}"/>` +
+      `${text(b.x + b.w / 2, b.y + b.h / 2, Math.max(9, cfg.fontSize - 1), theme.chipFg, label.text)}</g>`]
+  })
+}
+
+export function emit(
+  placed: Placed, routed: Routed, level: LevelSpec,
+  cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, flow: Map<string, number> = new Map(),
+): string {
+  // drawn size never below the boxes it must contain, even if a route stage underpays
+  const w = Math.max(placed.size.w, routed.size.w) + 16
+  const h = Math.max(placed.size.h, routed.size.h) + 16
+  const body = [
+    ...groupLayer(placed, theme),
+    ...routeLayer(routed, placed, theme, flow),
+    ...nodeLayer(level, placed, cfg, theme, drill),
+    ...chipLayer(routed, cfg, theme),
+  ]
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +
+    `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}` +
+    `<g transform="translate(8,8)">${body.join('')}</g></svg>`
+}

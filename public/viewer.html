@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C4 viewer</title>
+<link rel="stylesheet" href="/viewer.css">
+</head>
+<!-- The server fills data-diagram / data-level / data-root and the three blocks
+     marked SVG, CRUMBS, LEVELS, and serves /viewer.js, /viewer.css and /flow.js
+     from public/. Nothing else on this page is server-dependent.
+     Contract: body data-* attrs, #c4-crumbs, #c4-levels, #c4-stage (inline svg),
+     #c4-hover, #c4-legend. flow.js owns #c4-flow-caption, which it creates. -->
+<body data-diagram="" data-level="" data-root="">
+<header class="c4-bar">
+  <nav id="c4-crumbs" aria-label="Breadcrumb"><!--CRUMBS--></nav>
+  <select id="c4-levels" aria-label="Level"><!--LEVELS--></select>
+</header>
+<main id="c4-stage" tabindex="0" role="region" aria-label="Diagram: drag to pan, wheel or + - to zoom, 0 to fit"><!--SVG--></main>
+<aside id="c4-hover" hidden></aside>
+<div id="c4-legend" role="group" aria-label="Legend"></div>
+<div id="c4-mini"></div>
+<script src="/viewer.js" defer></script>
+<script src="/flow.js" defer></script>
+</body>
+</html>

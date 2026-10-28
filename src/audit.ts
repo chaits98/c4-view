@@ -133,6 +133,17 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
     for (const id of ids) if (overlapArea(chip, boxes.get(id) as Box) > 0.5) chipNode += 1
   }
 
+  let groupNode = 0
+  for (const spec of level.groups ?? []) {
+    const box = placed.groups.find((g) => g.id === spec.id)?.box
+    if (!box) continue
+    for (const node of level.nodes) {
+      if (spec.members.includes(node.id)) continue
+      const b = boxes.get(node.id)
+      if (b && overlapArea(box, b) > 0.5) groupNode += 1
+    }
+  }
+
   const aspect = routed.size.h > 0 ? Math.round((routed.size.w / routed.size.h) * 100) / 100 : 0
   const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0
   return {
@@ -145,6 +156,7 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
     crossings,
     chipChip,
     chipNode,
+    groupNode,
     ok,
     aspect,
   }
@@ -152,6 +164,6 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
 
 /** One-line human form, used by the CLI and the workbook. */
 export function auditLine(r: AuditReport): string {
-  const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode}`
+  const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode} group∧node=${r.groupNode}`
   return `${r.ok ? 'OK  ' : 'FAIL'} level="${r.level || '(root)'}" nodes=${r.nodes} edges=${r.edges} ${gates} crossings=${r.crossings} aspect=${r.aspect}`
 }

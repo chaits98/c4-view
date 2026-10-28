@@ -12,10 +12,13 @@ export function order(ranked: Ranked, cfg: LayoutConfig): Ranked
 /** inversions between adjacent ranks — used by order() and by tests */
 export function countCrossings(ranked: Ranked): number
 
+// src/layout/measure-node.ts   (orchestrator-owned, already written)
+export interface NodeText {
+  w: number; h: number; identity?: string; lines: string[]; tech?: string
+}
+export function measureNode(node: NodeSpec, cfg: LayoutConfig, m: Measure): NodeText
+
 // src/layout/place.ts
-export function measureNode(
-  node: NodeSpec, cfg: LayoutConfig, m: Measure,
-): { w: number; h: number; identity?: string; lines: string[]; tech?: string }
 export function place(ranked: Ranked, level: LevelSpec, cfg: LayoutConfig, m: Measure): Placed
 
 // src/layout/route.ts

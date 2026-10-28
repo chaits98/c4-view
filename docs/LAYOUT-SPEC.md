@@ -59,16 +59,13 @@ Barycenter sweeps, deterministic.
 
 ## 3. `place(ranked, level, cfg, measure): Placed` — `src/layout/place.ts`
 
-1. **Measure a real node** (`direction: 'LR'`):
-   - `labelLines = measure.wrap(label, (cfg.maxW - 2*cfg.nodePadX), cfg.fontSize)`, capped at 3 lines
-     (the third line gets `…` appended if words remain).
-   - `w = clamp(max(labelLines width, identity width, tech width) + 2*nodePadX, cfg.minW, cfg.maxW)`;
-     `identity` renders at `fontSize - 1`, `tech` at `fontSize - 1` and is truncated to one line.
-   - `textH = (identity ? lh(fontSize-1) : 0) + labelLines.length * lh(fontSize) + (tech ? lh(fontSize-1) : 0)`
-     where `lh(s) = Math.ceil(s * 1.35)`.
+1. **Measure a real node** (`direction: 'LR'`): call
+   `measureNode(node, cfg, m)` from `src/layout/measure-node.ts` (orchestrator-owned, done) — it returns
+   `{ w, h, lines, identity?, tech? }`. Its `w`/`h` already contain the pads and the 3-line cap.
+   Then apply **port pressure** to the height only:
    - `portsOut` = chains whose `items[0]` is this node; `portsIn` = chains whose last item is this node;
-     `maxPorts = max(portsOut, portsIn)`. `h = max(textH + 2*nodePadY, (maxPorts + 1) * cfg.portGap)`.
-   - `h` is rounded up to an integer; `w` too.
+     `maxPorts = max(portsOut, portsIn)`; `h = max(measured.h, (maxPorts + 1) * cfg.portGap)`.
+   - `w` and `h` are integers (ceil).
 2. **Column widths.** `W[r] = max(w of real items in rank r)`, dummy items contribute 0.
 3. **Columns.** `x[0] = 0`; `x[r+1] = x[r] + W[r] + cfg.rankGap`. A real node is centred in its column:
    `node.x = x[r] + (W[r] - w) / 2`. A dummy's `x = x[r] + W[r] / 2` (it is a point on the corridor).
