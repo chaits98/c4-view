@@ -12,6 +12,7 @@ written, nothing outside `root` is read. It resolves to the listening `http.Serv
 
 | Method | Path | Body / query | Answer |
 |---|---|---|---|
+| GET | `/` | — | the index grid: every stored diagram as a card, each with a live thumbnail of its root level, its level count, its updated time and its audit state. Server-rendered; the empty state names the POST command. |
 | GET | `/health` | — | `{ ok: true, diagrams: <n> }` |
 | GET | `/api/diagrams` | — | `[{ id, title, levels: string[], updated }]` |
 | POST | `/api/diagrams` | the model JSON (≤ 2 MB) | `201 { id, url, audit }` — validates with `parseModel`, 400 `{ problems: string[] }` on a bad model |
@@ -37,6 +38,8 @@ Rules that are not negotiable:
 - Log one line per request to stdout: `METHOD path status ms`.
 
 ## Viewer DOM contract (`public/viewer.html` is rendered by the server)
+
+Breadcrumbs always start with `<a href="/">all</a>`, so one diagram is never a dead end.
 
 ```html
 <body data-diagram="<id>" data-level="<path>" data-root="/d/<id>">

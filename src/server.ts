@@ -1,9 +1,10 @@
-/** HTTP surface: one directory per diagram, server-rendered pages; a bad id or level segment is a 404. */
+/** HTTP surface: `/` is the grid, `/d/<id>` one diagram; a bad id or level segment is a 404. */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ModelError, levelOrder, parseModel } from './model.ts'
+import { indexEntries, indexPage } from './index-page.ts'
 import { renderModel } from './render.ts'
 import { svgToPng } from './png.ts'
 import type { Model } from './types.ts'
@@ -12,7 +13,7 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 const MAX_BODY = 2 * 1024 * 1024
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 type Route =
-  | { kind: 'health' | 'diagrams' }
+  | { kind: 'health' | 'diagrams' | 'index' }
   | { kind: 'model' | 'audit'; id: string }
   | { kind: 'page'; id: string; level: string }
   | { kind: 'export'; format: 'svg' | 'png'; id: string }
@@ -53,6 +54,7 @@ function safePath(raw: string): string | null {
 }
 
 function routeOf(pathname: string): Route | null {
+  if (pathname === '/') return { kind: 'index' }
   if (pathname === '/health') return { kind: 'health' }
   if (pathname === '/api/diagrams' || pathname === '/api/diagrams/') return { kind: 'diagrams' }
   const asset = /^\/([a-z0-9][a-z0-9-]*\.(?:js|css))$/.exec(pathname)
@@ -98,6 +100,8 @@ async function handle(root: string, req: IncomingMessage, res: ServerResponse, p
   const query = new URL(req.url ?? '/', 'http://localhost')
 
   switch (route.kind) {
+    case 'index':
+      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id))))
     case 'health':
       return json(res, 200, { ok: true, diagrams: list(root).length })
     case 'diagrams':
@@ -251,7 +255,7 @@ function viewerPage(model: Model, level: string): string {
   const drawn = renderModel(model, level).levels[0]
   const levels = levelOrder(model)
   const root = `/d/${model.id}`
-  const crumbs = [`<a href="${esc(root)}">${esc(model.id)}</a>`]
+  const crumbs = [`<a href="/">all</a>`, `<a href="${esc(root)}">${esc(model.id)}</a>`]
   let at = ''
   for (const segment of level ? level.split('/') : []) {
     at = at ? `${at}/${segment}` : segment

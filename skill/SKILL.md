@@ -113,7 +113,8 @@ means a chain that should be split.
 
 Give the user three things and nothing else:
 
-1. **the link** — `http://calm:8788/d/<id>` (drillable, animated, one edge at a time),
+1. **the link** — `http://calm:8788/d/<id>` for one diagram, or `http://calm:8788/` for the grid when the
+   user has several concepts (each card is a live thumbnail with its audit state),
 2. **one PNG** — the level that carries the point, inline where the surface supports it,
 3. **the audit line(s)** — the proof it is clean.
 

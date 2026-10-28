@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { serve } from '../src/server.ts'
+import { indexPage } from '../src/index-page.ts'
 
 const fixture = readFileSync(new URL('../fixtures/droid.json', import.meta.url), 'utf8')
 const model = JSON.parse(fixture) as { id: string; title: string; levels: Array<{ path?: string; title?: string; nodes: unknown[] }> }
@@ -155,4 +156,23 @@ test('concurrent posts of one id leave one parseable file', async () => {
   const stored = JSON.parse(readFileSync(join(root, ID, 'model.json'), 'utf8')) as { id: string; title: string }
   assert.equal(stored.id, ID)
   assert.ok(['First', 'Second'].includes(stored.title), `last write wins, whole: ${stored.title}`)
+})
+
+test('the index grid lists every diagram with a live thumbnail, and "/" never 404s', async () => {
+  // the empty state is a rendering fact of the builder, not of the shared server fixture
+  assert.match(indexPage([]), /No diagrams yet/)
+
+  await fetch(`${base}/api/diagrams`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: fixture,
+  })
+
+  const page = await raw('GET', '/')
+  assert.equal(page.status, 200)
+  assert.equal(page.body.match(/class="card"/g)?.length, 1, 'one card per diagram')
+  assert.match(page.body, new RegExp(`href="/d/${ID}"`))
+  assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
+  assert.match(page.body, /audit clean/)
+  assert.equal(page.body.match(/<h2>/g)?.length, 1)
 })

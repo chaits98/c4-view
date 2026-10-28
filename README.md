@@ -7,7 +7,7 @@ decides whether it is deliverable.
 ```bash
 node src/cli.ts audit  examples/shop.json --strict        # the gate
 node src/cli.ts render examples/shop.json --out out/shop --png --strict
-node src/cli.ts serve  --port 8788                        # then open http://127.0.0.1:8788/d/shop
+node src/cli.ts serve  --port 8788                        # grid at http://127.0.0.1:8788/ , one diagram at /d/shop
 ```
 
 No runtime dependencies. Node 26 runs the TypeScript directly; nothing is built, bundled or transpiled.
@@ -61,8 +61,10 @@ grader that only prints zeroes proves nothing.
 
 ## The viewer
 
-`serve` stores models under `~/.c4-view/<id>/model.json` and answers a page whose SVG is rendered on the
-server — a link works before any JavaScript runs. The page then adds pan/zoom, hover, drill-down, a
+`serve` stores models under `~/.c4-view/<id>/model.json`. `/` is the grid: every diagram as a card with a
+live thumbnail of its root level, its level count and its audit state — that is the link an agent hands
+over when there are several concepts. A diagram page renders its SVG on the server, so a link works
+before any JavaScript runs. The page then adds pan/zoom, hover, drill-down, a
 legend, and the data-flow narration: **one edge animates at a time**, in `data-flow` order, with a
 caption (`from → to · label · 3 / 9`). It stops at the end and offers replay rather than looping, and
 `prefers-reduced-motion` gets a static dot.
