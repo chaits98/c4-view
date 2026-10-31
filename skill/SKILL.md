@@ -94,6 +94,11 @@ Ship **C1 + C2 always**, plus **one C3** for the container that carries the poin
 path, the thing that broke). One C3, not five. Put the model in the target repo at `docs/c4/<id>.json` so it
 versions with the code it describes; `<id>` is the repo folder name in lower-kebab.
 
+**Write it inside the repo. Never `/tmp`, never `$HOME`.** A sandboxed harness denies writes outside the
+working directory, and the run then loses the file it just built (this happened: a model written to
+`/tmp/express-c3.json` was auto-rejected, and the audit that followed reported ENOENT). The repo is the only
+directory you are guaranteed to be allowed to write.
+
 ### 3. Decide every edge by asking what crosses it
 
 If a noun crosses the line, that noun is the label: `Ranked`, `AuditReport`, `orders.json`, `8 KB SVG`.
@@ -108,9 +113,10 @@ about the commands below — the survey only decides what goes in the file.
 
 ## Commands
 
-`c4v` is on PATH whenever the package is installed. `node src/cli.ts` is the same program and only
-matters inside a checkout of this repo — the path used to be written into this skill, and an agent on a
-machine where the tool WAS installed concluded from the missing directory that the tool was missing.
+`c4v` is on PATH whenever the package is installed. There is **no checkout to find and no `src/cli.ts` to
+run** — an agent that goes looking for one hits a sandbox denial, loses its budget to rejected commands,
+and then ships a model it never audited. That exact loop happened twice in this skill's own test matrix.
+If `c4v` is missing, `npm i -g c4-view`, once.
 
 ```bash
 command -v c4v || npm i -g c4-view                     # absent = install it; that is one line, not a blocker
