@@ -52,7 +52,9 @@ ls -d */ ; ls src/*/ 2>/dev/null
 Every runtime dependency that is a seam — server, driver, parser, queue, renderer, auth, HTTP client — earns a
 box. Every top-level directory holding runtime code earns a box or a child level (a Go repo with no manifest:
 the package-root files are the inventory). Fold pure helpers into one `utilities` node and name them in its
-`desc`; a seam you cannot account for is a component you missed. In graded runs the misses — `body-parser`,
+`desc`; a seam you cannot account for is a component you missed. The ones that get dropped are almost always
+small: **an HTTP server, a test client, static-file serving, a proxy-trust setting, a query parser, content
+negotiation, a middleware chain** — each earns a box, or its own named line in the `utilities` description. In graded runs the misses — `body-parser`,
 `qs`, `radix tree`, `binding`, `render` — were always sitting in a manifest or a directory listing.
 
 **1c. Decide what the repo IS — this decides the plan.**
@@ -104,7 +106,9 @@ c4v service install --port 8788                     # same, as a systemd user un
 **Never hand-write a model because the tool seems unavailable** — a JSON that was never laid out is a guess,
 and it fails gates it was never run against. Install it, or say plainly that you could not and stop.
 
-`--strict` is not optional: without it a failed diagram still writes files. `--png` writes a 2× raster beside
+`--strict` is not optional: without it a failed diagram still writes files. **Every path you write stays
+inside the repo** — `--out`, render logs, everything. A sandbox denies `/tmp`, and a denied redirect looks
+exactly like a broken tool, so the run silently gives up on a diagram it had already fixed. `--png` writes a 2× raster beside
 each SVG (`--scale 1` for a small one). `serve` stores models under `~/.c4-view/<id>/model.json`;
 `POST /api/diagrams` with the model body returns `{ id, url, audit }`. Pages are server-rendered, so a link
 works before any JS runs.
@@ -150,6 +154,10 @@ c4v render model.json --out out/shop --png --strict     # only when green
 ```
 
 On failure: read the row, fix the **model**, run the audit again.
+
+**A level that prints `FAIL` is a hard stop.** One failing level means nothing is delivered — not that level,
+not the other levels, not "I rendered the ones that passed". Fix the model until every line says `OK`, or
+delete the level and say why you did.
 
 ```
 OK   level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chip=0 chip∧node=0 group∧node=0 crossings=1 aspect=5.2
