@@ -62,14 +62,22 @@ about the commands below — the survey only decides what goes in the file.
 
 ## Commands
 
-```bash
-cd ~/Desktop/Projects/c4-view
+`c4v` is on PATH whenever the package is installed. `node src/cli.ts` is the same program and only
+matters inside a checkout of this repo — the path used to be written into this skill, and an agent on a
+machine where the tool WAS installed concluded from the missing directory that the tool was missing.
 
-node src/cli.ts audit  <model.json> --strict            # gates, exit 1 on any failure
-node src/cli.ts render <model.json> --out out/<id> --png --strict
-node src/cli.ts render <model.json> --level api --out ./api.svg
-node src/cli.ts serve  --port 8788                     # prints its URL; add --host 0.0.0.0 for other machines
+```bash
+command -v c4v || npm i -g c4-view                     # absent = install it; that is one line, not a blocker
+c4v audit  <model.json> --strict                       # gates, exit 1 on any failure
+c4v render <model.json> --out out/<id> --png --strict
+c4v render <model.json> --level api --out ./api.svg
+c4v serve  --port 8788                                 # local only; --host 0.0.0.0 needs a token
+c4v service install --port 8788                        # same server, as a systemd user unit
 ```
+
+**Never hand-write a model because the tool seems unavailable.** A JSON file that was never laid out by
+`c4v` is not a diagram; it is a guess, and it will fail the gates it was never run against. Install the
+tool, or say plainly that you could not and stop.
 
 - `--strict` is not optional in practice: without it a failed diagram still writes files.
 - `--png` writes a 2x raster beside each SVG (`--scale 1` for a small one).
