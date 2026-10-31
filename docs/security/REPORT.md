@@ -1,0 +1,94 @@
+# Security report — c4-view 0.2.2 + the `c4-diagram` skill
+
+Scope: the skill's instructions, the package's code and dependencies, and the runtime surface the tool
+exposes. Date: 2026-10-31. Everything below is reproducible with `security/Dockerfile` and the commands
+at the end.
+
+## Verdict
+
+| layer | tool | result |
+|---|---|---|
+| skill instructions | NVIDIA **SkillSpector 2.12.0** (static, `--no-llm`) | **score 0/100, severity LOW, recommendation SAFE, 0 issues**, 100% of files inspected |
+| skill instructions | `agentscan`, `snyk-agent-scan` | triangulation run; findings appended below where they differ |
+| package code | SonarQube 9.9 (self-hosted) | **0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0 debt**, 92.5% line coverage, gate OK |
+| dependencies | `npm audit`, `osv-scanner` | **zero runtime dependencies** — the only tree is two dev packages (typescript, @types/node, ajv for the schema test) |
+| runtime surface | manual threat model + tests | findings F1–F5 below; F1 and F2 fixed in 0.2.2 |
+
+There is no telemetry, no outbound network call, and no code path that executes model content.
+
+## Skill scan — SkillSpector
+
+```
+Skill:      c4-diagram          Source: /skill          Scanned: 2026-10-31 13:26 UTC
+Score       0/100      Severity LOW      Recommendation SAFE
+Components  2 (SKILL.md 212 lines, SMOKE-PROMPT.md 33)   Executable: none
+Issues      0
+Coverage    100.0% — 2 fully inspected, 0 partial, 0 uninspected
+```
+
+The static analyzers that matter for a text-only skill all ran and came back clean: prompt injection,
+data exfiltration, privilege escalation, supply chain, excessive agency, output handling, memory
+poisoning, tool misuse, rogue agent, anti-refusal, SSRF, deserialization. The behavioral AST/taint
+analyzers reported `no_applicable_files` — correct, because the skill ships **no executable code**; every
+command in it is a `c4v` invocation a human can read.
+
+Eleven `reference_missing` ledger exceptions are recorded against paths the skill names that are not
+bundled with it (`src/cli.ts`, `docs/c4/<id>.json` and similar). Those are runtime paths in the user's
+repo, not shipped artifacts — expected for a skill that drives a CLI rather than containing it. They are
+not findings, but they are the kind of thing a reviewer should see rather than have hidden, so they stay
+in the report.
+
+The semantic analyzers were **off** (`--no-llm`): SkillSpector's LLM stage uploads file contents to a
+configured provider. For a skill whose whole text is public, that trade is not worth taking by default;
+a CI run that wants it can enable it deliberately.
+
+## Product-layer
+
+- **SonarQube** (existing gate, `sonar-project.properties`): 2,403 ncloc, 0 issues, gate OK. The 300-line
+  per-file ceiling is enforced by `tools/gate.mjs` because Sonar Community cannot express it.
+- **Dependencies:** none at runtime. `npm audit` reports 0 vulnerabilities; there is no lockfile drift
+  surface because there is nothing to resolve at install time. This is worth stating loudly in a README:
+  a diagram renderer that pulls in 200 transitive packages is a worse security proposition than one that
+  pulls in none.
+- **Build provenance:** the tarball is built by `tsc` from the same commit; `dist/` is gitignored and
+  produced by `prepack`, so the published artefact cannot drift from `src/`. Public release should add
+  `npm publish --provenance` in CI (OIDC), which cannot be done from a local registry.
+
+## Runtime surface — threat model and findings
+
+Trust boundaries, from the outside in: **browser/agent → HTTP server → model parser → layout → SVG/HTML
+emitter → filesystem**. The model is attacker-controlled in the case that matters (an agent wrote it, or
+a colleague POSTed it).
+
+| # | Finding | Severity | Status |
+|---|---|---|---|
+| F1 | The viewer had **no authentication** on any route; `--host 0.0.0.0` published every diagram to the LAN | High | **Fixed 0.2.2** — any non-loopback bind requires a bearer token (generated if absent); token accepted as `Authorization`, `?t=` or `HttpOnly; SameSite=Strict` cookie; `/health` stays open and exposes counts only |
+| F2 | No `Content-Security-Policy`, no `nosniff`, no framing protection; a future inline script (or a crafted export) would have had nothing stopping it | Medium | **Fixed 0.2.2** — CSP `default-src 'none'`, `script-src 'self'`, `frame-ancestors 'none'`, plus `nosniff`, `no-referrer`, `X-Frame-Options: DENY` on every response |
+| F3 | `--png` passed **`--no-sandbox`** to Chromium unconditionally, disabling the browser sandbox on a desktop that did not need it | Medium | **Fixed 0.2.2** — only passed when running as root (containers) |
+| F4 | Layout cost is superlinear; a POST of a very large model (up to 2 MB) burns CPU for as long as it likes | Low | **Documented** in SECURITY.md; the 2 MB cap and the token are the current mitigation. A node-count ceiling would be the next step |
+| F5 | The viewer token travels over plain HTTP and is stored in a cookie; on a shared network anyone reading traffic can read it | Low | **Documented** — put it behind a TLS-terminating proxy when exposing it beyond a trusted LAN. Not solved in-process on purpose: bundling TLS is a much bigger surface than the problem it fixes here |
+
+Checked and **not** findings: SVG injection (all model strings pass through the escaping helper; a test
+plants a `<script>` label), path traversal (`/d/../../etc/passwd` and encoded variants 404), the agent's
+own model cannot execute (no `eval`, no dynamic import of model content, no template that renders HTML
+from data), and store writes are confined to the configured root.
+
+## Reproduce
+
+```bash
+# skill, static only, no content leaves the box
+docker build -f security/Dockerfile -t c4v-scanners .
+docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners \
+  skillspector scan /skill --no-llm --format markdown
+docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners \
+  skillspector scan /skill --no-llm --format sarif --output -
+
+# package
+npm audit; npx tsc --noEmit; node tools/gate.mjs; node --test
+```
+
+## Residual risk, stated plainly
+
+The tool is designed to be run by one person on their own machine. Everything above is sized for that.
+It is not a multi-tenant service and does not pretend to be: one token, one trust level, no audit log, no
+per-user isolation. Anyone deploying it that way should put a real reverse proxy in front of it.
