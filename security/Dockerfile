@@ -11,10 +11,12 @@ RUN apt-get update \
 # Primary: NVIDIA's scanner (Tier 1 of their trust pipeline). Apache-2.0, SARIF output.
 RUN uv tool install git+https://github.com/NVIDIA/SkillSpector.git
 
-# Triangulation: two independent static scanners. A failure to install one must not break the others,
-# so each is best-effort and the report says which ones actually ran.
-RUN uv tool install agentscan || echo "agentscan unavailable"
-RUN uv tool install snyk-agent-scan || uvx snyk-agent-scan@latest --help >/dev/null 2>&1 || echo "snyk-agent-scan unavailable"
+# Triangulation, recorded honestly because "best effort" that prints nothing is how a report ends up
+# claiming coverage it does not have:
+#   - PyPI `agentscan` is an unrelated 0.0.1 package that ships no executable, so it is not installed.
+#   - snyk-agent-scan installs fine but refuses to scan without SNYK_TOKEN (SaaS account). Left in place
+#     so a CI run WITH a token picks it up; without one the report says it did not run.
+RUN uv tool install snyk-agent-scan || echo "snyk-agent-scan unavailable (needs SNYK_TOKEN to scan)"
 
 ENV PATH="/root/.local/bin:${PATH}"
 WORKDIR /work

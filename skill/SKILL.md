@@ -179,6 +179,9 @@ Gates that must be zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires 
 
 Give the user three things and nothing else:
 
+0. **Publish by POST** — `curl -X POST --data @model.json <base>/api/diagrams`. Never copy files into
+   `~/.c4-view` yourself: sandboxed agents are usually denied writes there, and the store belongs to the
+   server. If the POST fails, report that; do not fall back to hand-placing files.
 1. **the link** the serve command printed — `<base>/d/<id>` for one diagram, `<base>/` for the grid when the
    user has several concepts (each card is a live thumbnail with its audit state). Hand over the URL the
    process printed; do not invent a hostname. If the user will come back to this later, or asked for the
@@ -194,7 +197,9 @@ audit line.
 ## Before you deliver — all five, or it is not done
 
 1. `node src/cli.ts audit <model> --strict` exits 0 on **every** level. Paste the lines.
-2. Every level declares `flow`; every node has ≥ 1 edge; no level is over 20 nodes.
+2. Every level declares `flow`; every node has ≥ 1 edge; no level is over 20 nodes; and the model has
+   **at least two levels** — a root plus at least one child you can drill into. One flat level is a
+   picture of one layer, not a C4 of a system, and it is the most common way an agent stops early.
 3. `group∧node=0` and every boundary's members are contiguous.
 4. `aspect` is under ~8 (4–7 is normal for a genuine chain; a strip past 8 means split the level), and
    `backward` is the number of loops you MEANT — not one you accidentally created with a hint.
