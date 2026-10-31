@@ -117,3 +117,16 @@ test('--out <file.svg> writes exactly one file when --level is given', async () 
 test('--json prints one audit object per level', async () => {
   assert.equal(await run(['audit', SHOP, '--json', '--strict']), 0)
 })
+
+test('a tool failure (no browser for --png) is an exit code, not a stack trace', async () => {
+  const saved = process.env.C4_CHROMIUM
+  const dir = mkdtempSync(join(tmpdir(), 'c4v-cli-'))
+  process.env.C4_CHROMIUM = '/nonexistent/chrome'
+  try {
+    const code = await run(['render', SHOP, '--level', 'api', '--out', join(dir, 'a.svg'), '--png', '--strict'])
+    assert.equal(code, 1)
+  } finally {
+    if (saved === undefined) delete process.env.C4_CHROMIUM
+    else process.env.C4_CHROMIUM = saved
+  }
+})

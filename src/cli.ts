@@ -148,8 +148,21 @@ function argumentError(args: Args): number | null {
   return null
 }
 
-/** Run the command line and resolve its exit code. Never calls process.exit. */
+/**
+ * Run the command line and resolve its exit code. Never calls process.exit, and never lets an
+ * unexpected error escape as a rejection: a tool failure is a one-line message plus a code, or the
+ * user sees a stack trace from inside `node_modules` and has nothing to act on.
+ */
 export async function run(argv: string[]): Promise<number> {
+  try {
+    return await dispatch(argv)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    return 1
+  }
+}
+
+async function dispatch(argv: string[]): Promise<number> {
   const args = parse(argv)
   const early = argumentError(args)
   if (early !== null) return early
