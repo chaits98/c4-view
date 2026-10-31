@@ -6,8 +6,11 @@ JSON model is a breaking change to this tool, and is called out as such.
 ## [Unreleased]
 
 ### Added
-- Design research for the viewer UI (UX guideline + Material 3 light/dark token set). **Not implemented**;
-  it lands as its own feature.
+- Design research for the viewer UI (UX guideline + Material 3 light/dark token set) in `docs/design/`.
+  **Not implemented**; it lands as its own feature.
+- `docs/design/PARKED.md` — every feature we decided on and have not started (viewer UI, single-file HTML
+  export, grid sort/filter, portrait layout, macOS/Windows service, public release), each with what it
+  takes to start.
 
 ### Changed
 - SKILL.md 5,154 → 3,617 tokens (-30%) with the rules intact. Measured, not assumed: four runs of the

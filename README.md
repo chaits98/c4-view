@@ -216,6 +216,7 @@ test/                 148 tests (units, the real corpus, the audit's own defects
 fixtures/             the owner's real concepts, exported read-only from ~/.droid/concepts.db
 examples/             two hand-authored models: containers + drill, and two boundaries
 docs/                 LAYOUT-SPEC.md (normative) · HTTP-API.md · security/ · plans/ · launch/
+docs/design/          the viewer's UX guideline, Material 3 spec, and PARKED.md (decided, not started)
 ```
 
 ## Known ceilings
