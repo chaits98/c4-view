@@ -59,6 +59,21 @@ Three graded runs of this skill against real repos missed `body-parser`, `finalh
 `radix tree`, `binding`, `render` and `APIRouter` — every one of them present in a manifest or a
 directory listing. That is what this step exists for.
 
+### 1c. Decide what kind of thing this repo IS (this decides the whole plan)
+
+Two answers, two different diagrams. Getting this wrong is invisible to every geometry gate and makes
+the picture confidently useless.
+
+| the repo is… | C1 | C2 | where the content lives |
+|---|---|---|---|
+| **a system you run** (a service, a CLI, a daemon: it has a process, a port, a scheduled job) | the system, its people, its neighbours | its deployables — process, worker, store, queue | C3 inside each container |
+| **a library or framework** (consumed, not deployed: express, fastapi, gin, a React library) | the library as one box, the developer who uses it, the apps that host it, the package registry | **one** honest box for the library plus the process that hosts it — nothing more | **C3/C4 are the point**: the library's internal components (router, context, binding, render) |
+
+A library has no containers to speak of. Drawing `Request`, `Response`, `utils.js` as C2 "containers" is
+the single most common failure this skill's test matrix produced: both models, all three harnesses, on all
+three framework repos. The test is blunt — **if the boxes are files in one npm/PyPI/Go module, that is C3,
+not C2** — and if you cannot name a process or a store, the level is not a container level.
+
 ### 2. Plan the levels, then walk the plan
 
 | level | path | what earns a box |
