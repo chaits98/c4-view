@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The source is TypeScript with no build step, so these run it directly: Node >= 22.18.
+  source:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ['22.18', '24', '26']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --no-audit --no-fund
+      - name: gates, types, tests, goldens
+        run: |
+          node tools/gate.mjs
+          npx tsc --noEmit
+          node --test
+          node tools/golden.mjs --check
+      - name: the doctor answers for itself
+        run: node src/cli.ts doctor --root "$RUNNER_TEMP/c4v"
+
+  # The published artefact is what a stranger installs: build it, install it in a clean prefix,
+  # and exercise the real work from a foreign cwd. Node 18 is supported ONLY this way, which is
+  # why it lives here and not in the matrix above.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - run: npm install --no-audit --no-fund
+      - name: pack, and assert every runtime asset is inside
+        run: |
+          npm pack --dry-run 2>&1 | tee pack.txt
+          for dir in bin/ dist/ public/ data/; do
+            grep -q "$dir" pack.txt || { echo "missing $dir in the tarball"; exit 1; }
+          done
+      - name: install the tarball on Node 18 and run it
+        run: |
+          npm pack
+          docker run --rm -v "$PWD:/w" -w /w node:18-bookworm \
+            bash -lc 'npm i -g ./c4-view-*.tgz && cd /tmp && c4v doctor --root /tmp/s && c4v render /w/examples/shop.json --out /tmp/out --strict'
+
+  # SonarQube is self-hosted on the maintainer's box, so it is not in CI. The in-repo gate stands in
+  # for the file-size rule Sonar Community cannot express, and runs in the `source` job above.

@@ -1,0 +1,27 @@
+name: Bug
+description: Something renders wrong, crashes, or behaves against the docs
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command and the exit code.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations: { required: true }
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit line
+      description: Output of `c4v audit <model> --strict` — one line per level.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version and platform
+      placeholder: c4-view 0.2.2, Linux x64, node v22.23.4
+    validations: { required: true }
