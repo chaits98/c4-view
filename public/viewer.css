@@ -1,0 +1,232 @@
+/* c4-view viewer — dark, fills the viewport, no layout shift on hover. */
+:root {
+  --bg: #0a111b;
+  --fg: #e6edf6;
+  --dim: #8fa3b8;
+  --line: #1c2735;
+  --panel: #111c29;
+  --accent: #3b82f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.c4-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  background: #0d1622;
+  border-bottom: 1px solid var(--line);
+}
+
+#c4-crumbs {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--dim);
+}
+
+#c4-crumbs a {
+  color: #8fb6ff;
+  text-decoration: none;
+}
+
+#c4-crumbs a:hover,
+#c4-crumbs a:focus-visible {
+  text-decoration: underline;
+}
+
+#c4-crumbs span {
+  color: var(--fg);
+}
+
+#c4-levels {
+  flex: 0 0 auto;
+  max-width: 40vw;
+  padding: 5px 8px;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+}
+
+#c4-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  background: var(--bg);
+}
+
+#c4-stage.is-panning,
+#c4-stage.is-panning * {
+  cursor: grabbing;
+}
+
+#c4-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* the emitted svg keeps its width/height/viewBox attributes; only its box is scaled */
+#c4-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#c4-stage svg g[data-id][data-drill] {
+  cursor: pointer;
+}
+
+#c4-hover {
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  top: 0;
+  max-width: 320px;
+  padding: 9px 12px;
+  background: var(--panel);
+  border: 1px solid #24344a;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+#c4-hover[hidden] {
+  display: none;
+}
+
+#c4-hover .c4-hover-title {
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+#c4-hover .c4-hover-desc {
+  color: var(--dim);
+}
+
+#c4-legend {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 60vw;
+  padding: 7px 10px;
+  background: rgb(13 22 34 / 92%);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+#c4-legend:empty {
+  display: none;
+}
+
+#c4-legend .c4-sw {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  /* the legend is read at a glance, not studied: body size, near-body contrast */
+  font-size: 12px;
+  color: rgb(230 237 246 / 82%);
+  letter-spacing: 0.01em;
+}
+
+#c4-legend .c4-sw i {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid rgb(255 255 255 / 25%);
+}
+
+/* the flow bar: one edge at a time, bottom centre, play/pause + caption */
+#c4-flow-caption {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(70vw, 720px);
+  padding: 6px 12px 6px 6px;
+  background: rgb(13 22 34 / 94%);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--fg);
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  transform: translateX(-50%);
+}
+
+#c4-flow-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#c4-flow-play {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--fg);
+  background: #1a2838;
+  border: 1px solid #24344a;
+  border-radius: 50%;
+  font: 12px/1 ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#c4-flow-play:hover {
+  background: #223349;
+}
+
+#c4-flow-play:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.c4-dot {
+  fill: #e6edf6;
+  stroke: var(--bg);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgb(127 176 255 / 80%));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #c4-hover {
+    transition: none;
+  }
+}

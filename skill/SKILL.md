@@ -1,0 +1,282 @@
+---
+name: c4-diagram
+license: MIT
+description: >-
+  Use when an agent must produce or update an architecture (C4) diagram for the
+  user. Writes a JSON model, gates it on a geometry audit, renders deterministic
+  SVG/PNG, and serves a read-only viewer that animates the data flow one edge at
+  a time.
+---
+
+# C4 diagrams an agent can be trusted to ship
+
+`c4v` (repo: `~/Desktop/Projects/c4-view`) renders C4 architecture diagrams from a JSON model.
+There is no editing UI: the agent writes the model, the tool lays it out, the audit decides whether
+it is deliverable, and the user opens a link.
+
+**A diagram is delivered only when the audit is green.** The layout is computed — never nudge
+coordinates, never hand-place a box. If the picture is wrong, the model is wrong.
+
+## The brief is one line
+
+Expect *"make a C4 of this repo: /path/to/repo"* and nothing else. You do not need to ask anything —
+this section is the rest of the brief. Work in this order.
+
+### 1. Survey the repo (before any JSON)
+
+Read `README.md`, the manifest (`package.json` / `pyproject.toml` / `Cargo.toml` / `pom.xml`), then the
+entry points (`src/main.*`, `src/cli.*`, `cmd/**`, `app.py`). Look at top-level directories only to learn
+what each one is. You are hunting RUNTIME pieces, not files:
+
+- processes that start and stop (a CLI, a server, a worker, a scheduled job),
+- stores that outlive a process (database, a directory of files, a queue),
+- what sits on the far side of a network edge (an API you call, a caller, a browser),
+- the human who drives it.
+
+Leave out: build tooling, tests, CI config, folder structure, `utils`. If deleting it would not change what
+runs at 3am, it is not in the diagram.
+
+### 1b. Inventory — this is your coverage floor
+
+The audit can only judge what you drew, so nothing catches a component you never considered. Enumerate
+before you write a single node:
+
+```bash
+node -p "Object.keys({...require('./package.json').dependencies,...require('./package.json').devDependencies}).join('\n')"   # node
+sed -n '/dependencies/,/]/p' pyproject.toml requirements.txt 2>/dev/null                                                        # python
+sed -n '/require (/,/)/p' go.mod 2>/dev/null                                                                                   # go
+ls -d */ ; ls src/*/ 2>/dev/null                                                                                               # shape of the code
+```
+
+Every runtime dependency that is a **seam** — a server, driver, parser, queue, renderer, auth layer, HTTP
+client — earns a box. Every top-level directory holding runtime code earns a box or a child level. For a
+Go repo with no manifest, the files at the package root *are* the inventory (`engine`, `context`, `tree`,
+`binding/`, `render/`, `logger`, `recovery`).
+
+Pure helpers are not seams: fold them into one `utilities` node and name them in its `desc`. That is
+honest and keeps the level readable — but a seam you cannot account for is a component you missed.
+
+Three graded runs of this skill against real repos missed `body-parser`, `finalhandler`, `qs`,
+`radix tree`, `binding`, `render` and `APIRouter` — every one of them present in a manifest or a
+directory listing. That is what this step exists for.
+
+### 1c. Decide what kind of thing this repo IS (this decides the whole plan)
+
+Two answers, two different diagrams. Getting this wrong is invisible to every geometry gate and makes
+the picture confidently useless.
+
+| the repo is… | C1 | C2 | where the content lives |
+|---|---|---|---|
+| **a system you run** (a service, a CLI, a daemon: it has a process, a port, a scheduled job) | the system, its people, its neighbours | its deployables — process, worker, store, queue | C3 inside each container |
+| **a library or framework** (consumed, not deployed: express, fastapi, gin, a React library) | the library as one box, the developer who uses it, the apps that host it, the package registry | **one** honest box for the library plus the process that hosts it — nothing more | **C3/C4 are the point**: the library's internal components (router, context, binding, render) |
+
+A library has no containers to speak of. Drawing `Request`, `Response`, `utils.js` as C2 "containers" is
+the single most common failure this skill's test matrix produced: both models, all three harnesses, on all
+three framework repos. The test is blunt — **if the boxes are files in one npm/PyPI/Go module, that is C3,
+not C2** — and if you cannot name a process or a store, the level is not a container level.
+
+### 2. Plan the levels, then walk the plan
+
+| level | path | what earns a box |
+|---|---|---|
+| C1 context | `""` | the system as one box, its people, outside stores and services. 4–7 boxes. |
+| C2 containers | `<id>` | every process, store, browser app, scheduled job. 6–12 boxes. |
+| C3 components | `<id>/<container>` | the stages inside the one container that carries the point. 8–16 boxes. |
+| C4 code | deeper | only when the owner asks about a specific module. ≤ 12 boxes. |
+
+**A box is a container only if you could deploy, restart or scale it on its own.** A level whose boxes
+are all files inside one package (`request.js`, `response.js`, `view.js`) is a C3 wearing a C2's title —
+the first agent run in this project's own test matrix did exactly that, and the picture was praised by
+every geometry gate while describing the wrong thing. `Request` and `Response` rarely deserve a box at
+all: they are what flows through, not what runs.
+
+Ship **C1 + C2 always**, plus **one C3** for the container that carries the point (the pipeline, the request
+path, the thing that broke). One C3, not five. Put the model in the target repo at `docs/c4/<id>.json` so it
+versions with the code it describes; `<id>` is the repo folder name in lower-kebab.
+
+**Write it inside the repo. Never `/tmp`, never `$HOME`.** A sandboxed harness denies writes outside the
+working directory, and the run then loses the file it just built (this happened: a model written to
+`/tmp/express-c3.json` was auto-rejected, and the audit that followed reported ENOENT). The repo is the only
+directory you are guaranteed to be allowed to write.
+
+### 3. Decide every edge by asking what crosses it
+
+If a noun crosses the line, that noun is the label: `Ranked`, `AuditReport`, `orders.json`, `8 KB SVG`.
+Otherwise the shortest true verb: `writes`, `charges`, `polls`. An edge you cannot label with cargo or a
+verb is not an edge — delete it. This one habit is the difference between a diagram and a drawing.
+
+### 4. Then the normal loop
+
+Write the JSON, run `audit --strict`, fix the model until it is green, render, publish. Nothing changes
+about the commands below — the survey only decides what goes in the file.
+
+
+## Commands
+
+`c4v` is on PATH whenever the package is installed. There is **no checkout to find and no `src/cli.ts` to
+run** — an agent that goes looking for one hits a sandbox denial, loses its budget to rejected commands,
+and then ships a model it never audited. That exact loop happened twice in this skill's own test matrix.
+If `c4v` is missing, `npm i -g c4-view`, once.
+
+```bash
+command -v c4v || npm i -g c4-view                     # absent = install it; that is one line, not a blocker
+c4v audit  <model.json> --strict                       # gates, exit 1 on any failure
+c4v render <model.json> --out out/<id> --png --strict
+c4v render <model.json> --level api --out ./api.svg
+c4v serve  --port 8788                                 # local only; --host 0.0.0.0 needs a token
+c4v service install --port 8788                        # same server, as a systemd user unit
+```
+
+**Never hand-write a model because the tool seems unavailable.** A JSON file that was never laid out by
+`c4v` is not a diagram; it is a guess, and it will fail the gates it was never run against. Install the
+tool, or say plainly that you could not and stop.
+
+- `--strict` is not optional in practice: without it a failed diagram still writes files.
+- `--png` writes a 2x raster beside each SVG (`--scale 1` for a small one).
+- `serve` stores models under `~/.c4-view/<id>/model.json`; `POST /api/diagrams` with the model body
+  returns `{ id, url, audit }`. Pages are server-rendered, so a link works before any JS runs.
+
+## The model
+
+A complete two-level model ships beside this file: **`assets/example.json`**. Read it before writing
+anything — it is the shape, the field names, and a boundary done correctly, in 30 lines. (Agents in a
+sandboxed harness often cannot read an installed package outside their working directory; the example
+travels WITH the skill precisely so that never matters.)
+
+```json
+{
+  "id": "shop",
+  "title": "Shop — containers",
+  "layout": { "rankGap": 120, "nodeGap": 36, "labelMaxChars": 32 },
+  "levels": [
+    {
+      "path": "",
+      "title": "Containers",
+      "nodes": [
+        { "id": "browser", "label": "Customer browser", "subtype": "person", "tech": "mobile + desktop", "identity": "SHP-1" },
+        { "id": "api", "label": "Orders API", "subtype": "microservice", "tech": "FastAPI", "desc": "validates and prices an order", "group": "cloud" },
+        { "id": "db", "label": "Orders db", "subtype": "database", "tech": "Postgres 16", "group": "data" }
+      ],
+      "edges": [
+        { "from": "browser", "to": "api", "label": "REST", "style": "flow" },
+        { "from": "api", "to": "db", "label": "writes", "style": "flow" }
+      ],
+      "groups": [
+        { "id": "cloud", "label": "our cloud", "members": ["api"] },
+        { "id": "data", "label": "data tier", "members": ["db"] }
+      ],
+      "flow": ["browser->api", "api->db"]
+    },
+    { "path": "api", "title": "Orders API",
+      "nodes": [{ "id": "handler", "label": "Order handler", "subtype": "api-controller", "tech": "FastAPI" }],
+      "edges": [] }
+  ]
+}
+```
+
+| Field | Rule |
+|---|---|
+| `levels[].path` | `""` for the root; a child level's path is the parent path + the node id (`api`, `api/db`). A node with a matching child level becomes clickable. |
+| `subtype` | one of exactly these 49 — they decide shape and colour, so pick the honest one and nothing else: `system, person, role, external-system, boundary, web-application, microservice, database, cache, message-queue, file-storage, search-engine, load-balancer, cdn, serverless-function, batch-job, container-registry, dns, api-gateway, ui-component, api-controller, service-logic, repository, middleware, plugin, module, event-handler, job, adapter, saga, workflow, library, config, migration, test-suite, class, interface, abstract-class, function, enum, type-alias, c4-module, schema, dto, constant, test-file, migration-file, config-file, script`. There is no need to go looking for this list in the source; it is here because an agent that cannot find it inside a sandboxed harness stops working. |
+| `tech` | the second line: technology only, ≤ 5 words. |
+| `identity` | stable human id (`SHP-3`). Keep it across edits; it is what the user refers to. |
+| `rank` | absolute column hint. Use ONLY when the computed order fights the truth (an external system that must sit right of everything). A hint is a promise about columns, not tidiness: hint a node to sit LEFT of its predecessor and you have declared that edge backward, and the router will answer with a corridor under the whole drawing. |
+| `flow` | the linear narration, every edge key once. Omit and the tool derives it depth-first from the source nodes. |
+| `groups` | C4 boundaries. Their members must be **adjacent in the drawing** — see the gates. |
+
+## Authoring rules (these are what make it readable)
+
+1. **One idea per level.** C1 = 4–7 nodes, C2 = 6–12, C3 = 8–16, C4 = ≤ 12. Above 20 the level is a
+   modeling mistake, not a layout problem — split it.
+2. **Every node needs an edge.** An orphan box means the level mixes two stories.
+3. **Labels are 1–3 words.** The long explanation belongs in `desc` (hover) or in a child level.
+4. **Edge labels are the cargo or the verb** (`Ranked`, `AuditReport`, `writes`, `polls`), ≤ 3 words,
+   and they are exactly what the flow animation narrates.
+5. **Point edges the way data moves.** A consumer that pulls is `queue -> worker`; drawing it backwards
+   forces a return corridor and reads as a loop.
+6. **Groups are physical boundaries, not topics.** Members must form one contiguous block of the
+   drawing; if `group∧node` is non-zero the boundary swallows a stranger — regroup or split the level.
+   If a level mixes what you run with what you only call (a browser, an external API, a rented database),
+   that split earns a boundary. A level with no such seam needs none — do not draw boxes for decoration.
+7. **Declare `flow` whenever the true order is not "walk the graph depth-first."** The audience is
+   following one packet.
+8. **Never encode state in the diagram** (counts, statuses, dates) — those rot. Architecture only.
+
+## The loop
+
+```bash
+# 1. write model.json  (the only creative step)
+node src/cli.ts audit model.json --strict          # 2. the gate
+# 3. on failure: read the row, fix the MODEL, go to 2
+node src/cli.ts render model.json --out out/shop --png --strict   # 4. artifacts
+```
+
+Audit output is one line per level:
+
+```
+OK   level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chip=0 chip∧node=0 group∧node=0 crossings=1 aspect=5.2
+```
+
+Gates that must be zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires sharing a segment),
+`chip∧chip`, `chip∧node`, `group∧node`. `crossings`, `backward` and `aspect` are reported, not gated.
+
+- `crossings` above ~2 per edge: the level is too tangled to read — split it.
+- `backward` above zero: an edge drawn right-to-left. Legal if the loop is real; if you did not ask for
+  it, a `rank` hint caused it.
+- `aspect` past ~8: the level is a long chain. That is fine when the sequence IS the point (a pipeline is
+  explained left to right); split when the strip is wide because you flattened a hierarchy.
+
+## Delivering
+
+Give the user three things and nothing else:
+
+0. **Publish by POST** — `curl -X POST --data @model.json <base>/api/diagrams`. Never copy files into
+   `~/.c4-view` yourself: sandboxed agents are usually denied writes there, and the store belongs to the
+   server. If the POST fails, report that; do not fall back to hand-placing files.
+1. **the link** the serve command printed — `<base>/d/<id>` for one diagram, `<base>/` for the grid when the
+   user has several concepts (each card is a live thumbnail with its audit state). Hand over the URL the
+   process printed; do not invent a hostname. If the user will come back to this later, or asked for the
+   diagram to stay up, run `c4v service install` instead of a foreground `serve`: it installs a systemd user
+   unit, prints the same URL, and the viewer survives your shell and their logout.
+2. **one PNG** — the level that carries the point, inline where the surface supports it,
+3. **the audit line(s)** — the proof it is clean.
+
+State which level answers which question ("C2 for the trust boundaries, `api` for the write path").
+Never paste the JSON into chat unless asked; never claim a diagram "renders correctly" without the
+audit line.
+
+## Before you deliver — all five, or it is not done
+
+1. `node src/cli.ts audit <model> --strict` exits 0 on **every** level. Paste the lines.
+2. Every level declares `flow`; every node has ≥ 1 edge; no level is over 20 nodes; and the model has
+   **at least two levels** — a root plus at least one child you can drill into. One flat level is a
+   picture of one layer, not a C4 of a system, and it is the most common way an agent stops early.
+3. `group∧node=0` and every boundary's members are contiguous.
+4. `aspect` is under ~8 (4–7 is normal for a genuine chain; a strip past 8 means split the level), and
+   `backward` is the number of loops you MEANT — not one you accidentally created with a hint.
+5. You rendered it and looked at the PNG of the level that carries the point.
+
+## Troubleshooting (symptom → cause → fix)
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `group∧node=2` | boundary members are far apart, so the box swallows other nodes | regroup so members are adjacent, or drop the boundary and split the level |
+| `crossings` high, picture is spaghetti | many edges fan out of one node across ranks | split the level; or make the fan a boundary with its own child level |
+| `wire∧node>0`, `wire∧wire>0` | a gutter carries more jogs than it has room for | raise `layout.rankGap` (the layout already widens gutters to the wire load, this is the last resort) |
+| `chip∧chip>0` | two edge labels want the same spot | shorten the labels, or remove the least useful edge |
+| a long thin strip (aspect > 8) | a pure chain with no branches | add the branch structure that actually exists, or split into two levels |
+| `invalid model: levels[2].edges[7].to: unknown node "x"` | typo in an edge | fix the id; ids are the contract |
+| `self-loop` rejected | an edge from a node to itself | this is a property of the node, not a relationship — put it in `tech`/`desc` |
+| text clipped inside a diamond | label too long for a sloped shape | shorten the label |
+| `direction: "TB" is not implemented` | portrait layout requested | use `LR`; split the level if it is too wide |
+| flow animation jumps around | no `flow` declared, so the order is derived | declare `flow` in the order a person would explain it |
+| a wire dives under the whole drawing, or an edge you meant left-to-right reads right-to-left | the audit line says `backward=N`: a `rank` hint sits level with or left of a node feeding it, so that edge became a backward chain | remove the hint (the ranking was already right) or move it past its predecessors |
+
+## What this is not
+
+- Not an editor: no dragging, no resizing, no manual coordinates. A picture that needs hand placement
+  needs a better model.
+- Not a general graph drawer: C4 semantics (levels, boundaries, typed nodes) are the product.
+- Not a "hero map" for a root view. A hand-designed banded map is the right tool for a C1 overview
+  the owner will read closely — see the `c4-auto-generation` skill's rendering tier for that, and use
+  this tool for the levels below it.

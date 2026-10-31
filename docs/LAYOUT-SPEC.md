@@ -59,16 +59,13 @@ Barycenter sweeps, deterministic.
 
 ## 3. `place(ranked, level, cfg, measure): Placed` — `src/layout/place.ts`
 
-1. **Measure a real node** (`direction: 'LR'`):
-   - `labelLines = measure.wrap(label, (cfg.maxW - 2*cfg.nodePadX), cfg.fontSize)`, capped at 3 lines
-     (the third line gets `…` appended if words remain).
-   - `w = clamp(max(labelLines width, identity width, tech width) + 2*nodePadX, cfg.minW, cfg.maxW)`;
-     `identity` renders at `fontSize - 1`, `tech` at `fontSize - 1` and is truncated to one line.
-   - `textH = (identity ? lh(fontSize-1) : 0) + labelLines.length * lh(fontSize) + (tech ? lh(fontSize-1) : 0)`
-     where `lh(s) = Math.ceil(s * 1.35)`.
+1. **Measure a real node** (`direction: 'LR'`): call
+   `measureNode(node, cfg, m)` from `src/layout/measure-node.ts` (orchestrator-owned, done) — it returns
+   `{ w, h, lines, identity?, tech? }`. Its `w`/`h` already contain the pads and the 3-line cap.
+   Then apply **port pressure** to the height only:
    - `portsOut` = chains whose `items[0]` is this node; `portsIn` = chains whose last item is this node;
-     `maxPorts = max(portsOut, portsIn)`. `h = max(textH + 2*nodePadY, (maxPorts + 1) * cfg.portGap)`.
-   - `h` is rounded up to an integer; `w` too.
+     `maxPorts = max(portsOut, portsIn)`; `h = max(measured.h, (maxPorts + 1) * cfg.portGap)`.
+   - `w` and `h` are integers (ceil).
 2. **Column widths.** `W[r] = max(w of real items in rank r)`, dummy items contribute 0.
 3. **Columns.** `x[0] = 0`; `x[r+1] = x[r] + W[r] + cfg.rankGap`. A real node is centred in its column:
    `node.x = x[r] + (W[r] - w) / 2`. A dummy's `x = x[r] + W[r] / 2` (it is a point on the corridor).
@@ -101,9 +98,10 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
    horizontal runs only at port y values, verticals only at track x values.
 3. **Track allocation, per gutter.** A gutter is `[left, right]` = `[x of rank r's right edge,
    x of rank r+1's left edge]`. Chains needing a jog in that gutter are sorted by (chain key) and get
-   `tx = left + cfg.lane * (i + 1)`, `i` from 0. **Assert** `tx <= right - cfg.lane`; if the gutter is too
-   narrow for its jogs, spread the tracks evenly across `[left + lane, right - lane]` instead
-   (deterministic, still distinct).
+   `tx = left + cfg.lane * (i + 2)`, `i` from 0 — **two lanes of clearance from the column edge**, because
+   a wire hugging a box reads to a human as a wire through it (measured: 12px clear was reported as
+   "routed through/behind the box"; 24px is not). If the gutter is too narrow for its jogs, spread the
+   tracks evenly across `[left + 2·lane, right - 2·lane]` instead (deterministic, still distinct).
 4. **Backward chain** (`chain.backward`): source leaves from its **bottom** border at a port, drops into
    the return corridor below the drawing, runs left to the target's column, and rises into the target's
    **bottom** border port. Corridor row = `size.h + 18 + k * (cfg.lane + 4)` where `k` is the index of the
@@ -123,7 +121,7 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
 
 `emit(placed, routed, level, cfg, theme): string` returns one self-contained `<svg>` element.
 
-- viewBox `0 0 ceil(w+16) ceil(h+16)`, root translated by `8,8`.
+- viewBox `0 0 (w+16) (h+16)` rounded to one decimal (the emitter's `n()`), root translated by `8,8`.
 - Layer order (back to front): groups → routes → nodes → chips.
 - Every number goes through `n = (v) => String(Math.round(v*10)/10)`.
 - No `<style>` block: colours are attributes (`fill`, `stroke`) taken from `theme`, so an exported SVG
@@ -141,11 +139,14 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
 Already implemented against these rules; stages must satisfy it, not the reverse.
 
 - `nodeNode`: pairwise box intersection area > 0.5.
-- `wireNode`: any route interior point (or segment sample at 2px steps) strictly inside a node box that is
-  not one of that route's own end nodes.
+- `wireNode`: any route point (sampled at 2px) strictly inside a node box, **including the route's own end
+  nodes** beyond a radius of 8px around its two endpoints. The port-touch is the only exemption: a wire may
+  leave or enter at its port, it may not travel inside the box.
 - `wireWire`: any two routes sharing a collinear segment longer than 2px (same y ±0.5 for horizontals,
   same x ±0.5 for verticals, with overlapping ranges).
 - `chipChip`, `chipNode`: box intersection area > 0.5.
 - `crossings`: orthogonal crossings between two routes (a vertical of one crossing a horizontal of the
   other) — reported, never gated.
-- `ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0`.
+- `groupNode`: a boundary box covering a node that is not one of its members — a modelling defect the
+  router cannot fix, so it is gated: the author regroups or splits the level.
+- `ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0`.

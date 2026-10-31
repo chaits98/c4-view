@@ -1,0 +1,357 @@
+{
+  "id": "c4-view",
+  "title": "c4-view \u2014 C4 renderer for agents",
+  "layout": {
+    "rankGap": 100,
+    "nodeGap": 36,
+    "labelMaxChars": 30
+  },
+  "levels": [
+    {
+      "path": "",
+      "title": "Context",
+      "nodes": [
+        {
+          "id": "agent",
+          "label": "Model author",
+          "subtype": "person",
+          "tech": "any LLM",
+          "identity": "C4V-1",
+          "desc": "writes the JSON model, reads the audit, hands over a link"
+        },
+        {
+          "id": "model",
+          "label": "model.json",
+          "subtype": "file-storage",
+          "tech": "in the target repo",
+          "identity": "C4V-2",
+          "desc": "levels, typed nodes, labelled edges, declared flow"
+        },
+        {
+          "id": "c4v",
+          "label": "c4-view",
+          "subtype": "system",
+          "tech": "Node 26, no deps",
+          "identity": "C4V-3",
+          "desc": "lays out a C4 diagram and proves it has no overlap"
+        },
+        {
+          "id": "chromium",
+          "label": "Chromium",
+          "subtype": "external-system",
+          "tech": "headless screenshots",
+          "identity": "C4V-4",
+          "desc": "rasterises the emitted SVG for PNG export"
+        },
+        {
+          "id": "owner",
+          "label": "Owner",
+          "subtype": "person",
+          "tech": "browser",
+          "identity": "C4V-5",
+          "desc": "opens the link, drills through levels, follows the flow"
+        }
+      ],
+      "edges": [
+        {
+          "from": "agent",
+          "to": "model",
+          "label": "writes JSON",
+          "style": "flow"
+        },
+        {
+          "from": "model",
+          "to": "c4v",
+          "label": "model.json",
+          "style": "flow"
+        },
+        {
+          "from": "c4v",
+          "to": "chromium",
+          "label": "svg page",
+          "style": "flow"
+        },
+        {
+          "from": "c4v",
+          "to": "owner",
+          "label": "link + PNG",
+          "style": "flow"
+        }
+      ],
+      "flow": [
+        "agent->model",
+        "model->c4v",
+        "c4v->chromium",
+        "c4v->owner"
+      ]
+    },
+    {
+      "path": "c4v",
+      "title": "Containers",
+      "nodes": [
+        {
+          "id": "model",
+          "label": "model.json",
+          "subtype": "file-storage",
+          "tech": "docs/c4/<id>.json",
+          "identity": "C4V-6",
+          "desc": "the diagram as data; versions with the code it describes"
+        },
+        {
+          "id": "metrics",
+          "label": "Font metrics",
+          "subtype": "file-storage",
+          "tech": "DejaVu advance table",
+          "identity": "C4V-7",
+          "desc": "generated from the same TTF the SVG pins, so no canvas is ever asked"
+        },
+        {
+          "id": "cli",
+          "label": "c4v CLI",
+          "subtype": "script",
+          "tech": "node src/cli.ts",
+          "identity": "C4V-8",
+          "desc": "audit, render, serve \u2014 the agent-facing door; --strict exits 1"
+        },
+        {
+          "id": "pipeline",
+          "label": "Render pipeline",
+          "subtype": "library",
+          "tech": "TypeScript, no deps",
+          "identity": "C4V-9",
+          "desc": "parse, rank, order, place, route, emit, audit \u2014 every stage pure"
+        },
+        {
+          "id": "store",
+          "label": "Diagram store",
+          "subtype": "file-storage",
+          "tech": "~/.c4-view/<id>",
+          "identity": "C4V-10",
+          "desc": "one model.json per diagram, written atomically by rename"
+        },
+        {
+          "id": "server",
+          "label": "Viewer server",
+          "subtype": "microservice",
+          "tech": "node:http :8788",
+          "identity": "C4V-11",
+          "desc": "grid at /, one diagram at /d/<id>, JSON API and svg/png export"
+        },
+        {
+          "id": "viewer",
+          "label": "Viewer page",
+          "subtype": "web-application",
+          "tech": "vanilla JS",
+          "identity": "C4V-12",
+          "desc": "drill-down links plus the one-edge-at-a-time flow animation"
+        },
+        {
+          "id": "chromium",
+          "label": "Chromium",
+          "subtype": "external-system",
+          "tech": "headless",
+          "identity": "C4V-13",
+          "desc": "screenshots a page containing only the SVG, at its exact size"
+        }
+      ],
+      "edges": [
+        {
+          "from": "model",
+          "to": "cli",
+          "label": "model.json",
+          "style": "flow"
+        },
+        {
+          "from": "cli",
+          "to": "pipeline",
+          "label": "render / audit",
+          "style": "flow"
+        },
+        {
+          "from": "metrics",
+          "to": "pipeline",
+          "label": "text widths",
+          "style": "dep"
+        },
+        {
+          "from": "cli",
+          "to": "chromium",
+          "label": "svg page",
+          "style": "flow"
+        },
+        {
+          "from": "cli",
+          "to": "server",
+          "label": "serve",
+          "style": "flow"
+        },
+        {
+          "from": "pipeline",
+          "to": "server",
+          "label": "rendered pages",
+          "style": "flow"
+        },
+        {
+          "from": "server",
+          "to": "store",
+          "label": "writes model.json",
+          "style": "flow"
+        },
+        {
+          "from": "server",
+          "to": "viewer",
+          "label": "HTML + JS",
+          "style": "flow"
+        }
+      ],
+      "flow": [
+        "model->cli",
+        "cli->pipeline",
+        "metrics->pipeline",
+        "cli->chromium",
+        "cli->server",
+        "pipeline->server",
+        "server->store",
+        "server->viewer"
+      ]
+    },
+    {
+      "path": "c4v/pipeline",
+      "title": "Render pipeline",
+      "nodes": [
+        {
+          "id": "parse",
+          "label": "Parse",
+          "subtype": "service-logic",
+          "tech": "model.ts",
+          "identity": "C4V-14",
+          "desc": "rejects by place: levels[2].edges[7].to: unknown node"
+        },
+        {
+          "id": "rank",
+          "label": "Rank",
+          "subtype": "service-logic",
+          "tech": "longest-path layering",
+          "identity": "C4V-15",
+          "desc": "cycles become backward chains; one dummy per rank a long edge crosses"
+        },
+        {
+          "id": "order",
+          "label": "Order",
+          "subtype": "service-logic",
+          "tech": "six barycentre sweeps",
+          "identity": "C4V-16",
+          "desc": "best crossing count kept, ties broken stably by input order"
+        },
+        {
+          "id": "place",
+          "label": "Place",
+          "subtype": "service-logic",
+          "tech": "measured boxes",
+          "identity": "C4V-17",
+          "desc": "gutters widened to their wire load, so overlap is impossible by construction"
+        },
+        {
+          "id": "route",
+          "label": "Route",
+          "subtype": "service-logic",
+          "tech": "orthogonal tracks",
+          "identity": "C4V-18",
+          "desc": "one track per jog per gutter, so two wires never share a segment"
+        },
+        {
+          "id": "labels",
+          "label": "Labels",
+          "subtype": "service-logic",
+          "tech": "chips on their wire",
+          "identity": "C4V-19",
+          "desc": "last step of routing: a chip never covers another chip or a node"
+        },
+        {
+          "id": "emit",
+          "label": "Emit",
+          "subtype": "adapter",
+          "tech": "one <svg>",
+          "identity": "C4V-20",
+          "desc": "colours as attributes, every agent-written string escaped"
+        },
+        {
+          "id": "audit",
+          "label": "Audit",
+          "subtype": "service-logic",
+          "tech": "six gates",
+          "identity": "C4V-21",
+          "desc": "node\u2227node, wire\u2227node, wire\u2227wire, chip\u2227chip, chip\u2227node, group\u2227node \u2014 all at zero or the diagram does not ship"
+        },
+        {
+          "id": "measure",
+          "label": "Measure",
+          "subtype": "library",
+          "tech": "advance table",
+          "identity": "C4V-22",
+          "desc": "no canvas, no browser: CLI, server and viewer agree to the byte"
+        }
+      ],
+      "edges": [
+        {
+          "from": "parse",
+          "to": "rank",
+          "label": "levels",
+          "style": "flow"
+        },
+        {
+          "from": "rank",
+          "to": "order",
+          "label": "ranked",
+          "style": "flow"
+        },
+        {
+          "from": "order",
+          "to": "place",
+          "label": "ordered",
+          "style": "flow"
+        },
+        {
+          "from": "measure",
+          "to": "place",
+          "label": "text widths",
+          "style": "dep"
+        },
+        {
+          "from": "place",
+          "to": "route",
+          "label": "boxes + gutters",
+          "style": "flow"
+        },
+        {
+          "from": "route",
+          "to": "labels",
+          "label": "wires",
+          "style": "flow"
+        },
+        {
+          "from": "labels",
+          "to": "emit",
+          "label": "chip spots",
+          "style": "flow"
+        },
+        {
+          "from": "route",
+          "to": "audit",
+          "label": "boxes + wires",
+          "style": "flow"
+        }
+      ],
+      "flow": [
+        "parse->rank",
+        "rank->order",
+        "order->place",
+        "measure->place",
+        "place->route",
+        "route->labels",
+        "labels->emit",
+        "route->audit"
+      ]
+    }
+  ]
+}

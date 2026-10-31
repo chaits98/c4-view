@@ -1,0 +1,23 @@
+name: My diagram reads badly
+description: The tool rendered it, but the result is wrong or unreadable
+labels: [model]
+body:
+  - type: textarea
+    id: level
+    attributes:
+      label: Which level, and what is wrong
+      description: Too wide, wires crossing, a boundary swallowing a node, labels colliding…
+    validations: { required: true }
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit line
+      description: The numbers make this actionable.
+      render: text
+    validations: { required: true }
+  - type: textarea
+    id: model
+    attributes:
+      label: The model (or a reducer)
+      description: A minimal model that still shows the problem is worth more than a screenshot.
+      render: json

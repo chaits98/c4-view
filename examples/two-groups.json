@@ -1,0 +1,30 @@
+{
+  "id": "groups",
+  "title": "Two boundaries, contiguous members",
+  "levels": [
+    {
+      "path": "",
+      "title": "Boundaries",
+      "nodes": [
+        { "id": "user", "label": "User", "subtype": "person" },
+        { "id": "ui", "label": "Web app", "subtype": "web-application", "group": "front" },
+        { "id": "bff", "label": "BFF", "subtype": "api-gateway", "group": "front" },
+        { "id": "svc", "label": "Core service", "subtype": "service-logic", "group": "back" },
+        { "id": "repo", "label": "Repository", "subtype": "repository", "group": "back" },
+        { "id": "db", "label": "Database", "subtype": "database" }
+      ],
+      "edges": [
+        { "from": "user", "to": "ui", "label": "uses", "style": "flow" },
+        { "from": "ui", "to": "bff", "label": "GraphQL", "style": "flow" },
+        { "from": "bff", "to": "svc", "label": "calls", "style": "flow" },
+        { "from": "svc", "to": "repo", "label": "reads", "style": "flow" },
+        { "from": "repo", "to": "db", "label": "SQL", "style": "flow" }
+      ],
+      "groups": [
+        { "id": "front", "label": "browser", "members": ["ui", "bff"] },
+        { "id": "back", "label": "server", "members": ["svc", "repo"] }
+      ],
+      "flow": ["user->ui", "ui->bff", "bff->svc", "svc->repo", "repo->db"]
+    }
+  ]
+}

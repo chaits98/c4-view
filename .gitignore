@@ -3,3 +3,6 @@ out/
 *.log
 sonar-scanner-work/
 .scannerwork/
+coverage/
+dist/
+*.tgz

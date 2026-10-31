@@ -2,13 +2,13 @@
   "id": "W10",
   "title": "Worked examples: 3 agent-authored models rendered + audited",
   "owner": "orchestrator",
-  "status": "todo",
+  "status": "done",
   "estMin": 30,
   "files": [
     "examples/"
   ],
-  "evidence": "",
+  "evidence": "examples/shop.json (7 nodes, drill to api, declared flow of 8) and examples/two-groups.json (TWO boundaries, group∧node=0); both audit OK at --strict",
   "notes": [],
   "startedAt": null,
-  "endedAt": null
+  "endedAt": "2026-10-28T15:14:34Z"
 }

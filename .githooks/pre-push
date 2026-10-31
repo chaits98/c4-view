@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Nothing leaves this machine unscanned. Same script CI calls, so a green push means a green pipeline.
+exec ./scripts/check.sh --full

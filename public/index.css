@@ -1,0 +1,146 @@
+/* The index is the agent's delivery surface: a grid of diagrams, each one a live
+   thumbnail of its root level. No framework, no fetch — the page arrives complete. */
+:root {
+  --bg: #0a111b;
+  --card: #0f1a27;
+  --line: #1e3147;
+  --line-hot: #3d6ea8;
+  --fg: #e6edf6;
+  --dim: #8fa3b8;
+  --ok: #3fb950;
+  --bad: #f0883e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 'DejaVu Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.idx-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 20px 26px 10px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.idx-bar h1 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+#idx-count {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 18px;
+  padding: 12px 26px 40px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--line-hot);
+  transform: translateY(-1px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--line-hot);
+  outline-offset: 2px;
+}
+
+/* the thumbnail is the diagram's own SVG: the card shows what a click opens */
+.thumb {
+  height: 190px;
+  padding: 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  display: block;
+}
+
+.thumb svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.meta {
+  padding: 11px 14px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.meta p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.badge {
+  margin-top: 7px;
+  align-self: flex-start;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.badge.ok {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.badge.bad {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+}
+
+.empty {
+  grid-column: 1 / -1;
+  padding: 60px 10px;
+  text-align: center;
+  color: var(--dim);
+}
+
+.empty code {
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 7px;
+}

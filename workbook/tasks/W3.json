@@ -2,14 +2,14 @@
   "id": "W3",
   "title": "place stage (node measurement, columns, rows, boundary groups)",
   "owner": "A2",
-  "status": "todo",
+  "status": "done",
   "estMin": 60,
   "files": [
     "src/layout/place.ts",
     "test/place.test.ts"
   ],
-  "evidence": "",
+  "evidence": "node --test test/place.test.ts → pass 8 fail 0; npx tsc --noEmit → exit 0; node tools/gate.mjs → gate OK — 3 fixtures, 300-line ceiling, purity + no-any + no-placeholder clean",
   "notes": [],
-  "startedAt": null,
-  "endedAt": null
+  "startedAt": "2026-10-28T14:29:10Z",
+  "endedAt": "2026-10-28T14:32:01Z"
 }

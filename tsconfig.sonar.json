@@ -1,0 +1,15 @@
+{
+  "//": "SonarJS ships an older TypeScript: it cannot parse es2023, allowImportingTsExtensions, verbatimModuleSyntax or erasableSyntaxOnly, and silently skips every file when the program fails. This is the tsconfig the analyzer reads; tsc keeps using tsconfig.json.",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "lib": ["es2022", "dom"],
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": false
+  },
+  "include": ["src/**/*.ts", "public/**/*.js"]
+}
