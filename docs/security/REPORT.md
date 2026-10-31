@@ -9,8 +9,12 @@ at the end.
 | layer | tool | result |
 |---|---|---|
 | skill instructions | NVIDIA **SkillSpector 2.12.0** (static, `--no-llm`) | **score 0/100, severity LOW, recommendation SAFE, 0 issues**, 100% of files inspected |
-| skill instructions | `agentscan`, `snyk-agent-scan` | **did not run**, and the report says so rather than implying coverage: the PyPI name `agentscan` is an unrelated 0.0.1 package with no executable, and Snyk's scanner refuses to work without `SNYK_TOKEN` (a SaaS account). SkillSpector is the only skill scanner that produced evidence here |
-| package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** across `src/` |
+| skill instructions | **cisco-ai-skill-scanner 2.3.2** (Apache-2.0) | safe, max severity SAFE, **0 findings** after adding `license: MIT` to the skill manifest (the only finding it ever raised was `MANIFEST_MISSING_LICENSE`, INFO) |
+| skill instructions | **agentscan-cli 1.2.2** (MIT) | critical 0, high 0, medium 0, low 2, info 13 — all "observed patterns, not verdicts": unpinned dependencies quoted in a usage example, and a `network.connect` capability at the `curl` POST line |
+| skill instructions | **skillfrisk 0.3.0** (MIT) | risk score **0**, `failed: false`, 0 findings, 3 files scanned |
+| skill instructions | snyk-agent-scan, ramparts | **not used, on purpose.** Snyk's scanner is account-gated (`SNYK_TOKEN`), so it fails the keyless rule; ramparts is Apache-2.0 but needs a Rust build — worth adding to a CI image, not to a throwaway container. Recorded so nobody re-litigates it |
+| package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** across `src/` (89 rules, 27 files) |
+| repo + history | **gitleaks 8** (MIT) | **0 leaks** across 28 commits / 754 KB, full history |
 | package code | SonarQube 9.9 (self-hosted) | **0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0 debt**, 92.5% line coverage, gate OK |
 | dependencies | `npm audit`, `osv-scanner` | **zero runtime dependencies** — the only tree is two dev packages (typescript, @types/node, ajv for the schema test) |
 | runtime surface | manual threat model + tests | findings F1–F5 below; F1 and F2 fixed in 0.2.2 |
@@ -80,16 +84,31 @@ from data), and store writes are confined to the configured root.
 ## Reproduce
 
 ```bash
-# skill, static only, no content leaves the box
+# four keyless scanners over the same skill, three different rule corpora
 docker build -f security/Dockerfile -t c4v-scanners .
-docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners \
-  skillspector scan /skill --no-llm --format markdown
-docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners \
-  skillspector scan /skill --no-llm --format sarif --output -
+docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners skillspector scan /skill --no-llm --format sarif --output -
+docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners skill-scanner scan /skill --policy low-noise --format json
+docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners agentscan scan /skill
+docker run --rm -v "$PWD/skill:/skill:ro" c4v-scanners skillfrisk scan /skill --json
 
-# package
+# package and history
+docker run --rm -v "$PWD:/repo" zricethezav/gitleaks detect --source /repo --redact
 npm audit; npx tsc --noEmit; node tools/gate.mjs; node --test
 ```
+
+### Why these four and not the other ten
+
+Ten candidate scanners were surveyed; every license was read from the repo's own `LICENSE` file. The rule
+was **keyless and offline**: `snyk/agent-scan` (Apache-2.0 code, but the scan calls Snyk's service and
+refuses without `SNYK_TOKEN`), `NMitchem/SkillScan` (its sandbox is Docker-Desktop-only, explicitly not
+available in CI), and `alexgreensh/repo-forensics` (**PolyForm Noncommercial** — not open source, and a
+trap that "free scanner" lists walk into) were all excluded on that rule rather than on quality.
+
+The four kept are three genuinely different engines over the same prose plus one for secrets: SkillSpector
+(71 patterns, SARIF), cisco (typed CEL facts with published FPR numbers, then an optional judge), agentscan
+(deterministic, no LLM at all, stable fingerprints for a baseline), skillfrisk (unicode-hiding and
+permission checks). Agreement between four independent rule corpora is a much stronger claim than one
+scanner reporting zero.
 
 ## Residual risk, stated plainly
 

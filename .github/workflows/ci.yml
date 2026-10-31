@@ -54,3 +54,38 @@ jobs:
 
   # SonarQube is self-hosted on the maintainer's box, so it is not in CI. The in-repo gate stands in
   # for the file-size rule Sonar Community cannot express, and runs in the `source` job above.
+
+  # The skill is a shipped artefact; scan it like one. Four keyless scanners, so this job needs no
+  # secrets and can run on a fork's PR.
+  skill-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: install scanners (all open source, all keyless)
+        run: |
+          pipx install git+https://github.com/NVIDIA/SkillSpector.git
+          pipx install cisco-ai-skill-scanner
+          pipx install skillfrisk
+      - name: scan the skill
+        run: |
+          skillspector scan skill --no-llm --format sarif --output skillspector.sarif
+          skill-scanner scan skill --policy low-noise --fail-on-severity high
+          skillfrisk scan skill
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: skill-scan-reports
+          path: '*.sarif'
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

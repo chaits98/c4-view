@@ -1,5 +1,6 @@
 ---
 name: c4-diagram
+license: MIT
 description: >-
   Use when an agent must produce or update an architecture (C4) diagram for the
   user. Writes a JSON model, gates it on a geometry audit, renders deterministic
