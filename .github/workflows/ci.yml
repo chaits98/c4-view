@@ -20,12 +20,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm install --no-audit --no-fund
-      - name: gates, types, tests, goldens
-        run: |
-          node tools/gate.mjs
-          npx tsc --noEmit
-          node --test
-          node tools/golden.mjs --check
+      # The SAME script the pre-commit hook runs. If it only lived in CI, a contributor would learn about a
+      # failure after pushing; if it only lived in the hook, CI could drift from it.
+      - name: gates, types, tests, goldens, audit, secrets
+        run: ./scripts/check.sh --fast
       - name: the doctor answers for itself
         run: node src/cli.ts doctor --root "$RUNNER_TEMP/c4v"
 

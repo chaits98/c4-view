@@ -11,18 +11,29 @@ not in a standard location.
 
 ```bash
 git clone <repo> c4-view && cd c4-view
-npm install          # dev-only: typescript + @types/node, no runtime dependencies
-node src/cli.ts doctor
+./scripts/setup-dev.sh    # node check, dev deps, dist build, hooks, scanner image, then proves it
 ```
 
-## The five commands that must pass
+`setup-dev.sh` is the only setup step, and it is idempotent. It sets `core.hooksPath` to `.githooks`, so
+**the pipeline runs before you push, not after**: pre-commit takes ~10 s (gates, types, tests, goldens,
+audit, secrets) and pre-push runs the full suite (adds the four skill scanners, SonarQube when a token is
+present, `npm audit`, `doctor`). CI calls the same script, so a green push means a green pipeline.
+
+## The one command that must pass
+
+```bash
+./scripts/check.sh          # --fast (default): gate, tsc, tests, goldens, audit, secrets — ~10 s
+./scripts/check.sh --full   # + skill scanners, Sonar, npm audit, doctor — what pre-push and CI run
+```
+
+Behind it, so you know what is being enforced:
 
 ```bash
 node tools/gate.mjs      # every file ≤ 300 lines, no `any`, no placeholders, core stays pure
 npx tsc --noEmit         # strict
 node --test              # the suite
 node tools/golden.mjs --check   # 11 corpus levels must render byte-identically
-node src/cli.ts audit examples/shop.json --strict
+node src/cli.ts audit fixtures/*.json examples/*.json docs/c4/*.json --strict   # (one file at a time)
 ```
 
 `tools/golden.mjs --save` is allowed only when you can explain the diff. A change that moves goldens

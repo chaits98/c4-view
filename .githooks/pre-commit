@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fast gates only: a hook that takes minutes gets bypassed with --no-verify, and then it protects nothing.
+# The full suite (skill scanners, Sonar, deps) runs on pre-push and in CI, from the same script.
+exec ./scripts/check.sh --fast
