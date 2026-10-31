@@ -116,6 +116,11 @@ tool, or say plainly that you could not and stop.
 
 ## The model
 
+A complete two-level model ships beside this file: **`assets/example.json`**. Read it before writing
+anything — it is the shape, the field names, and a boundary done correctly, in 30 lines. (Agents in a
+sandboxed harness often cannot read an installed package outside their working directory; the example
+travels WITH the skill precisely so that never matters.)
+
 ```json
 {
   "id": "shop",
@@ -150,7 +155,7 @@ tool, or say plainly that you could not and stop.
 | Field | Rule |
 |---|---|
 | `levels[].path` | `""` for the root; a child level's path is the parent path + the node id (`api`, `api/db`). A node with a matching child level becomes clickable. |
-| `subtype` | one of the 49 C4 subtypes (`person`, `system`, `external-system`, `web-application`, `microservice`, `database`, `cache`, `message-queue`, `api-gateway`, `service-logic`, `repository`, `adapter`, `class`, `function`, …). It decides shape and colour — pick the honest one; `rect` for everything is a tell. |
+| `subtype` | one of exactly these 49 — they decide shape and colour, so pick the honest one and nothing else: `system, person, role, external-system, boundary, web-application, microservice, database, cache, message-queue, file-storage, search-engine, load-balancer, cdn, serverless-function, batch-job, container-registry, dns, api-gateway, ui-component, api-controller, service-logic, repository, middleware, plugin, module, event-handler, job, adapter, saga, workflow, library, config, migration, test-suite, class, interface, abstract-class, function, enum, type-alias, c4-module, schema, dto, constant, test-file, migration-file, config-file, script`. There is no need to go looking for this list in the source; it is here because an agent that cannot find it inside a sandboxed harness stops working. |
 | `tech` | the second line: technology only, ≤ 5 words. |
 | `identity` | stable human id (`SHP-3`). Keep it across edits; it is what the user refers to. |
 | `rank` | absolute column hint. Use ONLY when the computed order fights the truth (an external system that must sit right of everything). A hint is a promise about columns, not tidiness: hint a node to sit LEFT of its predecessor and you have declared that edge backward, and the router will answer with a corridor under the whole drawing. |
