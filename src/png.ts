@@ -97,7 +97,9 @@ export function svgToPng(svg: string, out: string, scale = 2): string {
       [
         '--headless',
         '--disable-gpu',
-        '--no-sandbox',
+        // A container running as root cannot start Chromium with its sandbox; everywhere else the
+        // sandbox stays ON. Unconditional --no-sandbox was a finding waiting to be written up.
+        ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
         '--hide-scrollbars',
         '--force-device-scale-factor=' + String(scale),
         `--window-size=${w},${h}`,

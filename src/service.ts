@@ -14,7 +14,7 @@
  * @module c4-view/service
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -73,6 +73,22 @@ function assertSystemd(): void {
   } catch {
     throw new Error('no systemd user session found (systemctl --user failed); run `c4v serve` instead.')
   }
+}
+
+/**
+ * A unit bound to a real interface must not generate a fresh token on every restart: the link the
+ * user was given would stop working. So the token is written once to the env file the unit loads.
+ */
+export function ensureTokenFile(host: string, generate: () => string): string | null {
+  if (host === '127.0.0.1' || host === '::1' || host === 'localhost') return null
+  const dir = join(homedir(), '.config', 'c4-view')
+  const file = join(dir, 'env')
+  if (existsSync(file)) return null
+  mkdirSync(dir, { recursive: true })
+  const token = generate()
+  writeFileSync(file, `C4_VIEW_TOKEN=${token}\n`, { mode: 0o600 })
+  chmodSync(file, 0o600)
+  return token
 }
 
 /** Write the unit and bring it up. Returns the path written. */

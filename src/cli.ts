@@ -4,7 +4,7 @@
  *
  *   c4v render <model.json> [--level <path>] [--out <dir|file.svg>] [--png] [--scale <n>] [--strict]
  *   c4v audit  <model.json> [--json] [--strict]
- *   c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1]
+ *   c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1] [--token <t> | --no-token]
   c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
   c4v service install|uninstall|status [--port 8788] [--host 127.0.0.1] [--root ~/.c4-view]
                                      host the viewer as a systemd USER unit
@@ -31,7 +31,7 @@ const USAGE = `c4v — agent-driven C4 renderer
 
   c4v render <model.json> [--level <path>] [--out <dir|file.svg>] [--png] [--scale <n>] [--strict]
   c4v audit  <model.json> [--json] [--strict]
-  c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1]
+  c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1] [--token <t> | --no-token]
   c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
   c4v service install|uninstall|status [--port 8788] [--host 127.0.0.1] [--root ~/.c4-view]
                                      host the viewer as a systemd USER unit
@@ -39,6 +39,7 @@ const USAGE = `c4v — agent-driven C4 renderer
   --level   render one level by path (root is "")           [default: every level]
   --out     a directory, or a .svg file when one level is rendered [default: ./out/<id>]
   --png     also write a PNG beside each SVG (--scale, default 2)
+  --token   bearer token; REQUIRED (auto-generated) when --host is not loopback
   --strict  exit 1 when any geometry gate fails (node∧node, wire∧node, wire∧wire, chip∧chip,
             chip∧node, group∧node)
 `
@@ -101,13 +102,20 @@ function printAudit(levels: RenderedLevel[], asJson: boolean): void {
 /** The serve command owns the process: it resolves only when the server is asked to stop. */
 async function serveCommand(args: Args): Promise<number> {
   const { serve } = await import('./server.ts')
+  const { guardNotice } = await import('./security.ts')
   const port = Number(args.optOr('port', '8788'))
   const root = args.optOr('root', join(homedir(), '.c4-view'))
   const host = args.optOr('host', '127.0.0.1')
-  const srv = await serve({ port, root, host })
+  const token = args.has('no-token') ? '' : args.opt('token')
+  if (args.has('no-token') && !['127.0.0.1', '::1', 'localhost'].includes(host)) {
+    console.error('--no-token is only allowed on loopback: a shared viewer needs a token')
+    return 2
+  }
+  const srv = await serve({ port, root, host, token: token === '' ? undefined : token })
   const addr = srv.address()
-  const shown = typeof addr === 'object' && addr !== null ? `${host}:${addr.port}` : `${host}:${port}`
-  console.log(`c4v serving http://${shown} — diagrams in ${root}`)
+  const shown = typeof addr === 'object' && addr !== null ? addr.port : port
+  for (const line of guardNotice(srv.guard, shown)) console.log(line)
+  console.log(`  diagrams in ${root}`)
   const stop = (): void => {
     srv.close(() => process.exit(0))
   }
@@ -139,7 +147,8 @@ function argvSecond(args: Args): string | undefined {
 
 /** `service install|uninstall|status` — a systemd user unit, so nothing depends on a live shell. */
 async function serviceCommand(args: Args): Promise<number> {
-  const { installService, serviceHints, serviceStatus, uninstallService } = await import('./service.ts')
+  const { installService, serviceHints, serviceStatus, uninstallService, ensureTokenFile } = await import('./service.ts')
+  const { newToken } = await import('./security.ts')
   const action = argvSecond(args)
   if (action === 'status') return serviceStatus()
   if (action === 'uninstall') {
@@ -153,8 +162,10 @@ async function serviceCommand(args: Args): Promise<number> {
   }
   try {
     const file = installService(opts)
+    const token = ensureTokenFile(opts.host, newToken)
     console.log(`installed and started\n${file}`)
     for (const line of serviceHints(opts.port, opts.host)) console.log(`  ${line}`)
+    if (token) console.log(`  token:   ${token}   (in ~/.config/c4-view/env; open once with ?t=<token>)`)
     return 0
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))

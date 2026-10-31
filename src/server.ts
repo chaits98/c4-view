@@ -9,6 +9,7 @@ import { indexEntries, indexPage } from './index-page.ts'
 import { renderModel } from './render.ts'
 import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
+import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
 import { levelSlug } from './slug.ts'
 import type { Model } from './types.ts'
 
@@ -25,13 +26,15 @@ type Route =
 type Summary = { id: string; title: string; levels: string[]; updated: string }
 
 /** Bind and resolve once listening, so a test can pass port 0. */
-export async function serve(opts: { port: number; root: string; host?: string }): Promise<Server> {
+export async function serve(opts: { port: number; root: string; host?: string; token?: string }): Promise<Server & { guard: Guard }> {
   const root = resolve(opts.root)
+  const host = opts.host ?? '127.0.0.1'
+  const guard = guardFor(host, opts.token ?? process.env.C4_VIEW_TOKEN)
   const server = createServer((req, res) => {
     const started = Date.now()
     const pathname = safePath(req.url ?? '/')
     res.on('finish', () => console.log(`${req.method} ${pathname ?? req.url} ${res.statusCode} ${Date.now() - started}ms`))
-    void handle(root, req, res, pathname).catch((error: unknown) => {
+    void handle(root, guard, req, res, pathname).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
       if (res.headersSent) res.destroy()
       else json(res, 500, { error: message })
@@ -39,12 +42,12 @@ export async function serve(opts: { port: number; root: string; host?: string })
   })
   await new Promise<void>((done, fail) => {
     server.once('error', fail)
-    server.listen(opts.port, opts.host ?? '127.0.0.1', () => {
+    server.listen(opts.port, host, () => {
       server.off('error', fail)
       done()
     })
   })
-  return server
+  return Object.assign(server, { guard })
 }
 
 /** Decoded pathname, or null when the percent-encoding is broken. */
@@ -133,8 +136,19 @@ function sendAsset(res: ServerResponse, name: string): void {
   send(res, 200, name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8', readFileSync(file))
 }
 
-async function handle(root: string, req: IncomingMessage, res: ServerResponse, pathname: string | null): Promise<void> {
+async function handle(root: string, guard: Guard, req: IncomingMessage, res: ServerResponse, pathname: string | null): Promise<void> {
+  applyHeaders(res)
   if (pathname === null) return json(res, 404, { error: 'malformed path' })
+
+  // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
+  const url = new URL(req.url ?? '/', 'http://localhost')
+  if (guard.token && pathname !== '/health') {
+    if (!allowed(guard, req, url)) {
+      res.setHeader('WWW-Authenticate', 'Bearer realm="c4-view"')
+      return json(res, 401, { error: 'token required', hint: 'append ?t=<token>, send Authorization: Bearer <token>, or use the link the server printed' })
+    }
+    remember(guard, req, url, res)
+  }
   const route = routeOf(pathname)
   if (!route) return json(res, 404, { error: `no route for ${pathname}` })
 
@@ -144,7 +158,7 @@ async function handle(root: string, req: IncomingMessage, res: ServerResponse, p
     res.setHeader('Allow', allow)
     return json(res, 405, { error: `${method} is not allowed here` })
   }
-  const level = new URL(req.url ?? '/', 'http://localhost').searchParams.get('level')
+  const level = url.searchParams.get('level')
 
   switch (route.kind) {
     case 'index':
