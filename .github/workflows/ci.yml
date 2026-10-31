@@ -69,11 +69,15 @@ jobs:
           pipx install git+https://github.com/NVIDIA/SkillSpector.git
           pipx install cisco-ai-skill-scanner
           pipx install skillfrisk
+          pipx install agentscan-cli
       - name: scan the skill
         run: |
+          # the EXACT invocations proven against the image — three of these tools reject
+          # `--format`/`--output` and every wrong guess costs a red build
           skillspector scan skill --no-llm --format sarif --output skillspector.sarif
-          skill-scanner scan skill --policy low-noise --fail-on-severity high
-          skillfrisk scan skill
+          skill-scanner scan skill --policy low-noise --fail-on-severity high --format sarif --output cisco.sarif
+          skillfrisk scan skill --sarif skillfrisk.sarif
+          agentscan scan skill --severity high
       - uses: actions/upload-artifact@v4
         if: always()
         with:

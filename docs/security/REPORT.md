@@ -31,6 +31,13 @@ Issues      0
 Coverage    100.0% — 2 fully inspected, 0 partial, 0 uninspected
 ```
 
+**One SARIF warning is accepted and explained rather than suppressed.** SkillSpector's `skillspector.sarif`
+carries a single result: rule **E1 "External Transmission"** at `SKILL.md:233` — the `curl -X POST …/api/diagrams`
+line, i.e. the instruction to hand the model to the viewer. That is the product working as designed: the
+endpoint is the user's own server, loopback by default, and reaching it needs a token the moment the bind
+leaves loopback. It is recorded here so a reviewer sees the capability rather than a suspiciously empty
+report; the markdown report scores it 0/100 with no *issues* because it is a capability, not a defect.
+
 The static analyzers that matter for a text-only skill all ran and came back clean: prompt injection,
 data exfiltration, privilege escalation, supply chain, excessive agency, output handling, memory
 poisoning, tool misuse, rogue agent, anti-refusal, SSRF, deserialization. The behavioral AST/taint
