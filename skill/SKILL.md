@@ -44,6 +44,12 @@ runs at 3am, it is not in the diagram.
 | C3 components | `<id>/<container>` | the stages inside the one container that carries the point. 8–16 boxes. |
 | C4 code | deeper | only when the owner asks about a specific module. ≤ 12 boxes. |
 
+**A box is a container only if you could deploy, restart or scale it on its own.** A level whose boxes
+are all files inside one package (`request.js`, `response.js`, `view.js`) is a C3 wearing a C2's title —
+the first agent run in this project's own test matrix did exactly that, and the picture was praised by
+every geometry gate while describing the wrong thing. `Request` and `Response` rarely deserve a box at
+all: they are what flows through, not what runs.
+
 Ship **C1 + C2 always**, plus **one C3** for the container that carries the point (the pipeline, the request
 path, the thing that broke). One C3, not five. Put the model in the target repo at `docs/c4/<id>.json` so it
 versions with the code it describes; `<id>` is the repo folder name in lower-kebab.
