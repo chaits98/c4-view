@@ -10,7 +10,7 @@ at the end.
 |---|---|---|
 | skill instructions | NVIDIA **SkillSpector 2.12.0** (static, `--no-llm`) | **score 0/100, severity LOW, recommendation SAFE, 0 issues**, 100% of files inspected |
 | skill instructions | `agentscan`, `snyk-agent-scan` | **did not run**, and the report says so rather than implying coverage: the PyPI name `agentscan` is an unrelated 0.0.1 package with no executable, and Snyk's scanner refuses to work without `SNYK_TOKEN` (a SaaS account). SkillSpector is the only skill scanner that produced evidence here |
-| package code | Semgrep `p/security-audit` + `p/typescript` | static rules over `src/`; findings below |
+| package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** across `src/` |
 | package code | SonarQube 9.9 (self-hosted) | **0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0 debt**, 92.5% line coverage, gate OK |
 | dependencies | `npm audit`, `osv-scanner` | **zero runtime dependencies** — the only tree is two dev packages (typescript, @types/node, ajv for the schema test) |
 | runtime surface | manual threat model + tests | findings F1–F5 below; F1 and F2 fixed in 0.2.2 |
@@ -47,6 +47,9 @@ a CI run that wants it can enable it deliberately.
 
 - **SonarQube** (existing gate, `sonar-project.properties`): 2,403 ncloc, 0 issues, gate OK. The 300-line
   per-file ceiling is enforced by `tools/gate.mjs` because Sonar Community cannot express it.
+- **Semgrep** (`p/security-audit` + `p/typescript`, `semgrep/semgrep` image): 0 findings over `src/` —
+  no `child_process` with interpolation, no `eval`, no dynamic `require`, no unsafe deserialisation. The
+  one spawn in the codebase is `execFileSync` with an argv array and a resolved binary path.
 - **Dependencies:** none at runtime. `npm audit` reports 0 vulnerabilities; there is no lockfile drift
   surface because there is nothing to resolve at install time. This is worth stating loudly in a README:
   a diagram renderer that pulls in 200 transitive packages is a worse security proposition than one that
