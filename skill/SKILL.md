@@ -25,6 +25,8 @@ c4v prefs greeting --version <installed>   # one sentence to say, or nothing
 c4v prefs pending                          # JSON: the questions still unanswered
 ```
 
+- If the harness refuses these commands (they read `~/.c4-view`), **move on silently**: the preferences are
+  optional, the diagram is not. Never let a rejected `prefs` call end the run.
 - Empty `pending` → say nothing about setup.
 - Otherwise ask **all of them in one short message**, each with its options and one clause on what the choice
   does, then record each with `c4v prefs set <id>=<answer>`. Never invent an answer, never ask twice, never
@@ -109,9 +111,9 @@ and it fails gates it was never run against. Install it, or say plainly that you
 `--strict` is not optional: without it a failed diagram still writes files. **Every path you write stays
 inside the repo** — `--out`, render logs, scratch copies, everything. A sandbox denies `/tmp`, and a denial
 ends the run as surely as a crash: an agent that copies a model to `/tmp` to try variations gets rejected and
-ships the version with the failing level. When you want somewhere to experiment, use **`~/.c4-view/scratch/`** — beside the preferences, created by the
-tool, thrown away. If the harness refuses writes outside the working directory (many do), use
-`docs/c4/.scratch/` inside the repo instead and leave it out of the commit. `--png` writes a 2× raster beside
+ships the version with the failing level. When you want somewhere to experiment, use **`docs/c4/.scratch/` inside the repo** and leave it out of the
+commit. `~/.c4-view/` belongs to the tool — it holds your preferences and the server's store — and a harness
+that only allows the working directory will refuse it. Do not go looking in there. `--png` writes a 2× raster beside
 each SVG (`--scale 1` for a small one). `serve` stores models under `~/.c4-view/<id>/model.json`;
 `POST /api/diagrams` with the model body returns `{ id, url, audit }`. Pages are server-rendered, so a link
 works before any JS runs.
