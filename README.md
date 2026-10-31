@@ -11,6 +11,40 @@ node src/cli.ts serve  --port 8788                        # grid at http://127.0
 ```
 
 
+## What the skill does (for users)
+
+`c4-view` ships in two halves: the **CLI** that draws, and a **skill** that teaches an AI coding agent how
+to use it well. You install the skill; your agent does the rest.
+
+**What you get when you install it.** A directory with a `SKILL.md`, a worked example model, and a question
+set. Most harnesses read it from `~/.agents/skills/c4-diagram`; Claude Code can read `~/.claude/skills`.
+`c4v skill install` writes it to every harness it finds, or to the ones you name.
+
+**What it changes about your agent.** Without the skill, asking for "a C4 diagram of this repo" gets you
+mermaid soup, hand-placed boxes, and no way to tell whether it is right. With it, the agent:
+
+| | |
+|---|---|
+| **surveys before drawing** | lists the manifest's runtime seams and the top-level directories first, so nothing big is missed |
+| **decides what kind of repo it is** | a system you run → C2 is processes and stores; a library or framework → C2 is thin and the internals are C3 |
+| **writes a model, then gates it** | six geometry gates must be zero before anything is delivered, and the agent fixes the *model*, never the picture |
+| **narrates the flow** | one edge at a time, in a declared order, so you can explain the system out loud |
+| **hands over a receipt** | the audit line per level, the rendered SVG/PNG, and a link |
+
+**What it asks you, once.** Two questions on first use (viewer local-only or on your network; install for
+every harness or just some), stored in `~/.c4-view/prefs.json`. New releases can add a question — you are
+then asked only the new one, in one short message, not re-interviewed.
+
+**What it will not do.** Edit diagrams in the browser, call a remote service, or write outside the repo you
+pointed it at. The viewer is read-only by construction; there is no editing UI to learn.
+
+```bash
+npm i -g c4-view        # the CLI (zero runtime dependencies)
+c4v skill install       # the skill, into every harness found on this machine
+c4v prefs pending       # what it still needs to ask you
+```
+
+
 ## Install on a fresh machine
 
 ```bash
@@ -166,9 +200,6 @@ and when the program fails it **silently skips every file** — the first scan r
 because it had analyzed nothing. Current state: 2,282 ncloc, 0 bugs / 0 vulnerabilities / 0 hotspots /
 0 code smells / 0 duplicated lines / 0 debt, 92.6% line coverage, gate **OK**.
 
-`tools/wb.mjs` is the task ledger the build was tracked in (`WORKBOOK.md`); `done` refuses without
-evidence.
-
 ## Layout of the repo
 
 ```
@@ -181,10 +212,10 @@ src/svg/              shapes · emit  ·  src/theme.ts
 src/audit.ts          the gates
 src/render.ts         the pipeline  ·  src/cli.ts  ·  src/server.ts  ·  src/png.ts
 public/               viewer.html · viewer.js · flow.js · viewer.css
-test/                 70 tests (units, the real corpus, and the audit's own defects)
+test/                 148 tests (units, the real corpus, the audit's own defects, install + prefs)
 fixtures/             the owner's real concepts, exported read-only from ~/.droid/concepts.db
 examples/             two hand-authored models: containers + drill, and two boundaries
-docs/                 LAYOUT-SPEC.md (normative) · STAGE-SIGNATURES.md · HTTP-API.md
+docs/                 LAYOUT-SPEC.md (normative) · HTTP-API.md · security/ · plans/ · launch/
 ```
 
 ## Known ceilings

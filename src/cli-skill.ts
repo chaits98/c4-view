@@ -9,6 +9,18 @@
 import { homedir } from 'node:os'
 import { describe, harnesses, installInto, installed, isSkillDir, plan } from './skill-install.ts'
 import { answer, greeting, loadPrefs, pending, prefsPath, questions, savePrefs } from './prefs.ts'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+/** The version the user is now running, read from the package so it can never disagree with the release. */
+function currentVersion(): string {
+  try {
+    const pkg = fileURLToPath(new URL('../package.json', import.meta.url))
+    return (JSON.parse(readFileSync(pkg, 'utf8')) as { version: string }).version
+  } catch {
+    return '0.0.0'
+  }
+}
 
 /** `--flag value` / `--flag` parsing, kept local so this module has no dependency on cli.ts. */
 function flags(argv: string[]): { has: (name: string) => boolean; opt: (name: string) => string | undefined; rest: string[] } {
@@ -106,7 +118,9 @@ export function prefsCommand(argv: string[]): number {
       return 2
     }
     try {
-      savePrefs(answer(all, prefs, id, value))
+      const next = answer(all, prefs, id, value)
+      // answering stamps the version, so the NEXT release can say "updated" instead of asking again
+      savePrefs({ ...next, seen: { version: currentVersion(), at: new Date().toISOString() } })
       console.log(`${id} = ${value}`)
       return 0
     } catch (error) {
