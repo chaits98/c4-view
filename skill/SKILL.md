@@ -17,6 +17,27 @@ it is deliverable, and the user opens a link.
 **A diagram is delivered only when the audit is green.** The layout is computed — never nudge
 coordinates, never hand-place a box. If the picture is wrong, the model is wrong.
 
+## First, the user's own answers
+
+The tool keeps their preferences in `~/.c4-view/prefs.json`, and the question set GROWS with releases. Two
+commands are the whole protocol, and they run before any drawing:
+
+```bash
+c4v prefs greeting --version <installed version>   # one sentence to say, or nothing at all
+c4v prefs pending                                 # JSON: the questions still unanswered
+```
+
+- `pending` empty → say nothing about setup. Silence is correct.
+- `pending` has questions → ask **all of them in one short message**, each with its options and one clause
+  saying what the choice actually does, then record each with `c4v prefs set <id>=<answer>`. Never invent an
+  answer, never ask twice, never make it read like a form.
+- After an update the set may have grown. The new lines appear in `pending`; ask only those, and lead with
+  why they are being asked: *"c4-view can now share a diagram over your network — keep it to this computer,
+  or allow the local network?"* Not "configuration required", not a wall of options.
+
+What the answers mean here: `viewer.mode` (`local`|`lan`) decides whether `serve` binds loopback or takes a
+token, and `skill.scope` (`all`|`named`) says how far the skill itself was installed.
+
 ## The brief is one line
 
 Expect *"make a C4 of this repo: /path/to/repo"* and nothing else. You do not need to ask anything —

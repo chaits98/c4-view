@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# Install the c4-diagram skill into the Hermes skills directory.
+# Kept so the old command still works; the real installer is `c4v skill install`, driven by
+# skill/harnesses.jsonl (data, not code — adding a harness is one line).
 #
-#   ./scripts/install-skill.sh
-#   HERMES_SKILLS_DIR=~/.hermes/profiles/buddy/skills ./scripts/install-skill.sh
+#   ./scripts/install-skill.sh                 # every harness detected on this machine
+#   ./scripts/install-skill.sh --harness agents,claude-code
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-dest="${HERMES_SKILLS_DIR:-$HOME/.hermes/skills}/software-development/c4-diagram"
-mkdir -p "$dest"
-cp -a "$here/skill/." "$dest/"
-echo "skill installed -> $dest/SKILL.md"
-echo "check it with:  hermes skills list | grep c4-diagram"
+if command -v c4v >/dev/null 2>&1; then exec c4v skill install "$@"; fi
+exec node "$here/src/cli.ts" skill install "$@"
