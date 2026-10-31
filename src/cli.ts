@@ -6,6 +6,8 @@
  *   c4v audit  <model.json> [--json] [--strict]
  *   c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1]
   c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
+  c4v service install|uninstall|status [--port 8788] [--host 127.0.0.1] [--root ~/.c4-view]
+                                     host the viewer as a systemd USER unit
  *
  * `--strict` exits 1 when any geometry gate fails, so a skill can make "deliver
  * only a clean diagram" mechanical instead of a promise.
@@ -31,6 +33,8 @@ const USAGE = `c4v — agent-driven C4 renderer
   c4v audit  <model.json> [--json] [--strict]
   c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1]
   c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
+  c4v service install|uninstall|status [--port 8788] [--host 127.0.0.1] [--root ~/.c4-view]
+                                     host the viewer as a systemd USER unit
 
   --level   render one level by path (root is "")           [default: every level]
   --out     a directory, or a .svg file when one level is rendered [default: ./out/<id>]
@@ -41,6 +45,8 @@ const USAGE = `c4v — agent-driven C4 renderer
 
 /** The parsed command line: one object, so nothing has to reach for `process.argv`. */
 interface Args {
+  /** the raw argv, for the few commands whose second word is a verb rather than a file */
+  argv: string[]
   command: string | undefined
   file: string | undefined
   has: (name: string) => boolean
@@ -54,6 +60,7 @@ function parse(argv: string[]): Args {
     return i > 0 && argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') ? String(argv[i + 1]) : undefined
   }
   return {
+    argv,
     command: argv[0],
     file: argv[1] && !argv[1].startsWith('--') ? argv[1] : undefined,
     has: (name) => argv.includes(`--${name}`),
@@ -125,6 +132,36 @@ function writeOutputs(args: Args, report: Rendered): void {
   for (const path of writeLevels(report, args.opt('out'), args.has('png'), scale)) console.log(`wrote ${path}`)
 }
 
+/** The sub-action of a two-word command (`service install`). */
+function argvSecond(args: Args): string | undefined {
+  return args.argv[1]?.startsWith('--') ? undefined : args.argv[1]
+}
+
+/** `service install|uninstall|status` — a systemd user unit, so nothing depends on a live shell. */
+async function serviceCommand(args: Args): Promise<number> {
+  const { installService, serviceHints, serviceStatus, uninstallService } = await import('./service.ts')
+  const action = argvSecond(args)
+  if (action === 'status') return serviceStatus()
+  if (action === 'uninstall') {
+    console.log(uninstallService() ? 'unit removed' : 'no unit installed')
+    return 0
+  }
+  const opts = {
+    port: args.optOr('port', '8788'),
+    host: args.optOr('host', '127.0.0.1'),
+    root: args.optOr('root', join(homedir(), '.c4-view')),
+  }
+  try {
+    const file = installService(opts)
+    console.log(`installed and started\n${file}`)
+    for (const line of serviceHints(opts.port, opts.host)) console.log(`  ${line}`)
+    return 0
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    return 1
+  }
+}
+
 /** Argument errors are answered before any work is done. */
 function argumentError(args: Args): number | null {
   if (!args.command || args.command === 'help' || args.has('help') || args.command === '--help') {
@@ -132,6 +169,14 @@ function argumentError(args: Args): number | null {
     return 0
   }
   if (args.command === 'serve' || args.command === 'doctor') return null
+  if (args.command === 'service') {
+    const action = argvSecond(args)
+    if (action !== 'install' && action !== 'uninstall' && action !== 'status') {
+      console.error(`c4v service <install|uninstall|status>\n`)
+      return 2
+    }
+    return null
+  }
   if (!args.file) {
     console.error(`missing <model.json>\n\n${USAGE}`)
     return 2
@@ -167,6 +212,7 @@ async function dispatch(argv: string[]): Promise<number> {
   const early = argumentError(args)
   if (early !== null) return early
   if (args.command === 'serve') return serveCommand(args)
+  if (args.command === 'service') return await serviceCommand(args)
   if (args.command === 'doctor') {
     const { doctor } = await import('./doctor.ts')
     return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1

@@ -35,6 +35,7 @@ same program; the skill uses whichever is on the machine.
 c4v audit  examples/shop.json --strict      # the gate
 c4v render examples/shop.json --out out --png --strict
 c4v serve  --port 8788                      # grid at / , one diagram at /d/shop
+c4v service install --port 8788 --host 0.0.0.0   # same server as a systemd USER unit (survives logout)
 npm run install-skill                       # copy the skill into ~/.hermes/skills
 ```
 

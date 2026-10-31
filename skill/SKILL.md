@@ -167,7 +167,9 @@ Give the user three things and nothing else:
 
 1. **the link** the serve command printed — `<base>/d/<id>` for one diagram, `<base>/` for the grid when the
    user has several concepts (each card is a live thumbnail with its audit state). Hand over the URL the
-   process printed; do not invent a hostname.
+   process printed; do not invent a hostname. If the user will come back to this later, or asked for the
+   diagram to stay up, run `c4v service install` instead of a foreground `serve`: it installs a systemd user
+   unit, prints the same URL, and the viewer survives your shell and their logout.
 2. **one PNG** — the level that carries the point, inline where the surface supports it,
 3. **the audit line(s)** — the proof it is clean.
 
