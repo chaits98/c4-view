@@ -107,8 +107,11 @@ c4v service install --port 8788                     # same, as a systemd user un
 and it fails gates it was never run against. Install it, or say plainly that you could not and stop.
 
 `--strict` is not optional: without it a failed diagram still writes files. **Every path you write stays
-inside the repo** — `--out`, render logs, everything. A sandbox denies `/tmp`, and a denied redirect looks
-exactly like a broken tool, so the run silently gives up on a diagram it had already fixed. `--png` writes a 2× raster beside
+inside the repo** — `--out`, render logs, scratch copies, everything. A sandbox denies `/tmp`, and a denial
+ends the run as surely as a crash: an agent that copies a model to `/tmp` to try variations gets rejected and
+ships the version with the failing level. When you want somewhere to experiment, use **`~/.c4-view/scratch/`** — beside the preferences, created by the
+tool, thrown away. If the harness refuses writes outside the working directory (many do), use
+`docs/c4/.scratch/` inside the repo instead and leave it out of the commit. `--png` writes a 2× raster beside
 each SVG (`--scale 1` for a small one). `serve` stores models under `~/.c4-view/<id>/model.json`;
 `POST /api/diagrams` with the model body returns `{ id, url, audit }`. Pages are server-rendered, so a link
 works before any JS runs.
