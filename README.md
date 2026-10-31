@@ -45,6 +45,33 @@ npm run install-skill                       # copy the skill into ~/.hermes/skil
 `docs/c4/c4-view.json` — the agent-written model of this tool (context, containers, and the pipeline), kept
 next to the code it describes. Rendered and gated like any other: `c4v render docs/c4/c4-view.json --strict`.
 
+## Cost and footprint
+
+Measured on this machine, not estimated. The numbers a user actually asks about before installing.
+
+| what | number | how it was measured |
+|---|---|---|
+| **skill, input tokens** | **4,218 tokens** (15.5 kB, ~2,650 words) | tokenized with the Qwen3.5 tokenizer on the exact `skill/SKILL.md`; it is instructions only, no bundled code |
+| package, download | **143 kB** | `npm pack` |
+| package, unpacked | **425 kB** (79 files) | `npm pack --dry-run` |
+| installed on disk | **652 kB** | `npm i -g` into a scratch prefix, `du -sh` |
+| runtime dependencies | **0** | `package.json` has no `dependencies` field |
+| RSS while serving | **95 MB** — of which ~42 MB is Node itself | `ps -o rss` on the running service |
+| peak RSS rendering | **96 MB** | `/usr/bin/time -v` on the 11-level corpus |
+| render speed | 11 levels in **50 ms** | same run |
+| optional | Chromium/Chrome (~300 MB) for `--png` only | discovered at `$C4_CHROMIUM`, then PATH |
+
+For scale: a whole diagram — model, layout, six audit gates, SVG, grid page — costs less than a single
+image upload, and the expensive part of using it is the model that writes the JSON, not the tool.
+
+## What it costs an agent to use
+
+The skill is the context cost; the tool is not, because nothing is imported into the model. A run of
+"build a C4 of this repo" measured **102–422 seconds** on a local 35B model (Qwen3.5-35B-A3B Q2, 21 tok/s),
+on repositories of 130–3,235 files. Most of that is the model reading source, not rendering: rendering the
+result is 50 ms.
+
+
 ## Why it exists
 
 The renderer inside `droid-desktop` fights its layout: mermaid/dagre places boxes, then ~1,600 lines of

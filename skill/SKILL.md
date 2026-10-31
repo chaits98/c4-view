@@ -35,6 +35,30 @@ what each one is. You are hunting RUNTIME pieces, not files:
 Leave out: build tooling, tests, CI config, folder structure, `utils`. If deleting it would not change what
 runs at 3am, it is not in the diagram.
 
+### 1b. Inventory — this is your coverage floor
+
+The audit can only judge what you drew, so nothing catches a component you never considered. Enumerate
+before you write a single node:
+
+```bash
+node -p "Object.keys({...require('./package.json').dependencies,...require('./package.json').devDependencies}).join('\n')"   # node
+sed -n '/dependencies/,/]/p' pyproject.toml requirements.txt 2>/dev/null                                                        # python
+sed -n '/require (/,/)/p' go.mod 2>/dev/null                                                                                   # go
+ls -d */ ; ls src/*/ 2>/dev/null                                                                                               # shape of the code
+```
+
+Every runtime dependency that is a **seam** — a server, driver, parser, queue, renderer, auth layer, HTTP
+client — earns a box. Every top-level directory holding runtime code earns a box or a child level. For a
+Go repo with no manifest, the files at the package root *are* the inventory (`engine`, `context`, `tree`,
+`binding/`, `render/`, `logger`, `recovery`).
+
+Pure helpers are not seams: fold them into one `utilities` node and name them in its `desc`. That is
+honest and keeps the level readable — but a seam you cannot account for is a component you missed.
+
+Three graded runs of this skill against real repos missed `body-parser`, `finalhandler`, `qs`,
+`radix tree`, `binding`, `render` and `APIRouter` — every one of them present in a manifest or a
+directory listing. That is what this step exists for.
+
 ### 2. Plan the levels, then walk the plan
 
 | level | path | what earns a box |
