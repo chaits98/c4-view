@@ -101,7 +101,10 @@ export function installService(opts: ServiceOptions): string {
     execFileSync('systemctl', ['--user', ...args], { stdio: 'pipe' })
   }
   run(['daemon-reload'])
-  run(['enable', '--now', UNIT])
+  run(['enable', UNIT])
+  // `enable --now` does NOT restart an already-running unit, so reinstalling over a live service left the
+  // old process (and old code, and no token) serving. Restart is the only correct verb here.
+  run(['restart', UNIT])
   return file
 }
 

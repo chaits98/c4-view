@@ -7,11 +7,11 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 // the model schema declares draft 2020-12; ajv's default export is draft-07 and would reject it
-import Ajv2020 from 'ajv/dist/2020.js'
+import { Ajv2020 } from 'ajv/dist/2020.js'
 
 const ROOT = new URL('..', import.meta.url).pathname
 const schema = JSON.parse(readFileSync(join(ROOT, 'schema.json'), 'utf8'))
-const ajv = new Ajv2020({ allErrors: true, strict: false })
+const ajv = new Ajv2020({ allErrors: true, strict: false } as never)
 const validate = ajv.compile(schema)
 
 const files = [
