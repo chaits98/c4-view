@@ -62,9 +62,11 @@ the package-root files are the inventory). Fold pure helpers into one `utilities
 | **a system you run** (process, port, job) | the system, its people, its neighbours | deployables: process, worker, store, queue | C3 inside each container |
 | **a library / framework** (consumed, not deployed) | the library, its developer, host apps, the registry | **one** honest box for the library + the process hosting it | **C3 is the point**: router, context, binding, render |
 
-**A box is a container only if you could deploy, restart or scale it on its own.** If the boxes are files in
-one package — `request.js`, `response.js`, `view.js` — that is a C3 wearing C2's title, and every geometry
-gate will still call it clean. `Request` and `Response` are what flows through, not what runs.
+**A box is a container only if you could deploy, restart or scale it on its own.** Blunt test: **if you cannot
+name a process or a store, the level is not a container level.** `Application`, `Router`, `Request`,
+`Response`, `utils` are files in one module — that is C3 wearing C2's title, and every geometry gate will
+still call it clean while the picture describes the wrong thing. `Request` and `Response` are what flows
+through, not what runs.
 
 **2. Plan the levels, then walk the plan.**
 
@@ -135,7 +137,9 @@ an installed package.
 6. **Groups are physical boundaries, not topics.** Members form one contiguous block; `group∧node>0` means the
    boundary swallowed a stranger — regroup or split. A mix of what you run and what you only call (browser,
    external API, rented database) earns a boundary; a level with no such seam needs none.
-7. **Declare `flow` when the true order is not depth-first.** The audience follows one packet.
+7. **Every level declares `flow`, in the order a person would explain it.** The derived depth-first order is
+   rarely that order, and the flow is what the viewer animates — a level without it is not delivered. Every
+   edge key appears exactly once.
 8. **Never encode state** (counts, statuses, dates) — it rots. Architecture only.
 
 ## The loop
@@ -173,9 +177,10 @@ Gated, must be zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires shar
 Before you say it is done, all five hold:
 
 1. `c4v audit <model> --strict` exits 0 on **every** level, and you paste the lines.
-2. Every level declares `flow`; every node has ≥1 edge; no level exceeds 20 nodes; and there are **at least two
-   levels** — a root plus a child you can drill into. One flat level is a picture of one layer, and it is the
-   most common way an agent stops early.
+2. **Every level declares `flow`**, covering every edge key exactly once; every node has ≥1 edge; no level
+   exceeds 20 nodes; and there are **at least two levels** — a root plus a child you can drill into. One flat
+   level is a picture of one layer, and it is the most common way an agent stops early. More than **one** C3
+   means you drew files, not components: cut it back to the container that carries the point.
 3. `group∧node=0` and every boundary's members are contiguous.
 4. `aspect` <~8 (4–7 is normal for a real chain) and `backward` equals the loops you MEANT.
 5. You rendered it and looked at the PNG of the level that carries the point.

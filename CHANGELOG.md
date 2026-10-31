@@ -9,6 +9,12 @@ JSON model is a breaking change to this tool, and is called out as such.
 - Design research for the viewer UI (UX guideline + Material 3 light/dark token set). **Not implemented**;
   it lands as its own feature.
 
+### Changed
+- SKILL.md 5,154 → 3,617 tokens (-30%) with the rules intact. Measured, not assumed: four runs of the
+  same cell (express × OpenCode × local Qwen) scored 84 / 76 / 76 / 70 — the 70 on the *long* skill — so
+  the difference between the two texts is inside this model's run-to-run noise (±7 on 90). The shorter one
+  is kept because it costs less per call, not because it scored better; a single cell cannot prove either.
+
 ### Removed
 - Build scaffolding that shipped with the first cut: `WORKBOOK.md`, `tools/wb.mjs`, `workbook/`,
   `docs/STAGE-SIGNATURES.md`, and a viewer probe that hung. They were how this was built, not what it is.
