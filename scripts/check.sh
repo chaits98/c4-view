@@ -5,7 +5,7 @@
 # exists in CI, a contributor finds out after the push; if it only exists in the hook, CI can drift from
 # it. One script, three callers.
 #
-#   ./scripts/check.sh            # --fast: gates, types, tests, goldens, secrets   (~10 s)
+#   ./scripts/check.sh            # --fast: gates, types, tests, goldens, tokens, secrets (~10 s)
 #   ./scripts/check.sh --full     # + skill scanners, SonarQube, deps, doctor       (~2 min)
 #   ./scripts/check.sh --list     # print the steps and exit
 #
@@ -52,6 +52,7 @@ step "audit: every fixture and example is green"       bash -c '
   for f in fixtures/*.json examples/*.json docs/c4/*.json skill/assets/*.json; do
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }
   done'
+step "tokens: every measured contrast pair clears its WCAG threshold" node tools/contrast.mjs
 
 # ── secrets: cheap, and the one class of mistake git keeps forever ────────────
 if have gitleaks; then
@@ -93,7 +94,32 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
   if have sonar-scanner || [ -x "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner" ]; then
     scanner=$(command -v sonar-scanner || echo "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner")
     if [ -z "${SONAR_TOKEN:-}" ]; then set -a; . "$HOME/.env"; set +a; fi
-    step "sonar: analysis + quality gate" bash -c "node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1 && '$scanner' -Dsonar.login=\"\$SONAR_TOKEN\" >/dev/null"
+    # the scanner exits 0 once the analysis is UPLOADED; only the API knows whether the gate
+    # passed. Reading it is the difference between "sonar ran" and "sonar is green".
+    sonar() {
+      node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1 || return 1
+      # qualitygate.wait makes the scanner itself exit non-zero on a red gate; the API read below
+      # is the second pair of eyes, because a scanner that only uploads reports success
+      "$scanner" -Dsonar.login="$SONAR_TOKEN" -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=180 >/dev/null || return 1
+      # the credential goes in a computed header, not a `-u` argument: a literal auth argument reads
+      # to secret scanners (gitleaks `curl-auth-user`) like a committed password
+      auth="Basic $(printf '%s:' "${SONAR_READ_TOKEN:-$SONAR_TOKEN}" | base64 -w0)"
+      gate=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/qualitygates/project_status?projectKey=c4-view") || return 1
+      printf '%s' "$gate" | grep -q '"status":"OK"' && return 0
+      printf '%s\n' "$gate" | sed 's/},{/}\n{/g' | grep 'ERROR' >&2
+      return 1
+    }
+    step "sonar: analysis + quality gate (reads the verdict, not just the upload)" sonar
+    # The sonar gate on this instance is the built-in "Sonar way", whose coverage condition is 80 and
+    # cannot be edited without admin rights. The project's own floor is 95, so it is enforced here —
+    # measured the way sonar measures it: (covered lines + covered branches) / (lines + branches).
+    coverage_floor() {
+      [ -f coverage/lcov.info ] || return 1
+      awk -F: '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
+        END { pct = (lh + bh) * 100 / (lf + bf); printf "%d of %d lines+branches = %.1f%%\n", lh + bh, lf + bf, pct;
+              exit (pct >= 95 ? 0 : 1) }' coverage/lcov.info
+    }
+    step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
   else
     skip "sonar" "scanner binary not installed"
   fi

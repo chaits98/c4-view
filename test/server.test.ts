@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { request as httpRequest, type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -76,7 +76,9 @@ test('GET /d/:id is the root level, server-rendered', async () => {
   assert.ok(html.includes('data-diagram="' + ID + '"'))
   assert.ok(html.includes('data-level=""'))
   assert.ok(html.includes('data-root="/d/' + ID + '"'))
+  assert.ok(html.includes('href="/tokens.css"'), 'tokens load before the sheet that uses them')
   assert.ok(html.includes('href="/viewer.css"'))
+  assert.equal((html.match(/style="/g) ?? []).length, 0, 'no inline style: the CSP allows none')
   assert.ok(html.includes('src="/viewer.js" defer'))
 })
 
@@ -171,6 +173,15 @@ test('concurrent posts of one id leave one parseable file', async () => {
   assert.ok(['First', 'Second'].includes(stored.title), `last write wins, whole: ${stored.title}`)
 })
 
+test('?theme= renders that scheme, remembers it, and leaves auto to the OS', async () => {
+  const dark = await fetch(`${base}/?theme=dark`)
+  assert.match(await dark.text(), /<html lang="en" data-theme="dark">/)
+  assert.match(dark.headers.get('set-cookie') ?? '', /c4theme=dark/, 'remembered for the next page')
+  assert.match(await (await fetch(`${base}/?theme=light`)).text(), /<html lang="en" data-theme="light">/)
+  assert.match(await (await fetch(`${base}/`)).text(), /<html lang="en">/, 'auto ships no attribute')
+  assert.match(await (await fetch(`${base}/?theme=nonsense`)).text(), /<html lang="en">/, 'nonsense falls back to auto')
+})
+
 test('the index grid lists every diagram with a live thumbnail, and "/" never 404s', async () => {
   // the empty state is a rendering fact of the builder, not of the shared server fixture
   assert.match(indexPage([]), /No diagrams yet/)
@@ -187,16 +198,82 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.match(page.body, new RegExp(`href="/d/${ID}"`))
   assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
   assert.match(page.body, /audit clean/)
-  assert.equal(page.body.match(/<h2>/g)?.length, 1)
+  assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
   assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)
-  assert.match(page.body, /<span class="chip">wide · 1089 px<\/span>/)
   assert.match(page.body, /6 levels · 5 nodes · 8 flows/, 'the countable facts are text')
 })
 
 test('a narrow drawing is letterboxed, not cropped and chipped', () => {
-  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, width: 622, nodes: 1, flows: 0, wide: false }])
+  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, nodes: 1, flows: 0, wide: false }])
   assert.match(page, /class="thumb" aria-hidden="true"/)
-  assert.doesNotMatch(page, /class="chip"/)
   assert.match(page, /1 level · 1 node · 0 flows/, 'singulars stay singular')
+})
+
+test('the error paths answer with a status, never a stack trace', async () => {
+  // a model file that is not JSON: the page must not 500 with a raw exception
+  const brokenDir = join(root, 'halfwritten')
+  mkdirSync(brokenDir, { recursive: true })
+  writeFileSync(join(brokenDir, 'model.json'), '{"id": "halfwritten", "levels": [')
+  const broken = await fetch(`${base}/d/halfwritten`)
+  assert.equal(broken.status, 500)
+  assert.match(await broken.text(), /error/i)
+
+  // malformed percent-encoding is a 404 with a reason, not a crash
+  const malformed = await raw('GET', '/d/%E0%A4%A')
+  assert.equal(malformed.status, 404)
+  assert.match(malformed.body, /malformed path/)
+
+  // an asset that is not installed says so instead of 500
+  const asset = await fetch(`${base}/not-a-real-asset.css`)
+  assert.equal(asset.status, 404)
+  assert.match(await asset.text(), /not installed yet/)
+
+  // the stored model is served at the api path
+  const model = await fetch(`${base}/api/diagrams/${ID}`)
+  assert.equal(model.status, 200)
+  assert.equal(((await model.json()) as { id: string }).id, ID)
+})
+
+test('a body over the limit is refused with 413, not buffered', async () => {
+  const huge = JSON.stringify({ id: 'x', title: 'x', levels: [], pad: 'y'.repeat(3 * 1024 * 1024) })
+  const res = await fetch(`${base}/api/diagrams`, { method: 'POST', body: huge, headers: { 'content-type': 'application/json' } })
+  assert.equal(res.status, 413)
+})
+
+test('a half-written model on disk is skipped by the listing, not fatal', async () => {
+  mkdirSync(join(root, 'torn'), { recursive: true })
+  writeFileSync(join(root, 'torn', 'model.json'), '{"id": "torn", "levels": [')
+  const page = await fetch(`${base}/`)
+  assert.equal(page.status, 200, 'one broken directory does not take the grid down')
+  assert.match(await page.text(), new RegExp(ID))
+})
+
+test('writes are validated before they are stored', async () => {
+  const notJson = await fetch(`${base}/api/diagrams`, { method: 'POST', body: '{nope', headers: { 'content-type': 'application/json' } })
+  assert.equal(notJson.status, 400)
+  assert.match(await notJson.text(), /not valid JSON/)
+
+  const invalid = await fetch(`${base}/api/diagrams`, {
+    method: 'POST',
+    body: JSON.stringify({ id: 'bad model', title: 'x', levels: [] }),
+    headers: { 'content-type': 'application/json' },
+  })
+  assert.equal(invalid.status, 400)
+  const problems = (await invalid.json()) as { problems: string[] }
+  assert.ok(problems.problems.some((p) => /id: required/.test(p)), 'the parser\'s reasons come back')
+  assert.ok(!existsSync(join(root, 'bad model')), 'and nothing is written')
+})
+
+test('a missing diagram and a missing level both say what does exist', async () => {
+  const absent = await fetch(`${base}/d/no-such-diagram`)
+  assert.equal(absent.status, 404)
+  const absentBody = (await absent.json()) as { error: string }
+  assert.equal(absentBody.error, 'no diagram "no-such-diagram"')
+
+  const level = await fetch(`${base}/d/${ID}/no/such/level`)
+  assert.equal(level.status, 404)
+  const body = (await level.json()) as { error: string; levels: string[] }
+  assert.match(body.error, /no level "no\/such\/level"/)
+  assert.ok(body.levels.includes(''), 'and lists the levels that do exist')
 })

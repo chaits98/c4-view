@@ -6,6 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { request } from 'node:http'
+import { guardNotice, type Guard } from '../src/security.ts'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -40,6 +41,8 @@ test('every response carries CSP, nosniff and no framing', () => {
   const res = { headers: {} as Record<string, string>, setHeader(k: string, v: string) { this.headers[k] = v } }
   applyHeaders(res as unknown as Parameters<typeof applyHeaders>[0])
   assert.match(res.headers['Content-Security-Policy'], /script-src 'self'/)
+  assert.match(res.headers['Content-Security-Policy'], /style-src 'self'(;|$)/)
+  assert.doesNotMatch(res.headers['Content-Security-Policy'], /unsafe-inline/, 'nothing inline to allow')
   assert.match(res.headers['Content-Security-Policy'], /frame-ancestors 'none'/)
   assert.equal(res.headers['X-Content-Type-Options'], 'nosniff')
   assert.equal(res.headers['X-Frame-Options'], 'DENY')
@@ -84,4 +87,18 @@ test('a shared server refuses anonymous page requests and lets a token through',
   } finally {
     server.close()
   }
+})
+
+test('the startup notice says whether the box is on the network, and with what token', () => {
+  const local = guardNotice({ token: null, host: '127.0.0.1', generated: false } as unknown as Guard, 8788)
+  assert.deepEqual(local, ['serving http://127.0.0.1:8788/ — local only'])
+
+  const shared = guardNotice({ token: 'abc', host: '0.0.0.0', generated: true } as unknown as Guard, 8788)
+  assert.match(shared[0], /http:\/\/<this-host>:8788\/ — shared on the network, token required/, 'no real hostname leaked')
+  assert.match(shared[1], /generated this run; pass --token to pin it/)
+
+  const pinned = guardNotice({ token: 'abc', host: '10.0.0.5', generated: false } as unknown as Guard, '8788')
+  assert.match(pinned[0], /http:\/\/10\.0\.0\.5:8788\//)
+  assert.ok(!pinned[1].includes('generated this run'), 'a pinned token is not described as generated')
+  assert.ok(pinned.some((line) => line.includes('?t=abc')), 'the one-click url is shown')
 })

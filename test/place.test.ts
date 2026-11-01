@@ -149,3 +149,41 @@ test('the Ranked input is not mutated', () => {
   place(r, level([node('a', 'Alpha'), node('b', 'Beta')]), cfg, measure)
   assert.deepEqual(r, before)
 })
+
+test('a chain with no items in the fixture is ignored, not indexed off the end', () => {
+  const empty: Chain = { key: 'x->y', from: 'x', to: 'y', items: [], style: 'flow', backward: false }
+  const p = place(ranked([['a']], [empty, chainOf('a', 'b', ['a', 'b'])]), level([node('a', 'Alpha'), node('b', 'Beta')]), cfg, measure)
+  assert.ok(p.boxes.get('a'), 'the real chain still places')
+})
+
+test('a spec that is missing falls back to the fixture size', () => {
+  const p = place(ranked([['ghost']]), level([]), cfg, measure)
+  assert.deepEqual([p.boxes.get('ghost')?.w, p.boxes.get('ghost')?.h], [0, 0], 'an unknown node keeps its measured 0')
+})
+
+test('a chain whose items skip a column is not counted as a gutter track', () => {
+  // a→c skips rank 1, so the gutter between 0 and 1 must not claim a track for it
+  const skip = chainOf('a', 'c', ['a', 'c'])
+  const p = place(ranked([['a'], ['b'], ['c']], [skip]), level([node('a'), node('b'), node('c')]), cfg, measure)
+  assert.ok(p.boxes.get('c'), 'the far node still places')
+})
+
+test('a backward chain does not load a gutter', () => {
+  const back: Chain = { key: 'c->a', from: 'c', to: 'a', items: ['c', 'a'], style: 'dep', backward: true }
+  const p = place(ranked([['a'], ['b'], ['c']], [back]), level([node('a'), node('b'), node('c')]), cfg, measure)
+  assert.ok(p.boxes.get('a') && p.boxes.get('c'))
+})
+
+test('a labelled chain widens its gutter, an unlabelled one does not', () => {
+  const lv = level([node('a', 'Alpha'), node('b', 'Beta')])
+  const bare = place(ranked([['a'], ['b']], [chainOf('a', 'b', ['a', 'b'])]), lv, cfg, measure)
+  const labelled: Chain = { ...chainOf('a', 'b', ['a', 'b']), label: 'REST /orders (idempotent)' }
+  const wide = place(ranked([['a'], ['b']], [labelled]), lv, cfg, measure)
+  assert.ok((wide.boxes.get('b')?.x ?? 0) >= (bare.boxes.get('b')?.x ?? 0), 'the label never narrows the drawing')
+})
+
+test('a rank naming an id that is not in the item map is skipped', () => {
+  const r = ranked([['a'], ['nobody', 'b']], [chainOf('a', 'b', ['a', 'b'])])
+  const p = place(r, level([node('a'), node('b')]), cfg, measure)
+  assert.ok(p.boxes.get('b'), 'the column still places around the gap')
+})

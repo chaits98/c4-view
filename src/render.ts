@@ -13,7 +13,7 @@ import { order } from './layout/order.ts'
 import { place } from './layout/place.ts'
 import { route } from './layout/route.ts'
 import { emit } from './svg/emit.ts'
-import { DARK } from './theme.ts'
+import { DARK, type Theme } from './theme.ts'
 import { audit } from './audit.ts'
 import { measure } from './metrics.ts'
 import { flowIndex } from './flow.ts'
@@ -33,23 +33,23 @@ export interface Rendered {
 }
 
 /** Render one level: the whole pipeline, in order, with no hidden state. */
-export function renderLevel(model: Model, level: LevelSpec): RenderedLevel {
+export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK): RenderedLevel {
   const cfg = layoutOf(model)
   const ranked = order(rank(level, cfg), cfg)
   const placed = place(ranked, level, cfg, measure)
   const routed = route(placed, cfg, measure)
-  const svg = emit(placed, routed, level, cfg, DARK, drillTargets(model, level), flowIndex(level))
+  const svg = emit(placed, routed, level, cfg, palette, drillTargets(model, level), flowIndex(level))
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: audit(placed, routed, level) }
 }
 
 /** Render every level (root first, then by depth). */
-export function renderModel(model: Model, only?: string): Rendered {
+export function renderModel(model: Model, only?: string, palette: Theme = DARK): Rendered {
   const levels = levelOrder(model).filter((l) => only === undefined || l.path === only)
   if (!levels.length) {
     const known = levelOrder(model).map((l) => l.path || '(root)').join(', ')
     throw new Error(`no level "${only ?? ''}" — this model has: ${known}`)
   }
-  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level)) }
+  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette)) }
 }
 
 /** Read + validate + render a model file. */

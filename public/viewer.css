@@ -1,13 +1,5 @@
-/* c4-view viewer — dark, fills the viewport, no layout shift on hover. */
-:root {
-  --bg: #0a111b;
-  --fg: #e6edf6;
-  --dim: #8fa3b8;
-  --line: #1c2735;
-  --panel: #111c29;
-  --accent: #3b82f6;
-}
-
+/* c4-view viewer — layout and states only. Every colour, radius, space step, duration and
+   type role comes from tokens.css; a literal colour here would be a token that escaped. */
 * {
   box-sizing: border-box;
 }
@@ -21,9 +13,8 @@ body {
   margin: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  color: var(--fg);
-  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
 }
 
 .c4-bar {
@@ -31,10 +22,10 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  padding: 8px 14px;
-  background: #0d1622;
-  border-bottom: 1px solid var(--line);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 #c4-crumbs {
@@ -43,11 +34,11 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--dim);
+  color: var(--on-surface-variant);
 }
 
 #c4-crumbs a {
-  color: #8fb6ff;
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -57,18 +48,17 @@ body {
 }
 
 #c4-crumbs span {
-  color: var(--fg);
+  color: var(--on-surface);
 }
 
 #c4-levels {
   flex: 0 0 auto;
   max-width: 40vw;
-  padding: 5px 8px;
-  color: var(--fg);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  color: var(--on-surface);
+  background: var(--surface-container);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-sm);
 }
 
 #c4-stage {
@@ -79,12 +69,12 @@ body {
      scrollbar all work without a drag handler */
   overflow: auto;
   overscroll-behavior: contain;
-  scrollbar-color: var(--line) transparent;
-  background: var(--bg);
+  scrollbar-color: var(--outline) transparent;
+  background: var(--canvas);
 }
 
+/* the ring is the token one, pulled inside because the canvas is full-bleed */
 #c4-stage:focus-visible {
-  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
@@ -96,7 +86,7 @@ body {
 }
 
 #c4-stage.zoom-fit {
-  padding: 12px;
+  padding: var(--space-3);
 }
 
 #c4-stage.zoom-fit svg {
@@ -126,44 +116,40 @@ body {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
-.c4-zoom-btn {
+.c4-zoom-btn,
+.c4-flow-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 40px;
   min-height: 40px;
-  padding: 0 10px;
-  color: var(--fg);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font: inherit;
+  padding: 0 var(--space-3);
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
   text-decoration: none;
   cursor: pointer;
 }
 
-.c4-zoom-btn:hover {
-  background: #223349;
+.c4-zoom-btn:hover,
+.c4-flow-btn:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
 }
 
-.c4-zoom-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
+/* selection is a fill swap, not a tint: 12% over a chip is not perceivable (spec §3) */
 .c4-zoom-btn[aria-current='true'] {
-  color: #fff;
-  background: #24344a;
-  border-color: var(--accent);
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+  border-color: var(--secondary);
 }
 
 .c4-zoom-readout {
   min-width: 44px;
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-variant);
   text-align: right;
 }
 
@@ -173,13 +159,13 @@ body {
   left: 0;
   top: 0;
   max-width: 320px;
-  padding: 9px 12px;
-  background: var(--panel);
-  border: 1px solid #24344a;
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-md);
+  box-shadow: var(--shadow-2);
   pointer-events: none;
-  transition: opacity 120ms ease-out;
+  transition: opacity var(--dur-short2) var(--ease-standard);
 }
 
 #c4-hover[hidden] {
@@ -188,27 +174,26 @@ body {
 
 #c4-hover .c4-hover-title {
   font-weight: 600;
-  margin-bottom: 3px;
+  margin-bottom: var(--space-1);
 }
 
 #c4-hover .c4-hover-desc {
-  color: var(--dim);
+  color: var(--on-surface-variant);
 }
 
 #c4-legend {
   position: fixed;
-  left: 14px;
-  bottom: 14px;
+  left: var(--space-3);
+  bottom: var(--space-3);
   z-index: 10;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-3);
   max-width: 60vw;
-  padding: 7px 10px;
-  background: rgb(13 22 34 / 92%);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 12px;
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--surface-container) 94%, transparent);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-md);
 }
 
 #c4-legend:empty {
@@ -218,73 +203,40 @@ body {
 #c4-legend .c4-sw {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  /* the legend is read at a glance, not studied: body size, near-body contrast */
-  font-size: 12px;
-  color: rgb(230 237 246 / 82%);
-  letter-spacing: 0.01em;
+  gap: var(--space-2);
+  color: var(--on-surface-variant);
 }
 
 #c4-legend .c4-sw i {
   width: 13px;
   height: 13px;
-  border-radius: 3px;
-  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: var(--shape-xs);
+  border: 1px solid var(--outline);
 }
 
 /* the flow bar: one edge at a time, bottom centre, play/pause + caption */
 #c4-flow-caption {
   position: fixed;
   left: 50%;
-  bottom: 14px;
+  bottom: var(--space-3);
   z-index: 12;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   max-width: min(70vw, 720px);
-  padding: 6px 12px 6px 6px;
-  background: rgb(13 22 34 / 94%);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--fg);
-  font-size: 12px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-full);
+  color: var(--on-surface);
+  box-shadow: var(--shadow-2);
   transform: translateX(-50%);
-}
-
-#c4-flow-text {
-  margin: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
 }
 
 /* four controls, all 40 px (SC 2.5.8 asks 24): play/pause is the only one with a word */
 .c4-flow-btn {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 40px;
-  height: 40px;
-  padding: 0 10px;
-  color: var(--fg);
-  background: #1a2838;
-  border: 1px solid #24344a;
-  border-radius: 999px;
-  font: 12px/1 ui-sans-serif, system-ui, sans-serif;
-  cursor: pointer;
-}
-
-.c4-flow-btn:hover {
-  background: #223349;
-}
-
-.c4-flow-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  min-height: 40px;
 }
 
 .c4-flow-btn[aria-disabled='true'] {
@@ -293,19 +245,21 @@ body {
 }
 
 #c4-flow-play {
-  padding: 0 14px;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
   font-weight: 600;
 }
 
-.c4-dot {
-  fill: #e6edf6;
-  stroke: var(--bg);
-  stroke-width: 2;
-  filter: drop-shadow(0 0 6px rgb(127 176 255 / 80%));
+#c4-flow-text {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  #c4-hover {
-    transition: none;
-  }
+.c4-dot {
+  fill: var(--d-edge-active);
+  stroke: var(--canvas);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--d-edge-active) 80%, transparent));
 }

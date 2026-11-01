@@ -1,0 +1,167 @@
+/* c4-view design tokens — the Material 3 baseline, one file, no build step.
+ *
+ * Every colour, radius, space step, duration and type role the viewer and the grid use is
+ * declared here and nowhere else. Each colour is one `light-dark()` pair resolved by
+ * `color-scheme`: the OS decides by default, and a reader who picked a side gets
+ * `data-theme="light|dark"` on <html> — one declaration per token, no duplicated block, no
+ * JavaScript, nothing to flash.
+ *
+ * Provenance: visual-spec-m3.md §1 (colour), §4 (type), §5 (shape), §6 (space),
+ * §7 (motion), §11 (this sheet). `node tools/contrast.mjs` re-measures every pair below
+ * and fails if one drops under its WCAG threshold.
+ *
+ * One deliberate exception to "both schemes": the diagram canvas and the SVG palette stay
+ * on the dark column in both. The SVG's colours are attributes written by the generator and
+ * attributes cannot answer a media query (§8.1), so the document surface keeps its own
+ * theme — the same call Figma and every PDF viewer make.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* shape */
+  --shape-none: 0;
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 28px;
+  --shape-full: 9999px;
+
+  /* space, on the 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* motion */
+  --dur-short2: 100ms;
+  --dur-short3: 150ms;
+  --dur-short4: 200ms;
+  --dur-med1: 250ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0, 0, 0, 1);
+  --ease-emph-dec: cubic-bezier(.05, .7, .1, 1);
+
+  /* type */
+  --font-plain: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* elevation (level 1 and 2 are the only ones this product floats) */
+  --shadow-1: 0 1px 2px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 30%)),
+              0 1px 3px 1px light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 15%));
+  --shadow-2: 0 1px 2px light-dark(rgb(0 0 0 / 12%), rgb(0 0 0 / 30%)),
+              0 2px 6px 2px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 15%));
+
+  /* colour: light, then dark */
+  --surface: light-dark(#fef7ff, #141218);
+  --surface-container-lowest: light-dark(#ffffff, #0f0d13);
+  --surface-container-low: light-dark(#f7f2fa, #1d1b20);
+  --surface-container: light-dark(#f3edf7, #211f26);
+  --surface-container-high: light-dark(#ece6f0, #2b2930);
+  --surface-container-highest: light-dark(#e6e0e9, #36343b);
+  --on-surface: light-dark(#1d1b20, #e6e0e9);
+  --on-surface-variant: light-dark(#49454f, #cac4d0);
+  --outline: light-dark(#79747e, #938f99);
+  --outline-variant: light-dark(#cac4d0, #49454f);
+  --primary: light-dark(#6750a4, #d0bcff);
+  --on-primary: light-dark(#ffffff, #381e72);
+  --primary-container: light-dark(#eaddff, #4f378b);
+  --on-primary-container: light-dark(#21005d, #eaddff);
+  --secondary: light-dark(#625b71, #ccc2dc);
+  --secondary-container: light-dark(#e8def8, #4a4458);
+  --on-secondary-container: light-dark(#1d192b, #e8def8);
+  --tertiary: light-dark(#7d5260, #efb8c8);
+  --error: light-dark(#b3261e, #f2b8b5);
+  --on-error: light-dark(#ffffff, #601410);
+  --error-container: light-dark(#f9dedc, #8c1d18);
+  --on-error-container: light-dark(#410e0b, #f9dedc);
+  --inverse-surface: light-dark(#322f35, #e6e0e9);
+  --inverse-on-surface: light-dark(#f5eff7, #322f35);
+
+  /* semantic green: M3 has no success role, so this pair is an extension, measured like the rest */
+  --success: light-dark(#2e7d4f, #9bf2b6);
+  --success-container: light-dark(#c8f2d4, #1e3d2b);
+  --on-success-container: light-dark(#0b3a1d, #9bf2b6);
+
+  /* the diagram document surface follows the scheme now — the server draws the matching palette */
+  --canvas: light-dark(#ffffff, #0a111b);
+  --d-edge-active: light-dark(#1d4ed8, #d0bcff);
+}
+
+
+/* a reader who picked a side overrides the OS; auto leaves color-scheme alone */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* type utilities — one class per role this product actually sets (§4) */
+.t-headline-s {
+  font: 400 24px/32px var(--font-plain);
+  letter-spacing: 0;
+}
+
+.t-title-l {
+  font: 400 22px/28px var(--font-plain);
+  letter-spacing: 0;
+}
+
+.t-title-m {
+  font: 500 16px/24px var(--font-plain);
+  letter-spacing: 0.15px;
+}
+
+.t-body-l {
+  font: 400 16px/24px var(--font-plain);
+  letter-spacing: 0.5px;
+}
+
+.t-body-m {
+  font: 400 14px/20px var(--font-plain);
+  letter-spacing: 0.25px;
+}
+
+.t-body-s {
+  font: 400 12px/16px var(--font-plain);
+  letter-spacing: 0.4px;
+}
+
+.t-label-l {
+  font: 500 14px/20px var(--font-plain);
+  letter-spacing: 0.1px;
+}
+
+.t-label-m {
+  font: 500 12px/16px var(--font-plain);
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* focus is a ring, never a fading colour: 2px primary at 2px offset (SC 2.4.7 / 2.4.13) */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* motion is honoured, not offered as a toggle (SC 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

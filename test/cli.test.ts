@@ -130,3 +130,21 @@ test('a tool failure (no browser for --png) is an exit code, not a stack trace',
     else process.env.C4_CHROMIUM = saved
   }
 })
+
+test('an unusable invocation exits 2 before any work happens', async () => {
+  assert.equal(await run([]), 0, 'no command prints usage and succeeds')
+  assert.equal(await run(['service', 'bogus']), 2, 'unknown service action')
+  assert.equal(await run(['nonsense', SHOP]), 2, 'unknown command')
+  assert.equal(await run(['render']), 2, 'missing model')
+  assert.equal(await run(['render', join(workdir(), 'nope.json')]), 2, 'unreadable model')
+  assert.equal(await run(['render', SHOP, '--out', join(workdir(), 'a.svg')]), 2, 'one svg per level needs --level')
+})
+
+test('--no-token is refused off loopback', async () => {
+  // the guard runs before the server is created, so this returns instead of listening
+  assert.equal(await run(['serve', '--host', '0.0.0.0', '--no-token']), 2)
+})
+
+test('service uninstall on a machine with no unit is not an error', async () => {
+  assert.equal(await run(['service', 'uninstall']), 0)
+})

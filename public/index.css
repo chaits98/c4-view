@@ -1,54 +1,72 @@
 /* The index is the agent's delivery surface: a grid of diagrams, each one a live
-   thumbnail of its root level. No framework, no fetch — the page arrives complete. */
-:root {
-  --bg: #0a111b;
-  --card: #0f1a27;
-  --line: #1e3147;
-  --line-hot: #3d6ea8;
-  --fg: #e6edf6;
-  --dim: #8fa3b8;
-  --ok: #3fb950;
-  --bad: #f0883e;
+   thumbnail of its root level. No framework, no fetch — the page arrives complete.
+   Layout only: every colour and size is a token from tokens.css. */
+* {
+  box-sizing: border-box;
 }
-
-* { box-sizing: border-box; }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--fg);
-  font: 14px/1.45 'DejaVu Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
 }
 
+/* the M3 top app bar: sticky, tonal, one action cluster at the trailing edge */
 .idx-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 20px 26px 10px;
-  max-width: 1600px;
-  margin: 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding-inline: max(var(--space-4), calc((100% - 1680px) / 2));
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .idx-bar h1 {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
   margin: 0;
 }
 
 #idx-count {
-  font-size: 12px;
-  color: var(--dim);
+  color: var(--on-surface-variant);
+}
+
+/* three plain links: the scheme is URL state, remembered in a cookie, no script */
+.idx-scheme-group {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.idx-scheme {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  color: var(--on-surface-variant);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-sm);
+  text-decoration: none;
+}
+
+.idx-scheme:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+
+.idx-scheme[aria-current='true'] {
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+  border-color: var(--secondary);
 }
 
 #grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 18px;
-  padding: 12px 26px 40px;
-  max-width: 1600px;
-  margin: 0 auto;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-6);
+  padding: var(--space-6) max(var(--space-4), calc((100% - 1680px) / 2)) var(--space-12);
 }
 
 .card {
@@ -56,32 +74,28 @@ body {
   flex-direction: column;
   text-decoration: none;
   color: inherit;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-md);
   overflow: hidden;
-  transition: border-color 120ms ease, transform 120ms ease;
+  transition: border-color var(--dur-short2) var(--ease-standard);
 }
 
-.card:hover,
-.card:focus-visible {
-  border-color: var(--line-hot);
+/* a state layer, not a lift: M3 dropped the hover translate, and 30 of them is a fairground */
+.card:hover {
+  border-color: var(--outline);
+  background: color-mix(in srgb, var(--on-surface) 8%, var(--surface-container));
 }
 
-.card:focus-visible {
-  outline: 2px solid var(--line-hot);
-  outline-offset: 2px;
-}
-
-/* the thumbnail is the diagram's own SVG: the card shows what a click opens */
+/* the thumbnail is the diagram's own SVG, on the document surface it was drawn for */
 .thumb {
   position: relative;
   display: block;
   height: 168px;
-  padding: 10px;
+  padding: var(--space-3);
   overflow: hidden;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .thumb svg {
@@ -109,75 +123,61 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to right, var(--bg), transparent 12%, transparent 88%, var(--bg));
+  background: linear-gradient(to right, var(--canvas), transparent 12%, transparent 88%, var(--canvas));
 }
 
-.chip {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  z-index: 1;
-  padding: 2px 8px;
-  color: var(--dim);
-  background: color-mix(in srgb, var(--card) 88%, transparent);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
 
 .meta {
-  padding: 11px 14px 13px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
 }
 
-.meta h2 {
-  font-size: 14px;
-  font-weight: 600;
+.meta h2,
+.meta p {
   margin: 0;
 }
 
 .meta p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--dim);
+  color: var(--on-surface-variant);
 }
 
 .badge {
-  margin-top: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   align-self: flex-start;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  padding: 2px 8px;
-  border-radius: 999px;
+  min-height: 32px;
+  margin-top: var(--space-1);
+  padding: 0 var(--space-3);
   border: 1px solid;
+  border-radius: var(--shape-sm);
 }
 
 .badge.ok {
-  color: var(--ok);
-  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
-  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--on-success-container);
+  background: var(--success-container);
+  border-color: var(--success);
 }
 
 .badge.bad {
-  color: var(--bad);
-  border-color: color-mix(in srgb, var(--bad) 45%, transparent);
-  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  color: var(--on-error-container);
+  background: var(--error-container);
+  border-color: var(--error);
 }
 
 .empty {
   grid-column: 1 / -1;
-  padding: 60px 10px;
+  padding: var(--space-16) var(--space-3);
   text-align: center;
-  color: var(--dim);
+  color: var(--on-surface-variant);
 }
 
 .empty code {
-  color: var(--fg);
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 2px 7px;
+  padding: 2px var(--space-2);
+  color: var(--on-surface);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-xs);
 }

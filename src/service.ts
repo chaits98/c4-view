@@ -28,7 +28,10 @@ export interface ServiceOptions {
   root: string
 }
 
-export const unitPath = (): string => join(homedir(), '.config', 'systemd', 'user', UNIT)
+export const unitPath = (dir: string = join(homedir(), '.config', 'systemd', 'user')): string => join(dir, UNIT)
+
+/** The systemctl call, injectable: the unit file is pure, the spawn is not a test's business. */
+export type Systemctl = (args: string[], encoding?: 'utf8') => string | Buffer
 
 /** systemd treats `"` as a quote, so quote anything with whitespace and escape the rest. */
 const arg = (value: string): string => (/[\s"\\]/.test(value) ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : value)
@@ -63,13 +66,28 @@ WantedBy=default.target
 `
 }
 
+const SYSTEMCTL_PATHS = ['/usr/bin/systemctl', '/bin/systemctl', '/usr/local/bin/systemctl']
+
+/**
+ * The first systemctl that exists, by absolute path — never resolved through PATH, which is
+ * user-controlled in the environment this service is installed from.
+ */
+export function systemctlPath(exists: (file: string) => boolean = existsSync): string {
+  const found = SYSTEMCTL_PATHS.find((candidate) => exists(candidate))
+  if (found) return found
+  throw new Error(`systemctl not found at ${SYSTEMCTL_PATHS.join(', ')}`)
+}
+
+const systemctl: Systemctl = (args, encoding) =>
+  encoding ? execFileSync(systemctlPath(), args, { encoding }) : execFileSync(systemctlPath(), args, { stdio: 'pipe' })
+
 /** Refuse politely on anything that is not a systemd user session. */
-function assertSystemd(): void {
+function assertSystemd(run: Systemctl = systemctl): void {
   if (process.platform !== 'linux') {
     throw new Error(`c4v service is Linux/systemd only (this is ${process.platform}); run \`c4v serve\` and use your platform's own supervisor.`)
   }
   try {
-    execFileSync('systemctl', ['--user', 'show-environment'], { stdio: 'pipe' })
+    run(['--user', 'show-environment'])
   } catch {
     throw new Error('no systemd user session found (systemctl --user failed); run `c4v serve` instead.')
   }
@@ -79,9 +97,9 @@ function assertSystemd(): void {
  * A unit bound to a real interface must not generate a fresh token on every restart: the link the
  * user was given would stop working. So the token is written once to the env file the unit loads.
  */
-export function ensureTokenFile(host: string, generate: () => string): string | null {
+export function ensureTokenFile(host: string, generate: () => string, configDir: string = join(homedir(), '.config', 'c4-view')): string | null {
   if (host === '127.0.0.1' || host === '::1' || host === 'localhost') return null
-  const dir = join(homedir(), '.config', 'c4-view')
+  const dir = configDir
   const file = join(dir, 'env')
   if (existsSync(file)) return null
   mkdirSync(dir, { recursive: true })
@@ -92,47 +110,47 @@ export function ensureTokenFile(host: string, generate: () => string): string | 
 }
 
 /** Write the unit and bring it up. Returns the path written. */
-export function installService(opts: ServiceOptions): string {
-  assertSystemd()
-  const file = unitPath()
-  mkdirSync(join(homedir(), '.config', 'systemd', 'user'), { recursive: true })
+export function installService(opts: ServiceOptions, run: Systemctl = systemctl, dir: string = join(homedir(), '.config', 'systemd', 'user')): string {
+  assertSystemd(run)
+  const file = unitPath(dir)
+  mkdirSync(dir, { recursive: true })
   writeFileSync(file, unitText(opts))
-  const run = (args: string[]): void => {
-    execFileSync('systemctl', ['--user', ...args], { stdio: 'pipe' })
+  const call = (args: string[]): void => {
+    run(['--user', ...args])
   }
-  run(['daemon-reload'])
-  run(['enable', UNIT])
+  call(['daemon-reload'])
+  call(['enable', UNIT])
   // `enable --now` does NOT restart an already-running unit, so reinstalling over a live service left the
   // old process (and old code, and no token) serving. Restart is the only correct verb here.
-  run(['restart', UNIT])
+  call(['restart', UNIT])
   return file
 }
 
 /** Stop, disable, delete. Idempotent: a machine without the unit is not an error. */
-export function uninstallService(): boolean {
-  const file = unitPath()
+export function uninstallService(run: Systemctl = systemctl, dir: string = join(homedir(), '.config', 'systemd', 'user')): boolean {
+  const file = unitPath(dir)
   if (!existsSync(file)) return false
-  const run = (args: string[]): void => {
+  const call = (args: string[]): void => {
     try {
-      execFileSync('systemctl', ['--user', ...args], { stdio: 'pipe' })
+      run(['--user', ...args])
     } catch {
       // disabling a unit that is already stopped is not a failure worth reporting
     }
   }
-  run(['disable', '--now', UNIT])
+  call(['disable', '--now', UNIT])
   rmSync(file, { force: true })
-  run(['daemon-reload'])
+  call(['daemon-reload'])
   return true
 }
 
 /** `systemctl status` verbatim, so the answer is the truth rather than a summary of it. */
-export function serviceStatus(): number {
-  if (process.platform !== 'linux' || !existsSync(unitPath())) {
-    console.error(`no unit at ${unitPath()} — run: c4v service install`)
+export function serviceStatus(run: Systemctl = systemctl, dir: string = join(homedir(), '.config', 'systemd', 'user')): number {
+  if (process.platform !== 'linux' || !existsSync(unitPath(dir))) {
+    console.error(`no unit at ${unitPath(dir)} — run: c4v service install`)
     return 1
   }
   try {
-    process.stdout.write(execFileSync('systemctl', ['--user', 'status', UNIT, '--no-pager'], { encoding: 'utf8' }))
+    process.stdout.write(run(['--user', 'status', UNIT, '--no-pager'], 'utf8') as string)
     return 0
   } catch (error) {
     const stdout = (error as { stdout?: string }).stdout

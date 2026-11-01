@@ -52,7 +52,7 @@ if (rootG) {
     const el = document.createElement('button')
     el.type = 'button'
     el.id = id
-    el.className = 'c4-flow-btn'
+    el.className = 'c4-flow-btn t-label-l'
     el.setAttribute('aria-label', name)
     const icon = document.createElement('span')
     icon.className = 'c4-flow-icon'
@@ -77,6 +77,7 @@ if (rootG) {
     play.append(word)
     const text = document.createElement('p')
     text.id = 'c4-flow-text'
+    text.className = 't-label-m'
     text.setAttribute('aria-live', 'polite')
     text.setAttribute('aria-atomic', 'true')
     bar.append(play, prev, next, replay, text)

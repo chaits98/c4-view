@@ -70,10 +70,11 @@ export function applyHeaders(res: ServerResponse): void {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('Referrer-Policy', 'no-referrer')
   res.setHeader('X-Frame-Options', 'DENY')
-  // no inline script anywhere in the viewer; the SVG is inert; nothing may frame us
+  // no inline script and no inline style anywhere in the viewer — every style is a
+  // stylesheet, so `style-src 'self'` needs no 'unsafe-inline' (checked by the page tests)
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   )
 }
 

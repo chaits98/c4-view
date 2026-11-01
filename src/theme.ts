@@ -1,6 +1,8 @@
 /**
- * The one palette. Colours are SVG attributes (no `<style>` block), so an
- * exported file renders identically in the app and outside it.
+ * The palettes. Colours are SVG attributes (no `<style>` block), so an exported file
+ * renders identically in the app and outside it — and because they are attributes, the
+ * palette cannot answer a media query: the *server* picks one, per request, from the
+ * reader's `?theme=`/cookie choice. `auto` has no server-side answer, so it renders DARK.
  *
  * @module c4-view/theme
  */
@@ -35,3 +37,30 @@ export const DARK: Theme = {
     dir: { stroke: '#e6edf6', width: 2 },
   },
 }
+
+/** The same diagram on a white document: darker strokes, faint kind tints. */
+export const LIGHT: Theme = {
+  bg: '#ffffff',
+  fg: '#1d1b20',
+  dim: '#49454f',
+  line: '#cac4d0',
+  chipBg: '#f3edf7',
+  chipFg: '#1d1b20',
+  groupStroke: '#94a3b8',
+  groupFill: 'rgba(100,116,139,.08)',
+  kinds: {
+    concept: { fill: 'rgba(109,40,217,.07)', stroke: '#6d28d9' },
+    step: { fill: 'rgba(29,78,216,.07)', stroke: '#1d4ed8' },
+    tool: { fill: 'rgba(15,118,110,.07)', stroke: '#0f766e' },
+    fact: { fill: 'rgba(180,83,9,.09)', stroke: '#b45309' },
+  },
+  edges: {
+    flow: { stroke: '#1d4ed8', width: 1.6 },
+    dep: { stroke: '#6b7280', width: 1.2, dash: '5 4' },
+    tent: { stroke: '#b45309', width: 1.2, dash: '2 3' },
+    dir: { stroke: '#1d1b20', width: 2 },
+  },
+}
+
+/** The palette for a reader's choice; `auto` cannot be known here, so it is the dark one. */
+export const paletteOf = (choice: string): Theme => (choice === 'light' ? LIGHT : DARK)

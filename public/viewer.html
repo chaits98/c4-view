@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en"<!--THEMEATTR-->>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>C4 viewer</title>
+<link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/viewer.css">
 </head>
 <!-- The server fills data-diagram / data-level / data-root, the three blocks marked
@@ -12,10 +13,10 @@
      Contract: body data-* attrs, #c4-crumbs, #c4-levels, #c4-zoom,
      #c4-stage (inline svg, scroll container), #c4-hover, #c4-legend.
      flow.js owns #c4-flow-caption, which it creates. -->
-<body data-diagram="" data-level="" data-root="">
+<body class="t-body-m" data-diagram="" data-level="" data-root="">
 <header class="c4-bar">
   <nav id="c4-crumbs" aria-label="Breadcrumb"><!--CRUMBS--></nav>
-  <select id="c4-levels" aria-label="Level"><!--LEVELS--></select>
+  <select id="c4-levels" class="t-label-l" aria-label="Level"><!--LEVELS--></select>
   <div id="c4-zoom" role="group" aria-label="Zoom"><!--ZOOM--></div>
 </header>
 <main id="c4-stage" class="<!--ZOOMCLASS-->" tabindex="0" role="region" aria-label="Diagram canvas. Scroll with the arrow keys, + and - to zoom, 0 to fit."><!--SVG--></main>
