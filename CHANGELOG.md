@@ -3,6 +3,40 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.5.0] — the checklist is finished
+
+### Added
+- **Item 5** — a skip link that is the first tab stop, `aria-current` on the crumb, and
+  `<details id="c4-text">` rendered from the model: every container with its id and tech, every flow
+  with its label. Tab order measured: skip → all → `<id>` → level.
+- **Item 6** — `?sort=updated|title|audit` and `?audit=fail` as links, marked with `aria-current` and
+  labelled in words; an empty filter says "Nothing is failing" instead of "No diagrams yet".
+- **Item 7** — the token leaves the address bar: `?t=` answers `302` with every other parameter kept,
+  sets the cookie on that response, and says `Cache-Control: no-store`. Pages and refusals are
+  `no-store`; the 401 is a page for a browser and JSON for an agent.
+- **Item 8** — a missing diagram, a missing level and a model that will not parse each render a page
+  with one heading, one cause and one action; a broken model is a 500 that names the file.
+- **Item 10** — the audit banner: up to three failing gates in words with counts, then "and N more".
+- **Item 11** — a card over 400 nodes or 200 KB of SVG draws a placeholder instead of inlining the
+  drawing; the grid answers in under 250 ms with a 401-node model in the store.
+
+### Fixed
+- **The drawing follows the page's scheme.** `auto` used to render the dark palette on a light
+  document — 1.18:1, a page of ghost thumbnails, which the independent review scored as the single
+  biggest defect. Every canvas colour is now `var(--c4-*)` over a `light-dark()` pair; exports keep a
+  literal palette. Nine canvas pairs joined the contrast gate (36 pairs, 0 failing).
+- `c4v service restart` (any typo) installed a unit instead of refusing.
+- A labelled route with no points crashed the label pass.
+- `"edges": {}` silently dropped every flow; nodes, edges and groups now agree that a field which must
+  be a list is not an absence.
+- `public/viewer.css` was 330 lines and the 300-line gate never looked at CSS; states split out, gate
+  extended. The zoom readout no longer repeats the active chip, the app bar wraps at 390 px, and the
+  401/404/500 pages follow `?theme=`.
+
+### Changed
+- Coverage: 300 tests, 99.8 % lines / 93.7 % branches, with the 95 % line+branch floor in
+  `check.sh --full`. Damage guards are excluded by inline annotation, each naming the state it covers.
+
 ## [0.4.0] — the viewer stops looking like 2023
 
 ### Added
