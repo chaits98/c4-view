@@ -83,12 +83,18 @@ through, not what runs.
 |---|---|---|---|
 | C1 context | `""` | the system, people, outside services | 4–7 |
 | C2 containers | `<id>` | processes, stores, browser apps, jobs | 6–12 |
-| C3 components | `<id>/<container>` | the stages inside the one container that carries the point | 8–16 |
+| C3 components | `<id>/<container>` | the stages inside one container that carries the point | 6–12 |
 | C4 code | deeper | only when asked about a module | ≤12 |
 
-Ship **C1 + C2 always, plus one C3** (the thing that broke). One C3, not five. Write it inside the repo at
+Ship **C1 + C2 always**, then one C3 **per container that earns it** — typically one to three, never one for
+the whole app and never one per source file. A container earns a C3 when its internals are the argument (the
+thing that broke, the part a reader will ask about); `cli` and `server` both do in this tool, and a model with
+three of them is honest, not greedy. What is dishonest is a level of six boxes you could not deploy or restart
+separately. Write it inside the repo at
 `docs/c4/<id>.json` — never `/tmp`, never `$HOME`: a sandboxed harness denies writes outside the working
-directory and the run loses the file it just built. `<id>` = repo folder in lower-kebab.
+directory and the run loses the file it just built. When you are describing a repo you may **not** write into
+(the product is not yours, or the brief forbids it), write in your own workspace instead and say where the
+model lives in your answer; the rule "inside the repo" applies to the repo you are working in. `<id>` = repo folder in lower-kebab.
 
 **3. Decide each edge by asking what crosses it.** If a noun crosses, that noun is the label (`Ranked`,
 `AuditReport`, `orders.json`, `8 KB SVG`); otherwise the shortest true verb (`writes`, `polls`). An edge you
@@ -118,9 +124,9 @@ Docs live beside the model, **flat**, one directory for the whole model: `docs/c
 say; `--json` prints the per-picture reports as JSON for a script.
 
 
-`c4v` is on PATH when the package is installed. There is **no checkout to find and no `src/cli.ts` to run** —
-looking for one hits a sandbox denial, burns the budget on rejected commands, and ships a model that was never
-audited. If `c4v` is missing: `npm i -g c4-view`, once.
+`c4v` is on PATH when the package is installed. **Do not go looking for a checkout** of this tool: `node
+src/cli.ts` is only for working *inside* the c4-view repo itself, and hunting for one elsewhere wastes the run
+on sandbox denials. If `c4v` is missing: `npm i -g c4-view`, once.
 
 ```bash
 command -v c4v || npm i -g c4-view
@@ -172,6 +178,10 @@ works before any JS runs.
 
 A child level is **the inside of one box**, nothing else: no sibling boxes from above, no second box expanded,
 ports for every parent edge that crosses in. That is why it reads as a lens and not as a second diagram.
+
+**Point the port at the node nearest the frame edge the edge arrives from.** A port that lands at the far end
+of a long chain drags the outside box across the whole page and the wire ends up running under the drawing —
+the troubleshoot table blames `rank` hints for that symptom, and it is usually the port.
 
 **A box shown on two levels is one box.** If an external system appears at C1 and again at C2 (normal: a
 container diagram does show what it talks to), give it the **same id and the same identity** on both levels.
@@ -307,7 +317,9 @@ Gated, must be zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires shar
 - `crossings` above ~2 per edge → the level is too tangled to read; split it.
 - `backward` above zero → an edge drawn right-to-left. Legal if the loop is real; otherwise a `rank` hint
   caused it.
-- `aspect` past ~8 → a long chain. Fine when the sequence IS the point; split when the strip is wide because
+- `aspect` past ~8 is **reported, not gated, and not a defect on its own**: a genuine ten-stage pipeline is a
+  ten-to-one strip and the viewer fits it (that is what the zoom presets are for). Split only when the strip is
+  wide because
   you flattened a hierarchy.
 
 ## Delivering

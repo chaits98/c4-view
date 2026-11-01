@@ -125,3 +125,19 @@ test('docsProblems names every node and edge without a doc, with the path it sho
   assert.ok(problems.every((p) => p.path.endsWith('.md')))
   assert.deepEqual(problems.map((p) => p.where), ['(root)', 'a', 'a', 'a'], 'level order: root, then the drill level')
 })
+
+test('a node drawn on three levels is one file, so it is reported once', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c4v-dup-'))
+  const model = parseModel({
+    id: 'dup',
+    title: 'Dup',
+    levels: [
+      { path: '', nodes: [{ id: 'shared', label: 'S', subtype: 'system' }, { id: 'x', label: 'X', subtype: 'system' }], edges: [] },
+      { path: 'a', nodes: [{ id: 'shared', label: 'S', subtype: 'service-logic' }], edges: [] },
+      { path: 'b', nodes: [{ id: 'shared', label: 'S', subtype: 'service-logic' }], edges: [] },
+    ],
+  })
+  const problems = docsProblems(dir, model)
+  assert.equal(problems.filter((p) => p.path.endsWith('shared.md')).length, 1, 'one file, one line')
+  assert.equal(problems.length, 2, 'shared plus x')
+})

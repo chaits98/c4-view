@@ -13,9 +13,8 @@ import { levelSlug } from './slug.ts'
 import { auditLine } from './audit.ts'
 import { svgToPng } from './png.ts'
 import type { LensReport } from './lens.ts'
-import type { Rendered } from './render.ts'
 import { docsDir, docsProblems } from './docs.ts'
-import { pictureAudits } from './render.ts'
+import { pictureAudits, renderExpanded, type Rendered } from './render.ts'
 import type { AuditReport, Model } from './types.ts'
 
 /** Where one level's file goes: the named .svg, or `<dir>/<level-slug>.svg`. */
@@ -24,9 +23,24 @@ export function outputPath(out: string | undefined, id: string, level: string): 
   return join(out ?? join('out', id), `${levelSlug(level)}.svg`)
 }
 
-export function writeLevels(report: Rendered, out: string | undefined, png: boolean, scale: number): string[] {
+/**
+ * Write the picture a reader opens, not a flatter one. A level with a child is SERVED composed (that is what
+ * `/d/<id>/<path>` draws and what `audit` grades), so exporting the flat level beside a composed audit line
+ * handed out a file nobody looks at — 15 crossings in the report, 7 in the SVG.
+ */
+export function writeLevels(model: Model, report: Rendered, out: string | undefined, png: boolean, scale: number): string[] {
   const written: string[] = []
-  for (const level of report.levels) {
+  // one child means one composed picture: the level with that box opened in place, which is what `/d` draws.
+  // Several children are several pages (`--expand <path>` writes one), so the level stays flat there.
+  const onlyChild = (path: string): string | undefined => {
+    const kids = model.levels.filter((l) => l.path !== path && l.path.startsWith(path ? `${path}/` : ''))
+    return kids.length === 1 ? kids[0].path : undefined
+  }
+  for (const level of report.levels.map((l) => {
+    const child = onlyChild(l.path)
+    // the composed picture keeps the PARENT's path: that is the file this level has always written
+    return child ? { ...renderExpanded(model, child).levels[0], path: l.path } : l
+  })) {
     const target = outputPath(out, report.id, level.path)
     mkdirSync(dirname(target), { recursive: true })
     writeFileSync(target, level.svg)
@@ -37,8 +51,8 @@ export function writeLevels(report: Rendered, out: string | undefined, png: bool
 }
 
 /** `--out` + `--png` + `--scale`: write the files and name them, in that order. */
-export function writeOutputs(scale: number, out: string | undefined, png: boolean, report: Rendered): string[] {
-  const written = writeLevels(report, out, png, scale)
+export function writeOutputs(scale: number, out: string | undefined, png: boolean, report: Rendered, model: Model): string[] {
+  const written = writeLevels(model, report, out, png, scale)
   for (const path of written) console.log(`wrote ${path}`)
   return written
 }
@@ -96,7 +110,7 @@ export function reportCommand(args: ReportArgs, report: Rendered, model: Model):
   const failed = audits.filter((a) => !a.ok)
   printAudit(audits, args.json)
   printLens(report.lens, args.json)
-  if (args.render) writeOutputs(args.scale, args.out, args.png, report)
+  if (args.render) writeOutputs(args.scale, args.out, args.png, report, model)
   const docsMissing = docsVerdict(args, model)
   if (!args.strict) return 0
   if (failed.length) {

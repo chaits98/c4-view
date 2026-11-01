@@ -76,15 +76,24 @@ export interface DocsProblem {
  */
 export function docsProblems(dir: string, model: Model): DocsProblem[] {
   const problems: DocsProblem[] = []
+  // a node drawn on three levels is ONE file: report it once, at the first level that wanted it, or the
+  // count says 65 missing for 62 files and the reader hunts for duplicates that do not exist
+  const seen = new Set<string>()
   for (const level of model.levels) {
     const where = level.path || '(root)'
     for (const node of level.nodes) {
       const path = nodeDocPath(dir, node.id)
-      if (!hasText(path)) problems.push({ where, path })
+      if (!seen.has(path) && !hasText(path)) {
+        seen.add(path)
+        problems.push({ where, path })
+      }
     }
     for (const edge of level.edges) {
       const path = edgeDocPath(dir, edge.from, edge.to)
-      if (!hasText(path)) problems.push({ where, path })
+      if (!seen.has(path) && !hasText(path)) {
+        seen.add(path)
+        problems.push({ where, path })
+      }
     }
   }
   return problems

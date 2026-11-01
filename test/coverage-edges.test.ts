@@ -5,13 +5,13 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { parseModel } from '../src/model.ts'
-import { outputPath, reportCommand } from '../src/cli-output.ts'
-import { renderModel } from '../src/render.ts'
+import { outputPath, reportCommand, writeLevels } from '../src/cli-output.ts'
+import { renderExpanded, renderModel } from '../src/render.ts'
 import { viewerPage } from '../src/viewer-page.ts'
 import { indexPage } from '../src/index-page.ts'
 import { run } from '../src/cli.ts'
@@ -110,4 +110,17 @@ test('an expanded page keeps the outside docs and links only interior nodes that
 test('a level page with a width too wide to fit opens at 100% and says why', () => {
   const html = viewerPage(parseModel(JSON.parse(readFileSync(SHOP, 'utf8')) as unknown), '')
   assert.ok(html.includes('c4-stage'), 'the stage is there')
+})
+
+test('render --out writes the composed picture for a level that has a child', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c4v-composed-'))
+  const model = parseModel(JSON.parse(readFileSync(new URL('../examples/lens.json', import.meta.url), 'utf8')))
+  const rendered = renderModel(model)
+  writeLevels(model, rendered, dir, false, 1)
+  // the ROOT has a child, so the root file is the picture a reader opens: the frame with its contents
+  const root = outputPath(dir, 'lens', '')
+  assert.ok(existsSync(root), 'the root is written')
+  assert.equal(readFileSync(root, 'utf8'), renderExpanded(model, 'context1').levels[0].svg)
+  const leaf = outputPath(dir, 'lens', 'context1')
+  assert.ok(existsSync(leaf), 'and the level with no child keeps its own picture')
 })

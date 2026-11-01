@@ -3,6 +3,25 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.8.1] — what an outside agent found in one clean run
+
+A fresh agent, given only the skill and "diagram this application", produced a model that passed on the first
+audit (0.00 / 0.40 / 0.50 / 0.67 crossings per edge) — and reported eight defects in the tool and the skill.
+Two were real bugs:
+
+- **`render --out` wrote a picture nobody audits.** The files were the flat levels while the audit lines were
+  the composed pictures (15 crossings in the report, 7 in the SVG). A level with one child now exports the
+  composed picture — the same one `/d` draws — under the parent's own filename. `--expand <path>` still writes
+  a single drill when a level has several children.
+- **`--require-docs` over-counted.** A node drawn on three levels was reported three times (65 missing for 62
+  files); each file is now named once, at the first level that wanted it.
+
+Six were skill contradictions, all fixed: C3 was `8–16` in one table and `6–12` in two others; "one C3, not
+five" fought "every container gets its own child level"; the skill forbade looking for `src/cli.ts` while its
+own commands used it; ports never said to point at the node nearest the frame edge (which is what pushes a
+witness across the page and runs its wire under the drawing); aspect had a number but no escape hatch for a
+real ten-stage chain; and "write inside the repo" had no answer for a repo you must not write into.
+
 ## [0.8.0] — the picture is a model problem, and the report says so
 
 `audit` now prints what an author should aim at, not just what the gate refuses: `crossings=13 (1.08/edge, dense)`.
