@@ -174,3 +174,12 @@ test('sorting by title falls back to the id when two titles match', () => {
   const html = indexPage([{ ...base, id: 'b', title: 'Same' }, { ...base, id: 'a', title: 'Same' }], 'auto', 'title')
   assert.ok(html.indexOf('/d/a"') < html.indexOf('/d/b"'), 'the id decides, so the order is stable')
 })
+
+test('the fail filter has two empty states: nothing failing, and nothing at all', () => {
+  const clean = { id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
+  const nothing = indexPage([clean], 'auto', 'updated', 'fail')
+  assert.match(nothing, /Nothing is failing/, 'a clean store says so instead of looking broken')
+  assert.match(nothing, /All 1 diagrams audit clean/, 'and counts them')
+  const empty = indexPage([], 'auto', 'updated', 'fail')
+  assert.match(empty, /No diagrams yet/, 'an empty store gets the other state')
+})

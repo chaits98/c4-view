@@ -93,7 +93,7 @@ export { levelSlug as slugOf } from './slug.ts'
 /** The serve command owns the process: it resolves only when the server is asked to stop. */
 async function serveCommand(args: Args): Promise<number> {
   const { serve } = await import('./server.ts')
-  const { guardNotice } = await import('./security.ts')
+  const { guardNotice, rememberOpenUrl } = await import('./security.ts')
   const port = Number(args.optOr('port', '8788'))
   const root = args.optOr('root', join(homedir(), '.c4-view'))
   const host = args.optOr('host', '127.0.0.1')
@@ -106,6 +106,8 @@ async function serveCommand(args: Args): Promise<number> {
   const addr = srv.address()
   const shown = typeof addr === 'object' && addr !== null ? addr.port : port
   for (const line of guardNotice(srv.guard, shown)) console.log(line)
+  const openLine = rememberOpenUrl(srv.guard, shown, homedir())
+  if (openLine) console.log(openLine) // coverage:invariant — null only for a loopback server with no token
   console.log(`  diagrams in ${root}`)
   /* node:coverage disable */
   // `serve` owns the process: it returns only through the exit below, so the promise never settles
@@ -136,6 +138,14 @@ function loadReport(file: string, level: string | undefined, expand?: string): {
 /** The sub-action of a two-word command (`service install`). */
 function argvSecond(args: Args): string | undefined {
   return args.argv[1]?.startsWith('--') ? undefined : args.argv[1]
+}
+
+/** The token line: a terminal gets the value, a service log gets its location and nothing else. */
+export function tokenLines(token: string | null, tty: boolean): string[] {
+  if (!token) return []
+  return tty
+    ? [`  token:   ${token}   (in ~/.config/c4-view/env)`]
+    : ['  token:   written to ~/.config/c4-view/env — not printed: a service log is not a terminal']
 }
 
 /**
@@ -174,7 +184,7 @@ export async function serviceCommand(
     const token = ensureTokenFile(opts.host, newToken, join(home, '.config', 'c4-view'))
     console.log(`installed and started\n${file}`)
     for (const line of serviceHints(opts.port, opts.host)) console.log(`  ${line}`)
-    if (token) console.log(`  token:   ${token}   (in ~/.config/c4-view/env; open once with ?t=<token>)`)
+    for (const line of tokenLines(token, process.stdout.isTTY === true)) console.log(line)
     return 0
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))

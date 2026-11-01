@@ -36,19 +36,46 @@ export interface Rendered {
   lens: LensReport
 }
 
+/**
+ * One layout attempt at a given width budget.
+ */
+function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
+  const placed = place(order(rank(level, cfg), cfg), level, cfg, measure)
+  const routed = route(placed, cfg, measure)
+  return { placed, routed, audit: audit(placed, routed, level) }
+}
+
+/**
+ * Lay a level out, wrapping its columns only when wrapping does not cost more than it saves.
+ *
+ * A row of columns that runs past the width budget is panned instead of read, so wrapping is offered — but
+ * the cross-row wires it needs can add crossings of their own, and on a dense level they can add more than the
+ * width was worth (measured: a 21-node level went from 26 crossings to 56). So both are laid out and the one
+ * with fewer crossings wins; on a tie the wrapped one, because it is the one that fits the screen.
+ */
+export function layoutLevel(level: LevelSpec, cfg: ReturnType<typeof layoutOf>): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
+  const flat = attempt(level, cfg.rowWidth > 0 ? { ...cfg, rowWidth: 0 } : cfg)
+  if (cfg.rowWidth <= 0) return flat
+  const wrapped = attempt(level, cfg)
+  if ((wrapped.placed.bands?.length ?? 0) < 2) return flat // coverage:invariant — place() always returns bands
+  const narrower = wrapped.routed.size.w < flat.routed.size.w * 0.75
+  const readable = wrapped.audit.crossingsPerEdge <= 1
+  // both, or the strip keeps its single row: wrapping that costs crossings buys width with legibility
+  return narrower && readable ? wrapped : flat
+}
+
 /** Render one level: the whole pipeline, in order, with no hidden state. */
 export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>, linkBase?: string): RenderedLevel {
   const cfg = layoutOf(model)
-  const ranked = order(rank(level, cfg), cfg)
-  const placed = place(ranked, level, cfg, measure)
-  const routed = route(placed, cfg, measure)
+  const { placed, routed, audit: report } = layoutLevel(level, cfg)
   // a composed (expanded) level is not in the model, so its drill map is supplied by the caller
   const svg = emit(placed, routed, level, cfg, palette, {
     drill: drill ?? drillTargets(model, level),
     flow: flowIndex(level),
     linkBase,
   })
-  return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: audit(placed, routed, level) }
+  // coverage:invariant — a level always has a path; 'Overview' is for a hand-built spec
+  return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: report }
 }
 
 /** Render every level (root first, then by depth). */

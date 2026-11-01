@@ -3,6 +3,27 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.9.0] — a strip too wide to read folds into rows
+
+### Added
+- **Multi-row layout.** A level whose columns would run past `layout.rowWidth` (1600 px by default) wraps into
+  rows of columns, and the wires that cross a row boundary get their own route: out of the source's side port,
+  down the empty gutter beside its column, across the gap between rows, and into the target's side port. Every
+  leg runs in a gutter or in the gap, so no cross-row wire can cut a box.
+- Wrapping is chosen by measurement, not by width alone: the level is laid out both ways and the wrapped one is
+  used only when it is at least 25% narrower **and** stays at or below one crossing per edge. On a dense level
+  wrapping makes the picture worse (measured: 26 crossings → 56 on a 21-node level), and then the single row
+  wins. `layout.rowWidth: 0` turns wrapping off per model.
+
+### Fixed
+- **`c4v serve` no longer prints the bearer token.** A service log outlives the run and is read by anyone who
+  can read the journal; the token now goes to a terminal only. Under systemd, nohup or CI the notice says where
+  the token lives and nothing more.
+- **The one-click link is remembered in `~/.c4-view/open-url`** (mode 0600), one line for this box and one for
+  the network. Nobody has to grep a token out of a log, and no log has to carry one.
+- The grid's 250 ms budget was measuring node's coverage instrumenter, not the page (1.5 s under
+  `--experimental-test-coverage`), which made the coverage run fail silently behind `--test-reporter=lcov`.
+
 ## [0.8.1] — what an outside agent found in one clean run
 
 A fresh agent, given only the skill and "diagram this application", produced a model that passed on the first

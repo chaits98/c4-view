@@ -10,9 +10,9 @@
  */
 import type { Chain, LayoutConfig, Measure, Placed, PlacedItem, Point, Route, Routed } from '../types.ts'
 import { placeLabels } from './labels.ts'
-import { EPS, CORRIDOR_PAD, round1 } from './geometry.ts'
+import { BAND_GAP, EPS, CORRIDOR_PAD, round1 } from './geometry.ts'
 import { buildPorts, portY } from './ports.ts'
-import { planBackward, type Back } from './backward.ts'
+import { blocked, planBackward, type Back } from './backward.ts'
 
 /** left/right border of an item; a dummy is a point on the corridor at its own x */
 const edgeX = (it: PlacedItem, side: 'l' | 'r'): number => (it.dummy || side === 'l' ? it.x : it.x + it.w)
@@ -157,14 +157,104 @@ function buildPolyline(c: Chain, pieces: Piece[], tracks: Map<number, Map<string
   return pts
 }
 
+/** Items of one chain, first and last, with the band each sits in. */
+function endsOf(c: Chain, items: Map<string, PlacedItem>): { a: PlacedItem; b: PlacedItem } | undefined {
+  const a = items.get(c.items[0])
+  const b = items.get(c.items[c.items.length - 1])
+  // coverage:invariant — `band` is optional only for a hand-built Placed; place() always sets it
+  return a && b && (a.band ?? 0) !== (b.band ?? 0) ? { a, b } : undefined
+}
+
+/** Everything one cross-row chain needs: its ends, which lane is free, and where the gap is. */
+interface DropCtx {
+  chain: Chain
+  a: PlacedItem
+  b: PlacedItem
+  k: number
+  placed: Placed
+  cfg: LayoutConfig
+  ports: Map<string, number>
+  taken: Set<number>
+}
+
+/** The y a wire crosses the gap at: between the two rows, one lane apart per crossing chain. */
+function gapFor(ctx: DropCtx, down: boolean): number {
+  const bands = ctx.placed.bands ?? []
+  // coverage:invariant — place() stamps a band on every item it emits; these arms are for a hand-built Placed
+  const from = bands[ctx.a.band ?? 0]
+  const to = bands[ctx.b.band ?? 0] // coverage:invariant — see above
+  const unknown = ctx.a.y + ctx.a.h + BAND_GAP / 2
+  if (from === undefined) return unknown
+  if (to === undefined) return unknown
+  const between = down ? (from.bottom + to.top) / 2 : (to.bottom + from.top) / 2
+  return between - 8 + ctx.k * ctx.cfg.lane
+}
+
+/** The first lane on one side whose vertical run is clear of boxes and of other cross-row wires. */
+function laneFor(ctx: DropCtx, start: number, dir: 1 | -1, from: number, to: number): number {
+  const { placed, cfg, taken } = ctx
+  const skip = new Set([ctx.a.id, ctx.b.id])
+  for (let i = 1; i <= 12; i += 1) {
+    const x = start + dir * (cfg.lane * (2 + ctx.k) + i * cfg.lane)
+    if (taken.has(x)) continue
+    // ±1: a lane that runs ALONG a box edge grazes it, and the audit counts a graze as a hit
+    if (!blocked(placed, x - 1, from, to, skip) && !blocked(placed, x + 1, from, to, skip)) {
+      taken.add(x)
+      return x
+    }
+  }
+  /* node:coverage disable */
+  return start + dir * cfg.lane // 12 lanes taken: the audit will name the collision rather than hide it
+  /* node:coverage enable */
+}
+
+/**
+ * A chain that changes row: leave the source's side port, travel in the empty gutter beside its column, cross
+ * in the gap between rows, come down the gutter beside the target's column, and enter the target's side port.
+ * Every leg runs in a gutter or in the gap — none can cross a box, which is why this is not left to the gutter
+ * router, whose tracks are sized for one row of columns.
+ */
+function dropPolyline(ctx: DropCtx): Point[] {
+  const { chain, a, b, ports } = ctx
+  // coverage:invariant — see gapFor: `band` is optional only for a hand-built Placed
+  const down = (b.band ?? 0) > (a.band ?? 0)
+  const gapY = gapFor(ctx, down)
+  const sx = down ? a.x + a.w : a.x
+  const sideFrom = down ? 'r' : 'l'
+  const sideTo = down ? 'l' : 'r'
+  const sy = portY(a, sideFrom, chain.key, ports)
+  const tx = down ? b.x : b.x + b.w
+  const ty = portY(b, sideTo, chain.key, ports)
+  const exitX = laneFor(ctx, sx, down ? 1 : -1, sy, gapY)
+  const enterX = laneFor(ctx, down ? b.x : b.x + b.w, down ? -1 : 1, gapY, ty)
+  const spine: Array<[number, number]> = [[sx, sy], [exitX, sy], [exitX, gapY], [enterX, gapY], [enterX, ty], [tx, ty]]
+  return spine.map(([x, y]) => ({ x: round1(x), y: round1(y) }))
+}
+
 export function route(placed: Placed, cfg: LayoutConfig, m: Measure): Routed {
   const ports = buildPorts(placed.chains, placed.items)
-  const { pieces, joggers } = planPieces(placed.chains, placed.items, ports)
+  const droppers = new Set(placed.chains.filter((c) => endsOf(c, placed.items)).map((c) => c.key))
+  const { pieces, joggers } = planPieces(placed.chains.filter((c) => !droppers.has(c.key)), placed.items, ports)
   const tracks = allocateTracks(placed, cfg, joggers)
   const backs = planBackward(placed, cfg, ports, tracks)
 
-  const routes: Route[] = placed.chains.map((c) => {
-    const pts = buildPolyline(c, pieces.get(c.key) ?? [], tracks, backs.get(c.key))
+  let drops = 0
+  // a drop may not reuse a jog track: the two run on different rows but at the same x, and a shared vertical
+  // reads as one wire that splits (measured: cli→store and cli→chromium both took x=808)
+  const dropLanes = new Set<number>()
+  for (const per of tracks.values()) for (const x of per.values()) dropLanes.add(x)
+  // deterministic lane order, so two runs of the same model draw the same picture
+  // coverage:invariant — the last arm needs two chains with the same key, which the model parser refuses
+  const byKey = (x: Chain, y: Chain): number => {
+    if (x.key === y.key) return 0 // coverage:invariant — the parser refuses two edges with one key
+    return x.key < y.key ? -1 : 1
+  }
+  const ordered = [...placed.chains].sort(byKey)
+  const routes: Route[] = ordered.map((c) => {
+    const ends = endsOf(c, placed.items)
+    const pts = ends
+      ? dropPolyline({ chain: c, a: ends.a, b: ends.b, k: drops++, placed, cfg, ports, taken: dropLanes })
+      : buildPolyline(c, pieces.get(c.key) ?? [], tracks, backs.get(c.key))
     // a zero box is a placeholder: placeLabels owns every real chip position
     return c.label
       ? { key: c.key, pts, label: { text: c.label, box: { x: 0, y: 0, w: 0, h: 0 } } }

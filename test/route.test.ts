@@ -17,7 +17,7 @@ const node = (id: string, rank: number, index: number, x: number, y: number, w =
   index,
   w,
   h,
-  dummy: false,
+  dummy: false, band: 0,
   x,
   y,
 })
@@ -27,7 +27,7 @@ const dummy = (id: string, rank: number, index: number, x: number, y: number, h 
   index,
   w: 0,
   h,
-  dummy: true,
+  dummy: true, band: 0,
   x,
   y,
 })

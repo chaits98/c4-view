@@ -9,6 +9,8 @@ import type { PlacedItem } from '../types.ts'
 export const EPS = 0.5
 /** first corridor row sits this far below the drawing */
 export const CORRIDOR_PAD = 18
+/** Vertical space between two rows of columns: the corridor cross-row wires travel in. */
+export const BAND_GAP = 56
 /** separator inside a port key (`chain\u0001item\u0001side`) */
 export const SEP = '\u0001'
 

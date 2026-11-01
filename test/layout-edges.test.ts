@@ -10,6 +10,7 @@ import { measure } from '../src/metrics.ts'
 import { buildPorts, portX, portY } from '../src/layout/ports.ts'
 import { placeLabels } from '../src/layout/labels.ts'
 import { countCrossings, order } from '../src/layout/order.ts'
+import { layoutLevel } from '../src/render.ts'
 import { blocked, exitY } from '../src/layout/backward.ts'
 
 const cfg = DEFAULT_LAYOUT
@@ -120,4 +121,20 @@ test('a point is a legal route input, even with no run to sit on', () => {
   const routes: Route[] = [{ key: 'k', pts, label: { text: 'x', box: { x: 0, y: 0, w: 0, h: 0 } } }]
   const [out] = placeLabels(routes, placed, cfg, measure)
   assert.ok(out.label?.box.w && out.label.box.w > 0)
+})
+
+test('a long chain wraps into rows when one row would not fit, and stays clean', () => {
+  const nodes = Array.from({ length: 12 }, (_, i) => ({ id: `n${i}`, label: `Node ${i}`, subtype: 'service-logic' as const, tech: 'x' }))
+  const edges = nodes.slice(1).map((n, i) => ({ from: `n${i}`, to: n.id, label: `step${i}`, style: 'flow' as const }))
+  const lv = { path: 'wide', nodes, edges, flow: edges.map((e) => `${e.from}->${e.to}`) }
+  const model = { id: 'wide', title: 'Wide', levels: [{ path: '', nodes: [], edges: [] }, lv] }
+  const { placed, routed, audit: report } = layoutLevel(lv as never, { ...DEFAULT_LAYOUT, rowWidth: 900 })
+  assert.ok((placed.bands?.length ?? 0) > 1, 'the chain is in more than one row')
+  assert.ok(routed.size.w <= 900, `the strip fits the budget (${routed.size.w})`)
+  assert.equal(report.nodeNode, 0)
+  assert.equal(report.wireNode, 0, 'no wire cuts a box, including on the way between rows')
+  // every band sits below the one before it, with a gap for the wires
+  const bands = placed.bands ?? []
+  for (let i = 1; i < bands.length; i += 1) assert.ok(bands[i].top > bands[i - 1].bottom, 'rows do not overlap')
+  assert.ok(model.levels.length === 2)
 })

@@ -92,6 +92,7 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
       # the credential goes in a computed header, not a `-u` argument: a literal auth argument reads
       # to secret scanners (gitleaks `curl-auth-user`) like a committed password
       auth="Basic $(printf '%s:' "${SONAR_READ_TOKEN:-$SONAR_TOKEN}" | base64 -w0)"
+      hdr="Authorization: ${auth}"
       gate=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/qualitygates/project_status?projectKey=c4-view") || return 1
       # The gate's conditions are NEW code only: once a smell is older than the new-code period it stops
       # counting, so a green gate sat next to 11 open issues. This repo's rule is zero, and it is checked

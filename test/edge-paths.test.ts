@@ -84,10 +84,10 @@ test('a token can arrive as a bearer header, a query or a cookie — and one wro
 
 test('a backward gutter finds a free track between the columns', () => {
   const items = new Map<string, PlacedItem>([
-    ['a', { id: 'a', rank: 0, index: 0, x: 0, y: 0, w: 100, h: 40, dummy: false }],
-    ['b', { id: 'b', rank: 1, index: 0, x: 300, y: 0, w: 100, h: 40, dummy: false }],
+    ['a', { id: 'a', rank: 0, index: 0, x: 0, y: 0, w: 100, h: 40, dummy: false, band: 0 }],
+    ['b', { id: 'b', rank: 1, index: 0, x: 300, y: 0, w: 100, h: 40, dummy: false, band: 0 }],
   ])
-  const placed: Placed = { items, boxes: new Map([...items].map(([id, it]) => [id, { x: it.x, y: it.y, w: it.w, h: it.h }])), chains: [], groups: [], size: { w: 400, h: 40 } }
+  const placed: Placed = { items, boxes: new Map([...items].map(([id, it]) => [id, { x: it.x, y: it.y, w: it.w, h: it.h }])), chains: [], groups: [], bands: [], size: { w: 400, h: 40 } }
   const used = new Map<number, Set<number>>()
   const first = gutterTrack(placed, DEFAULT_LAYOUT, 0, used)
   const second = gutterTrack(placed, DEFAULT_LAYOUT, 0, used)

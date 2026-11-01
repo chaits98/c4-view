@@ -40,7 +40,8 @@ test('two nodes in one rank are exactly nodeGap apart', () => {
   const p = place(ranked([['a', 'b']]), lv, cfg, measure)
   const a = box(p, 'a')
   const b = box(p, 'b')
-  assert.equal(a.x, 0, 'widest node starts at the column edge')
+  // a row keeps a margin on its left so a wire can come down beside its first column
+  assert.equal(a.x, cfg.lane * 6, 'widest node starts at the row margin')
   near(b.y, a.y + a.h + cfg.nodeGap, 'vertical gap')
   assert.notEqual(b.y, a.y + a.h, 'boxes must not touch')
 })
