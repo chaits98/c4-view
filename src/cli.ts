@@ -21,13 +21,15 @@
  *
  * @module c4-view/cli
  */
+import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { renderFile, type Rendered } from './render.ts'
-import { printAudit, printLens, writeOutputs } from './cli-output.ts'
+import { reportCommand } from './cli-output.ts'
 import type { Systemctl } from './service.ts'
-import { ModelError } from './model.ts'
+import type { Model } from './types.ts'
+import { ModelError, parseModel } from './model.ts'
 
 const USAGE = `c4v — agent-driven C4 renderer
 
@@ -109,6 +111,15 @@ async function serveCommand(args: Args): Promise<number> {
 }
 
 /** Render the model, or print why it could not be read. */
+/** The parsed model, for the checks that are about the file rather than the picture. */
+function loadModel(file: string): Model | null {
+  try {
+    return parseModel(JSON.parse(readFileSync(file, 'utf8')))
+  } catch {
+    return null
+  }
+}
+
 function loadReport(file: string, level: string | undefined, expand?: string): Rendered | null {
   try {
     return renderFile(file, level, expand)
@@ -236,32 +247,31 @@ async function otherCommand(args: Args, argv: string[]): Promise<number | null> 
 }
 
 /** Render or audit: print the report, write files on `render`, and decide the exit code. */
-function reportCommand(args: Args, report: Rendered): number {
-  const failed = report.levels.filter((l) => !l.audit.ok)
-  printAudit(report.levels, args.has('json'))
-  printLens(report.lens, args.has('json'))
-  if (args.command === 'render') {
-    const scale = Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2))
-    writeOutputs(scale, args.opt('out'), args.has('png'), report)
-  }
-  if (!args.has('strict')) return 0
-  if (failed.length) {
-    console.error(`\n${failed.length}/${report.levels.length} level(s) failed the geometry gate — fix the model, not the picture`)
-  }
-  if (report.lens.problems.length) {
-    console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
-  }
-  return failed.length || report.lens.problems.length ? 1 : 0
-}
-
 async function dispatch(argv: string[]): Promise<number> {
   const args = parseArgs(argv)
   const early = argumentError(args)
   if (early !== null) return early
   const other = await otherCommand(args, argv)
   if (other !== null) return other
-  const report = args.file ? loadReport(args.file, args.opt('level'), args.opt('expand')) : null
-  return report ? reportCommand(args, report) : 2
+  if (!args.file) return 2
+  const report = loadReport(args.file, args.opt('level'), args.opt('expand'))
+  if (!report) return 2
+  const model = loadModel(args.file)
+  if (!model) return 2
+  return reportCommand(
+    {
+      file: args.file,
+      json: args.has('json'),
+      strict: args.has('strict'),
+      requireDocs: args.has('require-docs'),
+      render: args.command === 'render',
+      out: args.opt('out'),
+      png: args.has('png'),
+      scale: Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2)),
+    },
+    report,
+    model,
+  )
 }
 
 // Only the real binary exits the process; importing this module (the tests) must not.

@@ -17,6 +17,7 @@ import { levelOf, levelOrder } from './model.ts'
 import { renderLevel, renderModel, type RenderedLevel } from './render.ts'
 import { expandLevel } from './expand.ts'
 import { hostOf } from './lens.ts'
+import type { LevelDocs } from './docs.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
 import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.ts'
@@ -200,13 +201,49 @@ function svgWidth(svg: string): number {
   return box ? Number(box[1]) : 0
 }
 
+/**
+ * Docs are keyed by the ids of the level they were written for; an expanded page draws those same ids with
+ * the host prefix (`context1/a`). Re-key so the hover panel finds them without every caller knowing.
+ */
+function rekeyDocs(docs: LevelDocs | undefined, spec: LevelSpec): LevelDocs | undefined {
+  if (!docs || !spec.path) return docs
+  const prefix = `${spec.path}/`
+  const shrink = (key: string): string => (key.startsWith(prefix) ? key.slice(prefix.length) : key)
+  const nodes: Record<string, string> = {}
+  for (const [id, html] of Object.entries(docs.nodes)) nodes[`${prefix}${id}`] = html
+  const edges: Record<string, string> = {}
+  for (const [key, html] of Object.entries(docs.edges)) {
+    const [from, to] = key.split('->')
+    edges[`${prefix}${from}->${prefix}${to}`] = html
+  }
+  // the frame's neighbours belong to the parent level and keep their own ids
+  for (const node of spec.nodes) {
+    if (shrink(node.id) !== node.id) continue
+    if (docs.nodes[node.id]) nodes[node.id] = docs.nodes[node.id]
+  }
+  return { nodes, edges }
+}
+
+/** One JSON block per page, not one attribute per node: a doc is prose, and prose does not belong in markup. */
+function docsBlock(docs?: LevelDocs): string {
+  if (!docs || (!Object.keys(docs.nodes).length && !Object.keys(docs.edges).length)) return ''
+  const json = JSON.stringify(docs).replace(/</g, '\\u003c')
+  return `<script type="application/json" id="c4-docs">${json}</script>\n`
+}
+
 /** A model that cannot expand still answers the link, and says why the picture is flat. */
 function noteBanner(note: string): string {
   if (!note) return ''
   return `<section class="c4-audit" role="status"><h2 class="t-title-s">Not a lens</h2><p class="t-body-s">${esc(note)}</p></section>`
 }
 
-export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
+export function viewerPage(
+  model: Model,
+  level: string,
+  zoomRaw: string | null = null,
+  theme: Theme = 'auto',
+  docs?: LevelDocs,
+): string {
   const drawn = draw(model, level, theme)
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
@@ -235,6 +272,8 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note) + wideNote)
     .replace('<!--TEXT-->', () => textVersion(model, level, drawn.spec))
     .replace('<!--SVG-->', () => drawn.level.svg)
+    // the authored docs for this level, as data: viewer.js renders them in the hover panel
+    .replace('</body>', () => `${docsBlock(rekeyDocs(docs, drawn.spec))}</body>`)
     .replace(
       ' data-diagram="" data-level="" data-root=""',
       () => ` data-diagram="${esc(model.id)}" data-level="${esc(level)}" data-root="${esc(root)}"`,

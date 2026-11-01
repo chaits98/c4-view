@@ -53,6 +53,7 @@ step "audit: every fixture and example is green"       bash -c '
     [ -f "$f" ] || continue   # an empty doc dir must not fail the glob itself
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }
   done'
+step "docs: the sample's nodes and edges all have a doc"  node src/cli.ts audit examples/lens.json --strict --require-docs
 step "tokens: every measured contrast pair clears its WCAG threshold" node tools/contrast.mjs
 
 # ── secrets: cheap, and the one class of mistake git keeps forever ────────────

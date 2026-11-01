@@ -281,3 +281,17 @@ body {
   margin: 8px 24px 0;
   color: var(--c4-dim);
 }
+
+/* Prose: short measure, and long docs scroll instead of growing the card. */
+#c4-hover { max-width: 360px; max-height: 46vh; overflow: auto; }
+#c4-hover .c4-hover-desc p {
+  margin: 0 0 8px;
+}
+#c4-hover .c4-hover-desc h2,
+#c4-hover .c4-hover-desc h3 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+}
+#c4-hover .c4-hover-desc code {
+  font-size: 0.95em;
+}

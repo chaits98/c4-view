@@ -84,19 +84,56 @@
       .join(' ')
   }
 
-  function showHover(node, cx, cy) {
+  // The authored doc for this node, when the repo has one; the model's one-line desc otherwise.
+  function docFor(node) {
+    const docs = docPayload()
+    const html = docs && docs.nodes ? docs.nodes[node.dataset.id] : undefined
+    return html || ''
+  }
+
+  // Place beside the node, never on top of it: the card explains the node, so hiding it defeats the
+  // point. Right first, left when the right edge would overflow, always clamped to the viewport.
+  function placeCard(node) {
+    const box = node.getBoundingClientRect()
+    const gap = 12
+    const width = card.offsetWidth
+    const height = card.offsetHeight
+    const right = box.right + gap
+    const left = right + width > innerWidth - 8 ? box.left - width - gap : right
+    card.style.left = `${Math.max(8, Math.min(left, innerWidth - width - 8))}px`
+    card.style.top = `${Math.max(8, Math.min(box.top + box.height / 2 - height / 2, innerHeight - height - 8))}px`
+  }
+
+  function showHover(node) {
     if (!card) return
     cardTitle.textContent = labelOfNode(node)
-    cardDesc.textContent = node.dataset.desc || ''
+    const html = docFor(node)
+    if (html) cardDesc.innerHTML = html
+    else cardDesc.textContent = node.dataset.desc || ''
     card.hidden = false
-    card.style.left = `${Math.max(8, Math.min(cx + 16, innerWidth - card.offsetWidth - 8))}px`
-    card.style.top = `${Math.max(8, Math.min(cy + 18, innerHeight - card.offsetHeight - 8))}px`
+    placeCard(node)
   }
 
   function onHover(e) {
     const node = e.target.closest ? e.target.closest('g[data-id]') : null
-    if (!node || !node.dataset.desc) return hideHover()
-    showHover(node, e.clientX, e.clientY)
+    if (!node || (!node.dataset.desc && !docFor(node))) return hideHover()
+    showHover(node)
+  }
+
+  /** The server embeds every doc for this level as one JSON block; parse it once, lazily. */
+  let docsCache
+  function docPayload() {
+    if (docsCache !== undefined) return docsCache
+    const el = document.getElementById('c4-docs')
+    docsCache = null
+    if (el) {
+      try {
+        docsCache = JSON.parse(el.textContent || '{}')
+      } catch {
+        docsCache = null
+      }
+    }
+    return docsCache
   }
 
   function buildLegend() {

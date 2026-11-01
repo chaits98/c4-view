@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ModelError, levelOf, levelOrder, parseModel } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
+import { docsDir, levelDocs } from './docs.ts'
 import { renderModel } from './render.ts'
 import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
@@ -14,7 +15,7 @@ import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
 import { ID, diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
-import type { Model } from './types.ts'
+import type { LevelSpec, Model } from './types.ts'
 
 const MAX_BODY = 2 * 1024 * 1024
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
@@ -79,8 +80,25 @@ function sendAudit(root: string, req: IncomingMessage, res: ServerResponse, id: 
 function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
   const model = loadModel(root, id)
   if (!model) return missing(req, res, id, theme)
-  if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
-  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme))
+  const found = findLevel(model, level)
+  if (!found) return noLevel(req, res, level, model, theme)
+  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme, docsFor(root, model, id, level, found)))
+}
+
+/**
+ * Docs for the page: the level's own docs, plus — when the level is a lens — the parent's docs, because an
+ * expanded page still draws the neighbours that live outside the frame and a reader can hover those too.
+ */
+function docsFor(root: string, model: Model, id: string, level: string, found: LevelSpec | undefined): ReturnType<typeof levelDocs> | undefined {
+  if (!found) return undefined
+  const dir = docsDir(modelFile(root, id), model)
+  const own = levelDocs(dir, found)
+  const cut = level.lastIndexOf('/')
+  const parentPath = cut < 0 ? '' : level.slice(0, cut)
+  const parent = model.levels.find((l) => l.path === parentPath)
+  if (level === '' || !parent) return own
+  const outer = levelDocs(dir, parent)
+  return { nodes: { ...outer.nodes, ...own.nodes }, edges: { ...outer.edges, ...own.edges } }
 }
 
 function sendExport(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, format: 'svg' | 'png', theme: Theme): void {
