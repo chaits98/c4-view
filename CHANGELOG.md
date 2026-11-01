@@ -3,6 +3,26 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.3] — the lens shows the doors, and every box has a name
+
+### Changed
+- **A lens keeps only its neighbours.** An expanded page used to draw *every* sibling of the parent; now it
+  keeps just the boxes with an edge through the frame — the entry and the exit. The server page had "git hook"
+  on it because git hook happened to be nearby; it does not talk to the server at all.
+- **The level picker is a tree**: indented by depth, prefixed with its C4 level (`C1 · …`, `C3 · …`), path in
+  the tooltip. A flat list of paths made the reader work out the nesting.
+- **Identities are required and drawn**: `C4V-11` on the box, unique in the model, stable across edits. They
+  exist so a person can say "C4V-11 does X" to an agent instead of describing a box by position.
+- **The frame's name is painted last**, on its own plate, so an edge label crossing the boundary can no longer
+  sit on top of the name of the box you just opened.
+
+### Fixed
+- `/health` reports `build` (version + source mtime). The reported "card says clean, page says failed"
+  mismatch was a **stale server process** still serving the pre-composition code; the build stamp makes that
+  visible instead of mysterious.
+- A diagram whose file will not parse is still a 500 that names the file (unchanged), but the audit endpoint
+  for a diagram that does not exist is now a 404 in the tests rather than an untested branch.
+
 ## [0.6.2] — the audit now judges the picture you actually open
 
 ### Fixed

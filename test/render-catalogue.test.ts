@@ -139,7 +139,10 @@ test('a level with a path but no title is named by its path, in the crumbs and t
     { path: 'api/v1', nodes: [{ id: 'b', label: 'B', subtype: 'system' }], edges: [] },
   ] })
   const html = viewerPage(bare, 'api/v1')
-  assert.ok(html.includes('<option value="api/v1" selected>api/v1</option>'), 'the select falls back to the path')
+  // the select is a tree now: indented by depth, prefixed with the C4 level, path in the tooltip
+  assert.ok(/<option value="api\/v1" title="api\/v1" selected>/.test(html), 'the select names the level')
+  assert.ok(html.includes('&#160;&#160;&#160;&#160;&#160;&#160;'), 'indented by depth')
+  assert.ok(html.includes('C3 ·'), 'the C4 level is part of the label')
   assert.ok(
     html.includes('<h1 class="c4-crumb-h1" aria-current="page">api/v1</h1>'),
     'and so does the crumb, as the page heading and the current page',

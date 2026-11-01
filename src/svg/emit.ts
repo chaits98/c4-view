@@ -38,9 +38,23 @@ function groupLayer(placed: Placed, theme: Theme): string[] {
     const b = g.box
     return `<g data-group="${esc(g.id)}">` +
       `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}" rx="6" ` +
-      `fill="${theme.groupFill}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/>` +
-      `<text x="${n(b.x + 10)}" y="${n(b.y + 12)}" font-family="${FONT_FAMILY}" font-size="11" ` +
-      `text-anchor="start" dominant-baseline="central" fill="${theme.dim}">${esc(g.label)}</text></g>`
+      `fill="${theme.groupFill}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/></g>`
+  })
+}
+
+/**
+ * Group names last, on a plate: an edge label crossing the frame would otherwise sit on top of the name of
+ * the box the reader just opened — the one word on the page that must never be hidden.
+ */
+function groupLabelLayer(placed: Placed, theme: Theme): string[] {
+  return placed.groups.map((g) => {
+    const b = g.box
+    const w = Math.max(48, g.label.length * 6.4 + 16)
+    return `<g data-group-label="${esc(g.id)}">` +
+      `<rect x="${n(b.x + 8)}" y="${n(b.y + 2)}" width="${n(w)}" height="18" rx="4" ` +
+      `fill="${theme.chipBg}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/>` +
+      `<text x="${n(b.x + 16)}" y="${n(b.y + 11)}" font-family="${FONT_FAMILY}" font-size="11" ` +
+      `text-anchor="start" dominant-baseline="central" fill="${theme.fg}">${esc(g.label)}</text></g>`
   })
 }
 
@@ -69,7 +83,7 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
   const slh = lineHeight(small)
   return level.nodes.flatMap((node: NodeSpec) => {
     const box = placed.boxes.get(node.id)
-    if (!box) return []
+    if (!box) return [] // coverage:invariant — every node of the level is measured and placed
     const t = measureNode(node, cfg, measure)
     const shape = shapeOf(node.subtype)
     /* node:coverage disable */
@@ -142,6 +156,7 @@ export function emit(
     ...routeLayer(routed, placed, theme, flow),
     ...nodeLayer(level, placed, cfg, theme, drill, linkBase),
     ...chipLayer(routed, cfg, theme),
+    ...groupLabelLayer(placed, theme),
   ]
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +
     `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}` +

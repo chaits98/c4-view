@@ -11,6 +11,7 @@
       "nodes": [
         {
           "id": "who",
+          "identity": "C4V-01",
           "label": "Agent or owner",
           "subtype": "person",
           "tech": "any harness",
@@ -18,6 +19,7 @@
         },
         {
           "id": "c4v",
+          "identity": "C4V-02",
           "label": "c4-view",
           "subtype": "system",
           "tech": "one npm package",
@@ -25,6 +27,7 @@
         },
         {
           "id": "git",
+          "identity": "C4V-03",
           "label": "git",
           "subtype": "external-system",
           "tech": "pre-commit hook",
@@ -32,6 +35,7 @@
         },
         {
           "id": "files",
+          "identity": "C4V-04",
           "label": "repo files",
           "subtype": "file-storage",
           "tech": "model + docs",
@@ -39,6 +43,7 @@
         },
         {
           "id": "browser",
+          "identity": "C4V-05",
           "label": "browser",
           "subtype": "web-application",
           "tech": "reads only",
@@ -89,6 +94,7 @@
       "nodes": [
         {
           "id": "hook",
+          "identity": "C4V-10",
           "label": "git hook",
           "subtype": "batch-job",
           "tech": ".githooks/pre-commit",
@@ -96,6 +102,7 @@
         },
         {
           "id": "cli",
+          "identity": "C4V-11",
           "label": "c4v CLI",
           "subtype": "container-registry",
           "tech": "node, no deps",
@@ -103,10 +110,19 @@
         },
         {
           "id": "server",
+          "identity": "C4V-12",
           "label": "viewer server",
           "subtype": "microservice",
           "tech": "node http, :8788",
           "desc": "Read-only pages behind a token. It never writes a diagram."
+        },
+        {
+          "id": "reader",
+          "identity": "C4V-13",
+          "label": "browser",
+          "subtype": "external-system",
+          "tech": "reads only",
+          "desc": "The reader. It only ever receives pages."
         }
       ],
       "edges": [
@@ -121,11 +137,18 @@
           "to": "server",
           "label": "starts",
           "style": "flow"
+        },
+        {
+          "from": "server",
+          "to": "reader",
+          "label": "serves",
+          "style": "flow"
         }
       ],
       "flow": [
         "hook->cli",
-        "cli->server"
+        "cli->server",
+        "server->reader"
       ]
     },
     {
@@ -138,6 +161,7 @@
       "nodes": [
         {
           "id": "argv",
+          "identity": "C4V-20",
           "label": "argv",
           "subtype": "api-controller",
           "tech": "src/cli.ts",
@@ -145,6 +169,7 @@
         },
         {
           "id": "model",
+          "identity": "C4V-21",
           "label": "model",
           "subtype": "module",
           "tech": "src/model.ts",
@@ -152,6 +177,7 @@
         },
         {
           "id": "layout",
+          "identity": "C4V-22",
           "label": "layout",
           "subtype": "module",
           "tech": "src/layout/*",
@@ -159,6 +185,7 @@
         },
         {
           "id": "svg",
+          "identity": "C4V-23",
           "label": "svg",
           "subtype": "module",
           "tech": "src/svg/emit.ts",
@@ -166,6 +193,7 @@
         },
         {
           "id": "writer",
+          "identity": "C4V-24",
           "label": "writer",
           "subtype": "repository",
           "tech": "src/cli-output.ts",
@@ -173,6 +201,7 @@
         },
         {
           "id": "gate",
+          "identity": "C4V-25",
           "label": "gate",
           "subtype": "service-logic",
           "tech": "src/gate.ts",
@@ -222,11 +251,13 @@
       "path": "c4v/server",
       "title": "L3 — components inside the viewer server",
       "ports": {
-        "cli->server": "http"
+        "cli->server": "http",
+        "server->reader": "pages"
       },
       "nodes": [
         {
           "id": "http",
+          "identity": "C4V-30",
           "label": "http",
           "subtype": "adapter",
           "tech": "src/server.ts",
@@ -234,6 +265,7 @@
         },
         {
           "id": "router",
+          "identity": "C4V-31",
           "label": "routes",
           "subtype": "module",
           "tech": "src/routes.ts",
@@ -241,6 +273,7 @@
         },
         {
           "id": "pages",
+          "identity": "C4V-32",
           "label": "pages",
           "subtype": "module",
           "tech": "src/viewer-page.ts",
@@ -248,6 +281,7 @@
         },
         {
           "id": "token",
+          "identity": "C4V-33",
           "label": "token",
           "subtype": "middleware",
           "tech": "src/security.ts",
@@ -255,6 +289,7 @@
         },
         {
           "id": "store",
+          "identity": "C4V-34",
           "label": "store",
           "subtype": "repository",
           "tech": "~/.c4-view",
@@ -303,6 +338,7 @@
       "nodes": [
         {
           "id": "staged",
+          "identity": "C4V-40",
           "label": "staged",
           "subtype": "config",
           "tech": "git diff --cached",
@@ -310,6 +346,7 @@
         },
         {
           "id": "run",
+          "identity": "C4V-41",
           "label": "run",
           "subtype": "job",
           "tech": "c4v gate check",
@@ -317,6 +354,7 @@
         },
         {
           "id": "exit",
+          "identity": "C4V-42",
           "label": "exit",
           "subtype": "function",
           "tech": "0 | 1",

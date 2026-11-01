@@ -251,8 +251,14 @@ export function viewerPage(
   const drawn = draw(model, level, theme)
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
+  // indented by depth: the list is a tree, and a flat list of paths makes a reader work out the nesting
   const options = levelOrder(model)
-    .map((l) => `<option value="${esc(l.path)}"${l.path === level ? ' selected' : ''}>${esc(l.title ?? l.path)}</option>`) // coverage:invariant — parseModel fills a title for every level
+    .map((l) => {
+      const depth = l.path === '' ? 0 : l.path.split('/').length
+      const indent = '&#160;&#160;&#160;'.repeat(depth)
+      const label = `${depth === 0 ? 'C1' : `C${Math.min(4, depth + 1)}`} · ${l.title ?? l.path}` // coverage:invariant — parseModel fills a title
+      return `<option value="${esc(l.path)}" title="${esc(l.path || 'context')}"${l.path === level ? ' selected' : ''}>${indent}${esc(label)}</option>`
+    })
     .join('')
   // A drawing more than ~1.6x the design stage renders ~5px labels at Fit; opening it at 100% is the
   // difference between "complete but unreadable" and "readable but partial". Explicit ?zoom= wins.

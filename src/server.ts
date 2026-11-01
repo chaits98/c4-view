@@ -1,25 +1,25 @@
 /** HTTP surface: `/` is the grid, `/d/<id>` one diagram; a bad id or level segment is a 404. */
-import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ModelError, levelOf, levelOrder, parseModel } from './model.ts'
+import { ModelError, levelOf, parseModel } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { docsDir, levelDocs } from './docs.ts'
 import { pictureAudits, renderExpanded, renderModel } from './render.ts'
+import { buildStamp } from './build.ts'
+import { list, loadModel, modelFile, save } from './store.ts'
 import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
 import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
-import { ID, diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
+import { diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
 import type { LevelSpec, Model } from './types.ts'
 
 const MAX_BODY = 2 * 1024 * 1024
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
-type Summary = { id: string; title: string; levels: string[]; updated: string }
 
 /** Bind and resolve once listening, so a test can pass port 0. */
 export async function serve(opts: { port: number; root: string; host?: string; token?: string }): Promise<Server & { guard: Guard }> {
@@ -177,7 +177,9 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
       )
     }
     case 'health':
-      return json(res, 200, { ok: true, diagrams: list(root).length })
+      // the build is part of the health answer: a viewer left running from an older checkout serves old
+      // pictures, and nothing else on the page says so
+      return json(res, 200, { ok: true, diagrams: list(root).length, build: buildStamp() })
     case 'diagrams':
       return method === 'POST' ? create(root, req, res) : json(res, 200, list(root))
     case 'model':
@@ -193,39 +195,6 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   }
 }
 
-const modelFile = (root: string, id: string): string => join(root, id, 'model.json')
-
-/** Write `.tmp` then rename: a reader never sees half a model. */
-function save(root: string, id: string, raw: string): void {
-  const dir = join(root, id)
-  mkdirSync(dir, { recursive: true })
-  // uniqueness, not unpredictability: a uuid ends the "insecure PRNG" hotspot and cannot
-  // collide between two processes writing the same id
-  const tmp = join(dir, `.model.${randomUUID()}.tmp`)
-  writeFileSync(tmp, raw)
-  renameSync(tmp, modelFile(root, id))
-}
-
-function loadModel(root: string, id: string): Model | null {
-  const file = modelFile(root, id)
-  return existsSync(file) ? parseModel(JSON.parse(readFileSync(file, 'utf8'))) : null
-}
-
-function list(root: string): Summary[] {
-  if (!existsSync(root)) return []
-  const out: Summary[] = []
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const file = modelFile(root, entry.name)
-    if (!entry.isDirectory() || !ID.test(entry.name) || !existsSync(file)) continue
-    try {
-      const model = parseModel(JSON.parse(readFileSync(file, 'utf8')))
-      out.push({ id: entry.name, title: model.title, levels: levelOrder(model).map((l) => l.path), updated: new Date(statSync(file).mtimeMs).toISOString() })
-    } catch {
-      // a corrupt or half-written file must not take the listing down
-    }
-  }
-  return out.sort((a, b) => a.id.localeCompare(b.id))
-}
 function findLevel(model: Model, path: string) {
   return validLevel(path) ? levelOf(model, path) : undefined
 }

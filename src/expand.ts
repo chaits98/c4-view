@@ -48,7 +48,15 @@ export function expandLevel(model: Model, path: string): Expansion {
   }
 
   const inner = new Map(child.nodes.map((n) => [n.id, prefix(hostId, n.id)]))
-  const outside = parent.nodes.filter((n) => n.id !== hostId).map(cloneNode)
+  // The lens shows what goes in and what comes out, not every sibling of the parent: an unrelated box on
+  // this page is noise that argues the drawer could not tell the two apart.
+  const witness = new Set<string>()
+  for (const edge of crossing) {
+    witness.add(edge.from)
+    witness.add(edge.to)
+  }
+  witness.delete(hostId)
+  const outside = parent.nodes.filter((n) => witness.has(n.id)).map(cloneNode)
   const inside = child.nodes.map((node) => ({ ...cloneNode(node), id: inner.get(node.id)!, group: undefined }))
 
   const frameId = `frame-${hostId}`
@@ -60,7 +68,7 @@ export function expandLevel(model: Model, path: string): Expansion {
   // parent edge key -> composed edge key, so the narration order can follow the re-attached edges
   const remapped = new Map<string, string>()
   const outerEdges = parent.edges
-    .filter((edge) => edge.from !== hostId || edge.to !== hostId)
+    .filter((edge) => edge.from === hostId || edge.to === hostId)
     .map((edge) => {
       const out = remap(edge, hostId, inner, child)
       remapped.set(edgeKey(edge), edgeKey(out))
@@ -85,9 +93,8 @@ export function expandLevel(model: Model, path: string): Expansion {
 
 /** A parent edge that touches the host keeps its outside end and lands on the port's interior node. */
 function remap(edge: EdgeSpec, hostId: string, inner: Map<string, string>, child: LevelSpec): EdgeSpec {
+  // only edges that touch the host are remapped; the caller filters the rest out
   const port = child.ports?.[edgeKey(edge)]
-  const touches = edge.from === hostId || edge.to === hostId
-  if (!touches) return { ...edge }
   if (!port) throw new Error(`level "${child.path}": edge "${edgeKey(edge)}" touches "${hostId}" but has no port`)
   const mapped = inner.get(port)
   if (!mapped) throw new Error(`level "${child.path}": port for "${edgeKey(edge)}" points at "${port}", which is not in the level`)

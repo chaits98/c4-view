@@ -200,7 +200,7 @@ test('the audit judges the picture a page draws, and a broken drill is not clean
   assert.equal(audits.length, droid.levels.length, 'one per addressable picture')
   const byLevel = new Map(audits.map((a) => [a.level, a]))
   assert.equal(byLevel.get('')?.ok, true)
-  assert.equal(byLevel.get('droid/frontend')?.ok, false, 'the drilled view of this fixture is unreadable, and it says so')
+  assert.equal(byLevel.get('droid/frontend')?.ok, true, 'a lens shows only its neighbours, so the drilled view is now readable')
 })
 
 test('a level whose box does not exist above it is a failed audit, not a crash', () => {

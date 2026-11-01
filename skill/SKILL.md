@@ -160,7 +160,9 @@ an installed package.
 | `levels[].path` | `""` at the root; a child is the parent path + node id (`api`, `api/db`). A node with a matching child level becomes clickable — expect several clickable boxes per layer, each with its own level. |
 | `subtype` | exactly one of these 49 — it decides shape and colour: `system, person, role, external-system, boundary, web-application, microservice, database, cache, message-queue, file-storage, search-engine, load-balancer, cdn, serverless-function, batch-job, container-registry, dns, api-gateway, ui-component, api-controller, service-logic, repository, middleware, plugin, module, event-handler, job, adapter, saga, workflow, library, config, migration, test-suite, class, interface, abstract-class, function, enum, type-alias, c4-module, schema, dto, constant, test-file, migration-file, config-file, script`. |
 | `tech` | second line: technology only, ≤5 words. |
-| `identity` | stable human id (`SHP-3`), kept across edits — it is what the user refers to. |
+| `identity` | **required on every node**: a short stable id (`SHP-3`, `C4V-11`), unique in the model, kept
+across edits. It is drawn on the box and it is how a person names a node to you ("C4V-11 does X") — without it
+the user has to describe a box by position and you get to guess wrong. Never re-use an id for a different box. |
 | `rank` | absolute column hint, only when computed order fights the truth (an external that must sit right of everything). A hint is a promise about columns: hint a node left of its predecessor and you have declared that edge backward, and the router answers with a corridor under the whole drawing. |
 | `flow` | the linear narration, every edge key once. Omit → derived depth-first from the source nodes. |
 | `groups` | C4 boundaries; members must be **adjacent in the drawing**. |
