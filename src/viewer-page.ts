@@ -72,6 +72,34 @@ function crumbsFor(model: Model, level: string, root: string): string[] {
   return crumbs
 }
 
+/**
+ * The same diagram as text: containers, then flows, in the model's own order.
+ *
+ * Not decoration. A screen reader gets nothing useful from the SVG, a human greps a text version
+ * faster than they read a drawing, and it is the only way to copy an id out of a diagram.
+ */
+function textVersion(model: Model, level: string): string {
+  const found = levelOf(model, level)
+  if (!found) return ''
+  const nodes = found.nodes
+    .map((n) => {
+      const facts = [n.tech, n.desc].filter((v): v is string => Boolean(v))
+      return `<li><strong>${esc(n.label)}</strong> <code>${esc(n.id)}</code>${facts.length ? ` — ${facts.map(esc).join(' · ')}` : ''}</li>`
+    })
+    .join('')
+  const flows = found.edges
+    .map((e) => {
+      const from = found.nodes.find((n) => n.id === e.from)?.label ?? e.from
+      const to = found.nodes.find((n) => n.id === e.to)?.label ?? e.to
+      return `<li>${esc(from)} → ${esc(to)}${e.label ? ` — ${esc(e.label)}` : ''}</li>`
+    })
+    .join('')
+  return (
+    `<h2 class="t-label-l">Containers (${found.nodes.length})</h2><ul>${nodes}</ul>` +
+    `<h2 class="t-label-l">Flows (${found.edges.length})</h2><ul>${flows || '<li>none on this level</li>'}</ul>`
+  )
+}
+
 export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
   const drawn = renderModel(model, level, paletteOf(theme)).levels[0]
   const root = `/d/${model.id}`
@@ -94,6 +122,7 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
+    .replace('<!--TEXT-->', () => textVersion(model, level))
     .replace('<!--SVG-->', () => drawn.svg)
     .replace(
       ' data-diagram="" data-level="" data-root=""',

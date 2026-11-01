@@ -116,3 +116,13 @@ test('a stray file in the store, or a level path that escapes, is ignored', asyn
 
   assert.equal((await fetch(`${base}/d/${ID}/..%2F..%2Fetc`)).status, 404, 'a traversal is not a level')
 })
+
+test('the page carries a text version, and a skip link before the header', async () => {
+  const html = await (await fetch(`${base}/d/${ID}`)).text()
+  assert.match(html, /<a class="c4-skip" href="#c4-stage">Skip to the diagram<\/a>/, 'the skip link is the first tab stop')
+  assert.ok(html.indexOf('c4-skip') < html.indexOf('<header'), 'and it comes before the bar it skips over')
+  assert.match(html, /<details id="c4-text"/, 'the text version is a details block')
+  assert.match(html, /Containers \(\d+\)/, 'with a count, so a reader knows what they are missing')
+  assert.match(html, /Flows \(\d+\)/)
+  assert.ok(!/<details[^>]*>[\s\S]*<svg/.test(html.slice(html.indexOf('<details'))), 'and no drawing inside it')
+})
