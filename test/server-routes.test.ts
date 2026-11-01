@@ -148,6 +148,11 @@ test('the states a first-time reader meets are pages, not JSON', async () => {
 
   const agent = await fetch(`${base}/d/no-such-diagram`)
   assert.match(await agent.text(), /"error"/, 'an agent still gets JSON')
+
+  // the same broken file through the two routes that do not render a page: an export and the api
+  assert.equal((await fetch(`${base}/d/torn.svg`)).status, 500, 'an export of a broken model is a 500')
+  assert.equal((await fetch(`${base}/api/diagrams/torn`, { headers: html })).status, 200,
+    'the model endpoint still returns the bytes on disk — it is the store, not a renderer')
 })
 
 test('an empty store says so in words, with the next action', async () => {
@@ -161,4 +166,20 @@ test('an empty store says so in words, with the next action', async () => {
     await new Promise<void>((done) => empty.close(() => done()))
     rmSync(emptyRoot, { recursive: true, force: true })
   }
+})
+
+test('a card that had to crop says so with a class, not a badge', async () => {
+  const wide = {
+    id: 'wide-row',
+    title: 'Ten in a row',
+    levels: [{
+      path: '',
+      nodes: Array.from({ length: 10 }, (_, i) => ({ id: `n${i}`, label: `Service ${i}`, subtype: 'system' })),
+      edges: Array.from({ length: 9 }, (_, i) => ({ from: `n${i}`, to: `n${i + 1}` })),
+    }],
+  }
+  assert.equal((await fetch(`${base}/api/diagrams`, { method: 'POST', body: JSON.stringify(wide) })).status, 201)
+  const page = await (await fetch(`${base}/`)).text()
+  assert.match(page, /class="thumb is-wide"/, 'the crop is declared in the markup')
+  assert.ok(!/wide · \d+ px/.test(page), 'and not repeated as a debug badge on the card')
 })
