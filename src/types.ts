@@ -193,6 +193,9 @@ export interface Routed {
 
 // ── audit ────────────────────────────────────────────────────────────────────
 
+/** How many wires cross per edge: the author's target, not just the gate's threshold. */
+export type DensityVerdict = 'crisp' | 'ok' | 'dense' | 'over'
+
 export interface AuditReport {
   /** true when this report is of a drilled picture (parent level with one box expanded) */
   composed?: boolean
@@ -209,6 +212,10 @@ export interface AuditReport {
   wireWire: number
   /** proper orthogonal crossings — unavoidable, minimised, reported */
   crossings: number
+  /** crossings per edge, rounded to two places: the author's target number */
+  crossingsPerEdge: number
+  /** crisp (≤0.5/edge) · ok (≤1) · dense (≤2) · over (the gate) */
+  verdict: DensityVerdict
   /** edges the ranking draws right-to-left; usually a `rank` hint that collides with an edge. Reported, never gated. */
   backward: number
   /** label chip ∩ label chip */

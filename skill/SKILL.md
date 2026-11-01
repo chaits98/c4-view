@@ -225,6 +225,31 @@ it, and an authored one on top doubles the boundary. |
 
 Aspect is **reported, not gated**: a wide picture opens at 100% with a note instead of shrinking its labels to 5px.
 
+### The number to aim at, not just the one to clear
+
+`audit` prints `crossings=13 (1.08/edge, dense)`. The gate is 2/edge; a picture that reads without zooming is
+under **0.5**:
+
+| verdict | crossings per edge | what it means |
+|---|---|---|
+| `crisp` | ≤ 0.5 | reads at 100% |
+| `ok` | ≤ 1 | fine, a wire or two overlaps |
+| `dense` | ≤ 2 | legal, and it looks it — thin the level |
+| `over` | > 2 | the gate refuses it |
+
+**A dense level is a model problem, not a layout problem — and this is measured, not assumed.** Permuting the
+declaration order of an 11-box / 12-edge level 60 times changed its crossings by zero: the ordering, ranking and
+port assignment are already the best they can be *for that graph*. Only the graph changes the picture. Three
+edits, in order of effect:
+
+1. **Fewer boxes.** Two siblings that are always drawn together and always wired to the same things are one
+   component (`store` + `prefs` → one box with two bullets in its doc). This is the big one: the same system at
+   11 boxes reads at 1.08/edge, at 7 boxes at 0.00.
+2. **Fewer bundles.** Three or more edges from one box to the same neighbour set is a layer boundary, not a
+   design: collapse them into one edge whose label names the cargo.
+3. **Split the level.** If the boxes are genuinely distinct, the level is doing two jobs — one of them belongs
+   one level down.
+
 ## Authoring rules
 
 1. **One idea per level, and the level must be the level it claims.** C1 4–7, C2 5–12, C3 6–12, C4 ≤12 nodes;

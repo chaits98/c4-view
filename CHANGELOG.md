@@ -3,6 +3,19 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.8.0] — the picture is a model problem, and the report says so
+
+`audit` now prints what an author should aim at, not just what the gate refuses: `crossings=13 (1.08/edge, dense)`.
+`crisp` ≤ 0.5/edge, `ok` ≤ 1, `dense` ≤ 2, `over` > 2 — also in `--json` as `crossingsPerEdge` and `verdict`.
+
+The measurement behind it, so nobody spends a day on the wrong fix: permuting the declaration order of an
+11-box / 12-edge level **60 times** changed its crossings by zero, and forcing witnesses next to the frame
+changed nothing either. The ordering, ranking and port assignment are already optimal for the graph. The same
+system modelled at 7 boxes instead of 11 reads at 0.00/edge.
+
+The skill gained that table and the three edits that thin a dense level (fewer boxes → fewer bundles → split
+the level), in that order, with the numbers attached.
+
 ## [0.7.0] — the debt the gates were hiding
 
 ### Fixed

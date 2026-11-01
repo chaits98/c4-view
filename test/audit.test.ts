@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { audit, auditLine, isDense, overlapArea } from '../src/audit.ts'
+import { densityOf, audit, auditLine, isDense, overlapArea } from '../src/audit.ts'
 import { parseModel } from '../src/model.ts'
 import { renderModel } from '../src/render.ts'
 import type { Box, LevelSpec, Placed, Route, Routed } from '../src/types.ts'
@@ -195,4 +195,14 @@ test('the density budget is two crossings per edge, and it is a gate', () => {
   assert.equal(isDense(5, 2), true, 'past it is not')
   assert.equal(isDense(3, 0), true, 'a level with no edges and three crossings is broken regardless')
   assert.equal(isDense(20, 12), false, 'fresh2 measured 13/12 and passed')
+})
+
+test('the verdict an author aims at: crisp, ok, dense, over — and an empty level is crisp', () => {
+  assert.deepEqual(densityOf(0, 0), { perEdge: 0, verdict: 'crisp' })
+  assert.deepEqual(densityOf(5, 10), { perEdge: 0.5, verdict: 'crisp' })
+  assert.deepEqual(densityOf(6, 10), { perEdge: 0.6, verdict: 'ok' })
+  assert.deepEqual(densityOf(10, 10), { perEdge: 1, verdict: 'ok' })
+  assert.deepEqual(densityOf(11, 10), { perEdge: 1.1, verdict: 'dense' })
+  assert.deepEqual(densityOf(21, 10), { perEdge: 2.1, verdict: 'over' }, 'past the gate, and it says so')
+  assert.deepEqual(densityOf(4, 2), { perEdge: 2, verdict: 'dense' }, 'two edges get the floor of two crossings')
 })
