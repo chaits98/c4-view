@@ -23,15 +23,34 @@ JSON model is a breaking change to this tool, and is called out as such.
   `docs/STAGE-SIGNATURES.md`, and a viewer probe that hung. They were how this was built, not what it is.
 - Committed PNGs under `gallery/` — regenerable from the models beside them (`c4v render <model> --png`).
 
-## [0.2.2] — the first shippable cut
+## [0.3.0] — the skill goes everywhere, and stops guessing
 
 ### Added
-- `schema.json` — JSON Schema for the model, validated against every fixture in the suite.
 - `c4v skill install | list` — one JSONL registry (`skill/harnesses.jsonl`, 14 harnesses) decides where the
   skill goes; `--global` installs into every harness detected on the machine, `--harness id,id` names them.
   Adding a harness is one line.
 - `c4v prefs pending | show | set | greeting` — questions asked once, stored in `~/.c4-view/prefs.json`.
   A release that adds a question makes it pending for existing users; they are asked only that.
+- `tools/matrix.sh` — one image, one prompt, sequential runs, graded on exit; `--model local|deepseek`,
+  `--repeat N`, `--tag`. Four rounds of twelve cells are recorded in `docs/plans/GRID.md`.
+- `docs/design/` — the viewer's UX guideline, Material 3 light/dark token set, and `PARKED.md`.
+- Grading now covers 100 points: 90 machine-checked plus a 10-point visual pass recorded in
+  `grading/visual.json`. Latest: **deepseek 95.8/100, local 83.6/100**, gates 20/20 and delivery 5/5.
+
+### Changed
+- SKILL.md 5,154 → 3,880 tokens with the rules intact, after four measured rounds rather than by taste.
+- Three rules the rounds forced: a level that prints `FAIL` is a hard stop; every path you write stays inside
+  the repo (a denied `/tmp` write looked like a broken tool and ended runs); and the small seams that keep
+  being dropped are named (HTTP server, test client, static serving, proxy trust, query parser, content
+  negotiation, middleware chain).
+- The skill never sends an agent into `~/.c4-view` — a workspace-scoped harness denies it — and a rejected
+  `prefs` call must never end the run. Scratch is `docs/c4/.scratch/`; the tool's own scratch is
+  `~/.c4-view/scratch/`.
+
+## [0.2.2] — the first shippable cut
+
+### Added
+- `schema.json` — JSON Schema for the model, validated against every fixture in the suite.
 - `c4v service install | uninstall | status` — the viewer as a systemd **user** unit, so it survives the
   shell that started it. Linux only, by design.
 - `scripts/check.sh` — the one pipeline: `--fast` for pre-commit (~10 s), `--full` for pre-push and CI
