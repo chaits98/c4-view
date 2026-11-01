@@ -11,6 +11,7 @@ import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
 import { levelSlug } from './slug.ts'
+import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import type { Model } from './types.ts'
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -115,11 +116,11 @@ function sendAudit(root: string, res: ServerResponse, id: string, level: string 
   json(res, 200, renderModel(model, level).levels[0].audit)
 }
 
-function sendPage(root: string, res: ServerResponse, id: string, level: string, zoom: string | null): void {
+function sendPage(root: string, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
   const model = loadModel(root, id)
   if (!model) return missing(res, id)
   if (!findLevel(model, level)) return noLevel(res, level, model)
-  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom))
+  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme))
 }
 
 function sendExport(root: string, res: ServerResponse, id: string, level: string, format: 'svg' | 'png'): void {
@@ -159,10 +160,13 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
     return json(res, 405, { error: `${method} is not allowed here` })
   }
   const level = url.searchParams.get('level')
+  // the scheme: URL → cookie; append, so the guard's token cookie survives this one
+  const theme = themeOf(url.searchParams.get('theme'), req.headers.cookie)
+  if (url.searchParams.has('theme')) res.appendHeader('Set-Cookie', themeCookie(theme))
 
   switch (route.kind) {
     case 'index':
-      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id))))
+      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id)), theme))
     case 'health':
       return json(res, 200, { ok: true, diagrams: list(root).length })
     case 'diagrams':
@@ -172,7 +176,7 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
     case 'audit':
       return sendAudit(root, res, route.id, level)
     case 'page':
-      return sendPage(root, res, route.id, route.level, url.searchParams.get('zoom'))
+      return sendPage(root, res, route.id, route.level, url.searchParams.get('zoom'), theme)
     case 'export':
       return sendExport(root, res, route.id, level ?? '', route.format)
     case 'asset':

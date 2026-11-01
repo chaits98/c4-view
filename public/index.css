@@ -12,13 +12,18 @@ body {
   color: var(--on-surface);
 }
 
+/* the M3 top app bar: sticky, tonal, one action cluster at the trailing edge */
 .idx-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
-  padding: var(--space-6) var(--space-8) var(--space-3);
-  max-width: 1680px;
-  margin: 0 auto;
+  min-height: 64px;
+  padding-inline: max(var(--space-4), calc((100% - 1680px) / 2));
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .idx-bar h1 {
@@ -29,13 +34,39 @@ body {
   color: var(--on-surface-variant);
 }
 
+/* three plain links: the scheme is URL state, remembered in a cookie, no script */
+.idx-scheme-group {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.idx-scheme {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  color: var(--on-surface-variant);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-sm);
+  text-decoration: none;
+}
+
+.idx-scheme:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+
+.idx-scheme[aria-current='true'] {
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+  border-color: var(--secondary);
+}
+
 #grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-6);
-  padding: var(--space-3) var(--space-8) var(--space-12);
-  max-width: 1680px;
-  margin: 0 auto;
+  padding: var(--space-6) max(var(--space-4), calc((100% - 1680px) / 2)) var(--space-12);
 }
 
 .card {
@@ -53,6 +84,7 @@ body {
 /* a state layer, not a lift: M3 dropped the hover translate, and 30 of them is a fairground */
 .card:hover {
   border-color: var(--outline);
+  background: color-mix(in srgb, var(--on-surface) 8%, var(--surface-container));
 }
 
 /* the thumbnail is the diagram's own SVG, on the document surface it was drawn for */
@@ -99,11 +131,14 @@ body {
   right: var(--space-2);
   bottom: var(--space-2);
   z-index: 1;
-  padding: 2px var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--space-2);
   color: var(--d-edge-label);
   background: color-mix(in srgb, var(--canvas) 88%, transparent);
   border: 1px solid var(--outline);
-  border-radius: var(--shape-full);
+  border-radius: var(--shape-sm);
 }
 
 .meta {
@@ -123,11 +158,15 @@ body {
 }
 
 .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   align-self: flex-start;
+  min-height: 32px;
   margin-top: var(--space-1);
-  padding: 2px var(--space-2);
+  padding: 0 var(--space-3);
   border: 1px solid;
-  border-radius: var(--shape-full);
+  border-radius: var(--shape-sm);
 }
 
 .badge.ok {

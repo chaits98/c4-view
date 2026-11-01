@@ -15,6 +15,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { levelOf, levelOrder } from './model.ts'
 import { renderModel } from './render.ts'
+import { themeAttribute, type Theme } from './theme-choice.ts'
 import type { Model } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
@@ -50,7 +51,7 @@ function zoomBar(href: (value: string) => string, zoom: number | null): string {
   ].join('')
 }
 
-export function viewerPage(model: Model, level: string, zoomRaw: string | null = null): string {
+export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
   const drawn = renderModel(model, level).levels[0]
   const levels = levelOrder(model)
   const root = `/d/${model.id}`
@@ -76,6 +77,7 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
   const template = readFileSync(join(PUBLIC, 'viewer.html'), 'utf8')
   return template
     .replace('<title>C4 viewer</title>', () => `<title>${esc(drawn.title)} — ${esc(model.title)}</title>`)
+    .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))

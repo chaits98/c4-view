@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { renderModel } from './render.ts'
 import { compareKeys } from './layout/geometry.ts'
+import { themeAttribute, type Theme } from './theme-choice.ts'
 import type { Model } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
@@ -77,17 +78,26 @@ function card(entry: IndexEntry): string {
     `${entry.wide ? `<span class="chip t-label-m">wide · ${entry.width} px</span>` : ''}</span>` +
     `<span class="meta"><h2 class="t-title-m">${esc(entry.title)}</h2>` +
     `<p class="t-body-s">${esc(entry.id)} · ${facts}</p>` +
-    `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}">${state}</span></span></a>`
+    `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}"><span aria-hidden="true">${entry.ok ? '●' : '!'}</span>${state}</span></span></a>`
   )
 }
 
-export function indexPage(entries: readonly IndexEntry[]): string {
+/** Three plain links: the state is the URL, the cookie remembers it, no script runs. */
+function schemeControl(theme: Theme): string {
+  return (['auto', 'light', 'dark'] as const)
+    .map((value) => `<a class="idx-scheme" href="/?theme=${value}"${theme === value ? ' aria-current="true"' : ''}>${value[0].toUpperCase()}${value.slice(1)}</a>`)
+    .join('')
+}
+
+export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto'): string {
   const sorted = [...entries].sort(byUpdated)
   const cards = sorted.length
     ? sorted.map(card).join('')
     : `<div class="empty"><p>No diagrams yet.</p><p>Post a model: <code>curl -X POST --data @model.json http://calm:8788/api/diagrams</code></p></div>`
   const diagramCount = sorted.length === 1 ? '1 diagram' : `${sorted.length} diagrams`
   return readFileSync(`${PUBLIC}index.html`, 'utf8')
+    .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
+    .replace('<!--THEMELINKS-->', () => schemeControl(theme))
     .replace('<!--COUNT-->', () => esc(diagramCount))
     .replace('<!--CARDS-->', () => cards)
 }

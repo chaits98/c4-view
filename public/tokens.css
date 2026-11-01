@@ -1,8 +1,10 @@
 /* c4-view design tokens — the Material 3 baseline, one file, no build step.
  *
  * Every colour, radius, space step, duration and type role the viewer and the grid use is
- * declared here and nowhere else: the other two stylesheets are made of var() and layout,
- * so a scheme flip is CSS answering the OS, not JavaScript rewriting attributes.
+ * declared here and nowhere else. Each colour is one `light-dark()` pair resolved by
+ * `color-scheme`: the OS decides by default, and a reader who picked a side gets
+ * `data-theme="light|dark"` on <html> — one declaration per token, no duplicated block, no
+ * JavaScript, nothing to flash.
  *
  * Provenance: visual-spec-m3.md §1 (colour), §4 (type), §5 (shape), §6 (space),
  * §7 (motion), §11 (this sheet). `node tools/contrast.mjs` re-measures every pair below
@@ -49,34 +51,36 @@
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* elevation (level 1 and 2 are the only ones this product floats) */
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
-  --shadow-2: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px 2px rgb(0 0 0 / 15%);
+  --shadow-1: 0 1px 2px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 30%)),
+              0 1px 3px 1px light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 15%));
+  --shadow-2: 0 1px 2px light-dark(rgb(0 0 0 / 12%), rgb(0 0 0 / 30%)),
+              0 2px 6px 2px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 15%));
 
-  /* light scheme */
-  --surface: #fef7ff;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #f7f2fa;
-  --surface-container: #f3edf7;
-  --surface-container-high: #ece6f0;
-  --surface-container-highest: #e6e0e9;
-  --on-surface: #1d1b20;
-  --on-surface-variant: #49454f;
-  --outline: #79747e;
-  --outline-variant: #cac4d0;
-  --primary: #6750a4;
-  --on-primary: #ffffff;
-  --primary-container: #eaddff;
-  --on-primary-container: #21005d;
-  --secondary: #625b71;
-  --secondary-container: #e8def8;
-  --on-secondary-container: #1d192b;
-  --tertiary: #7d5260;
-  --error: #b3261e;
-  --on-error: #ffffff;
-  --error-container: #f9dedc;
-  --on-error-container: #410e0b;
-  --inverse-surface: #322f35;
-  --inverse-on-surface: #f5eff7;
+  /* colour: light, then dark */
+  --surface: light-dark(#fef7ff, #141218);
+  --surface-container-lowest: light-dark(#ffffff, #0f0d13);
+  --surface-container-low: light-dark(#f7f2fa, #1d1b20);
+  --surface-container: light-dark(#f3edf7, #211f26);
+  --surface-container-high: light-dark(#ece6f0, #2b2930);
+  --surface-container-highest: light-dark(#e6e0e9, #36343b);
+  --on-surface: light-dark(#1d1b20, #e6e0e9);
+  --on-surface-variant: light-dark(#49454f, #cac4d0);
+  --outline: light-dark(#79747e, #938f99);
+  --outline-variant: light-dark(#cac4d0, #49454f);
+  --primary: light-dark(#6750a4, #d0bcff);
+  --on-primary: light-dark(#ffffff, #381e72);
+  --primary-container: light-dark(#eaddff, #4f378b);
+  --on-primary-container: light-dark(#21005d, #eaddff);
+  --secondary: light-dark(#625b71, #ccc2dc);
+  --secondary-container: light-dark(#e8def8, #4a4458);
+  --on-secondary-container: light-dark(#1d192b, #e8def8);
+  --tertiary: light-dark(#7d5260, #efb8c8);
+  --error: light-dark(#b3261e, #f2b8b5);
+  --on-error: light-dark(#ffffff, #601410);
+  --error-container: light-dark(#f9dedc, #8c1d18);
+  --on-error-container: light-dark(#410e0b, #f9dedc);
+  --inverse-surface: light-dark(#322f35, #e6e0e9);
+  --inverse-on-surface: light-dark(#f5eff7, #322f35);
 
   /* the diagram document surface and its palette — the dark column, always (§8.1) */
   --canvas: #0f0d13;
@@ -93,38 +97,24 @@
   --d-group: #938f99;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #141218;
-    --surface-container-lowest: #0f0d13;
-    --surface-container-low: #1d1b20;
-    --surface-container: #211f26;
-    --surface-container-high: #2b2930;
-    --surface-container-highest: #36343b;
-    --on-surface: #e6e0e9;
-    --on-surface-variant: #cac4d0;
-    --outline: #938f99;
-    --outline-variant: #49454f;
-    --primary: #d0bcff;
-    --on-primary: #381e72;
-    --primary-container: #4f378b;
-    --on-primary-container: #eaddff;
-    --secondary: #ccc2dc;
-    --secondary-container: #4a4458;
-    --on-secondary-container: #e8def8;
-    --tertiary: #efb8c8;
-    --error: #f2b8b5;
-    --on-error: #601410;
-    --error-container: #8c1d18;
-    --on-error-container: #f9dedc;
-    --inverse-surface: #e6e0e9;
-    --inverse-on-surface: #322f35;
-  }
+
+/* a reader who picked a side overrides the OS; auto leaves color-scheme alone */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 /* type utilities — one class per role this product actually sets (§4) */
 .t-headline-s {
   font: 400 24px/32px var(--font-plain);
+  letter-spacing: 0;
+}
+
+.t-title-l {
+  font: 400 22px/28px var(--font-plain);
   letter-spacing: 0;
 }
 

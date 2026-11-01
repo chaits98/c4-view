@@ -15,17 +15,21 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const CSS = readFileSync(fileURLToPath(new URL('../public/tokens.css', import.meta.url)), 'utf8')
-const DARK_AT = CSS.indexOf('@media (prefers-color-scheme: dark)')
 
-/** `--name: #hex` pairs, in source order, from one slice of the sheet. */
-function tokenize(block) {
+/**
+ * `--name: light-dark(#light, #dark)` or a bare `--name: #hex` (a token that does not flip).
+ * One form to read, because the sheet now declares each colour once.
+ */
+function tokens() {
   const out = new Map()
-  for (const [, name, hex] of block.matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-f]{6})\b/gi)) out.set(name, hex)
+  const pair = /--([a-z0-9-]+)\s*:\s*light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)/gi
+  const flat = /--([a-z0-9-]+)\s*:\s*(#[0-9a-f]{6});/gi
+  for (const [, name, light, dark] of CSS.matchAll(pair)) out.set(name, { light, dark })
+  for (const [, name, hex] of CSS.matchAll(flat)) if (!out.has(name)) out.set(name, { light: hex, dark: hex })
   return out
 }
 
-const light = tokenize(CSS.slice(0, DARK_AT))
-const dark = new Map([...light, ...tokenize(CSS.slice(DARK_AT))])
+const all = tokens()
 
 /** WCAG 2.x relative luminance of one hex colour. */
 function luminance(hex) {
@@ -58,17 +62,15 @@ const PAIRS = [
   ['active edge / flow dot', 'd-edge-active', 'canvas', 3, 'SC 1.4.11'],
 ]
 
-/** The canvas rows are the same in both schemes: report the measured value twice. */
-const canvasRow = (fg) => fg.startsWith('d-') || fg === 'canvas'
-
+/** The canvas rows cannot flip: their tokens are declared once. */
 let failed = 0
 const rows = PAIRS.map(([label, fg, bg, need, criterion]) => {
-  const measured = (tokens) => {
-    const [a, b] = [tokens.get(fg), tokens.get(bg)]
+  const measured = (scheme) => {
+    const [a, b] = [all.get(fg)?.[scheme], all.get(bg)?.[scheme]]
     return a && b ? ratio(a, b) : NaN
   }
-  const l = measured(light)
-  const d = canvasRow(fg) ? l : measured(dark)
+  const l = measured('light')
+  const d = measured('dark')
   const ok = Number.isFinite(l) && l >= need && d >= need
   if (!ok) failed++
   return `| ${label} | \`${fg}\` on \`${bg}\` | ${l.toFixed(2)} | ${d.toFixed(2)} | ${need.toFixed(1)} | ${ok ? 'pass' : 'FAIL'} | ${criterion} |`

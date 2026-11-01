@@ -173,6 +173,15 @@ test('concurrent posts of one id leave one parseable file', async () => {
   assert.ok(['First', 'Second'].includes(stored.title), `last write wins, whole: ${stored.title}`)
 })
 
+test('?theme= renders that scheme, remembers it, and leaves auto to the OS', async () => {
+  const dark = await fetch(`${base}/?theme=dark`)
+  assert.match(await dark.text(), /<html lang="en" data-theme="dark">/)
+  assert.match(dark.headers.get('set-cookie') ?? '', /c4theme=dark/, 'remembered for the next page')
+  assert.match(await (await fetch(`${base}/?theme=light`)).text(), /<html lang="en" data-theme="light">/)
+  assert.match(await (await fetch(`${base}/`)).text(), /<html lang="en">/, 'auto ships no attribute')
+  assert.match(await (await fetch(`${base}/?theme=nonsense`)).text(), /<html lang="en">/, 'nonsense falls back to auto')
+})
+
 test('the index grid lists every diagram with a live thumbnail, and "/" never 404s', async () => {
   // the empty state is a rendering fact of the builder, not of the shared server fixture
   assert.match(indexPage([]), /No diagrams yet/)
