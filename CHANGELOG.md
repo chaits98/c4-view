@@ -3,6 +3,15 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.1] — the model in this package describes the package
+
+### Fixed
+- `docs/c4/c4-view.json` now has the three C4 levels it should have had: L1 context → L2 the containers
+  inside `c4-view` (CLI, viewer server, git hook) → L3 the components inside the CLI. The previous model
+  jumped from the context straight to source files, so L2 was missing and L3 was wearing L4's clothes.
+- 29 node and edge docs, flat under the model id, all passing `--require-docs`, and all three levels green
+  under `--strict`.
+
 ## [0.6.0] — the picture you can drill into, and a gate that keeps it true
 
 ### Added
