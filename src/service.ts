@@ -63,13 +63,20 @@ WantedBy=default.target
 `
 }
 
+/** `systemctl` by absolute path — never resolved through PATH, which is user-controlled here. */
+const SYSTEMCTL = ['/usr/bin/systemctl', '/bin/systemctl', '/usr/local/bin/systemctl'].find((p) => existsSync(p))
+const systemctl = (args: string[], encoding?: 'utf8'): string | Buffer => {
+  if (!SYSTEMCTL) throw new Error('systemctl not found at /usr/bin, /bin or /usr/local/bin')
+  return encoding ? execFileSync(SYSTEMCTL, args, { encoding }) : execFileSync(SYSTEMCTL, args, { stdio: 'pipe' })
+}
+
 /** Refuse politely on anything that is not a systemd user session. */
 function assertSystemd(): void {
   if (process.platform !== 'linux') {
     throw new Error(`c4v service is Linux/systemd only (this is ${process.platform}); run \`c4v serve\` and use your platform's own supervisor.`)
   }
   try {
-    execFileSync('systemctl', ['--user', 'show-environment'], { stdio: 'pipe' })
+    systemctl(['--user', 'show-environment'])
   } catch {
     throw new Error('no systemd user session found (systemctl --user failed); run `c4v serve` instead.')
   }
@@ -98,7 +105,7 @@ export function installService(opts: ServiceOptions): string {
   mkdirSync(join(homedir(), '.config', 'systemd', 'user'), { recursive: true })
   writeFileSync(file, unitText(opts))
   const run = (args: string[]): void => {
-    execFileSync('systemctl', ['--user', ...args], { stdio: 'pipe' })
+    systemctl(['--user', ...args])
   }
   run(['daemon-reload'])
   run(['enable', UNIT])
@@ -114,7 +121,7 @@ export function uninstallService(): boolean {
   if (!existsSync(file)) return false
   const run = (args: string[]): void => {
     try {
-      execFileSync('systemctl', ['--user', ...args], { stdio: 'pipe' })
+      systemctl(['--user', ...args])
     } catch {
       // disabling a unit that is already stopped is not a failure worth reporting
     }
@@ -132,7 +139,7 @@ export function serviceStatus(): number {
     return 1
   }
   try {
-    process.stdout.write(execFileSync('systemctl', ['--user', 'status', UNIT, '--no-pager'], { encoding: 'utf8' }))
+    process.stdout.write(systemctl(['--user', 'status', UNIT, '--no-pager'], 'utf8') as string)
     return 0
   } catch (error) {
     const stdout = (error as { stdout?: string }).stdout

@@ -94,7 +94,20 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
   if have sonar-scanner || [ -x "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner" ]; then
     scanner=$(command -v sonar-scanner || echo "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner")
     if [ -z "${SONAR_TOKEN:-}" ]; then set -a; . "$HOME/.env"; set +a; fi
-    step "sonar: analysis + quality gate" bash -c "node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1 && '$scanner' -Dsonar.login=\"\$SONAR_TOKEN\" >/dev/null"
+    # the scanner exits 0 once the analysis is UPLOADED; only the API knows whether the gate
+    # passed. Reading it is the difference between "sonar ran" and "sonar is green".
+    sonar() {
+      node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1 || return 1
+      "$scanner" -Dsonar.login="$SONAR_TOKEN" >/dev/null || return 1
+      # the credential goes in a computed header, not a `-u` argument: a literal auth argument reads
+      # to secret scanners (gitleaks `curl-auth-user`) like a committed password
+      auth="Basic $(printf '%s:' "${SONAR_READ_TOKEN:-$SONAR_TOKEN}" | base64 -w0)"
+      gate=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/qualitygates/project_status?projectKey=c4-view") || return 1
+      printf '%s' "$gate" | grep -q '"status":"OK"' && return 0
+      printf '%s\n' "$gate" | sed 's/},{/}\n{/g' | grep 'ERROR' >&2
+      return 1
+    }
+    step "sonar: analysis + quality gate (reads the verdict, not just the upload)" sonar
   else
     skip "sonar" "scanner binary not installed"
   fi

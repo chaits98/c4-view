@@ -77,7 +77,10 @@ function resolveAnswer(question: Question, given: string): string {
   const trimmed = given.trim()
   const mapped = question.values ? question.values[trimmed] : undefined
   const short = question.values ? Object.values(question.values) : []
-  const value = mapped ?? (question.values ? (short.includes(trimmed) ? trimmed : undefined) : trimmed)
+  const byShortName = question.values ? short.includes(trimmed) : false
+  let fallback: string | undefined = trimmed
+  if (question.values) fallback = byShortName ? trimmed : undefined
+  const value = mapped ?? fallback
   const allowed = question.values ? [...question.options, ...short] : question.options
   if (value === undefined || (!question.values && !question.options.includes(trimmed)) || value === '') {
     throw new Error(`"${given}" is not one of: ${allowed.join(' | ')}`)

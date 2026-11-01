@@ -5,7 +5,7 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { measure } from '../src/metrics.ts'
+import { lineHeight, measure } from '../src/metrics.ts'
 import { measureNode } from '../src/layout/measure-node.ts'
 import { DEFAULT_LAYOUT, SUBTYPE_KIND, type Box, type LayoutConfig, type LevelSpec, type NodeSpec, type Placed, type PlacedItem, type Route, type Routed, type Subtype } from '../src/types.ts'
 import { DARK } from '../src/theme.ts'
@@ -107,7 +107,7 @@ test('no NaN, undefined or [object Object] leaks into the output', () => {
 })
 
 test('every subtype maps to a shape and every shape path is closed and finite', () => {
-  const ids: ShapeId[] = ['rect', 'rounded', 'stadium', 'subroutine', 'cylinder', 'circle', 'diamond', 'hexagon', 'parallelogram', 'trapezoid', 'trapezoidAlt', 'bars', 'actor']
+  const ids: ShapeId[] = ['rect', 'rounded', 'stadium', 'subroutine', 'cylinder', 'circle', 'diamond', 'hexagon', 'parallelogram', 'trapezoid', 'trapezoidAlt', 'actor']
   const box: Box = { x: 4, y: 6, w: 120, h: 60 }
   for (const id of ids) {
     const d = shapePath(id, box)
@@ -152,6 +152,22 @@ test('each node draws only its own text inside its own group', () => {
     assert.ok(start >= 0, node.id)
     const slice = svg.slice(start, svg.indexOf('</g>', start))
     for (const line of measureNode(node, cfg, measure).lines) assert.ok(slice.includes(esc(line)), `${node.id}: ${line}`)
+  }
+})
+
+test('every shape\'s box is big enough for the text band it declares', () => {
+  // the defect this catches: a `person` box was measured without the head, so the third line
+  // rendered 7.8px below the silhouette, and a `cylinder` wrote its id across the top ellipse
+  const small = Math.max(9, cfg.fontSize - 2)
+  for (const subtype of Object.keys(SUBTYPE_KIND) as Subtype[]) {
+    const node: NodeSpec = { id: 'n', label: 'A label long enough to wrap one line', subtype, identity: 'SH-1', tech: 'Node 22' }
+    const t = measureNode(node, cfg, measure)
+    const inset = shapeTextInset(shapeOf(subtype), { x: 0, y: 0, w: t.w, h: t.h })
+    const textH = lineHeight(small) * 2 + t.lines.length * lineHeight(cfg.fontSize)
+    const bandH = t.h - inset.top - inset.bottom
+    assert.ok(bandH >= textH, `${subtype}: band ${bandH.toFixed(1)} < text ${textH.toFixed(1)}`)
+    const widest = Math.max(...t.lines.map((l) => measure.width(l, cfg.fontSize)))
+    assert.ok(t.w - inset.left - inset.right >= widest, `${subtype}: width cannot hold the label`)
   }
 })
 

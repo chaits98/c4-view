@@ -8,7 +8,7 @@ import type { Box, Subtype } from '../types.ts'
 
 export type ShapeId =
   | 'rect' | 'rounded' | 'stadium' | 'subroutine' | 'cylinder' | 'circle'
-  | 'diamond' | 'hexagon' | 'parallelogram' | 'trapezoid' | 'trapezoidAlt' | 'bars' | 'actor'
+  | 'diamond' | 'hexagon' | 'parallelogram' | 'trapezoid' | 'trapezoidAlt' | 'actor'
 
 /**
  * Where text may live inside a shape, in px. A sloped or headed outline eats the box's
@@ -18,16 +18,24 @@ export type ShapeId =
 export function shapeTextInset(shape: ShapeId, box: Box): { top: number; bottom: number; left: number; right: number } {
   switch (shape) {
     case 'actor': {
+      // the head owns the top of the box; the body's flat bottom needs half a line of room
       const r = Math.min(box.w * 0.22, box.h * 0.2)
-      return { top: 2.35 * r + 3, bottom: 5, left: 6, right: 6 }
+      return { top: 2.35 * r + 3, bottom: 10, left: 6, right: 6 }
+    }
+    case 'subroutine': {
+      const off = Math.min(10, box.w * 0.12)
+      return { top: 0, bottom: 0, left: off + 4, right: off + 4 }
     }
     case 'diamond':
       return { top: box.h * 0.2, bottom: box.h * 0.2, left: box.w * 0.2, right: box.w * 0.2 }
     case 'hexagon':
     case 'circle':
       return { top: box.h * 0.14, bottom: box.h * 0.14, left: box.w * 0.12, right: box.w * 0.12 }
-    case 'cylinder':
-      return { top: 10, bottom: 12, left: 6, right: 6 }
+    case 'cylinder': {
+      // the top ellipse is 2·ry tall; text that starts before it has finished sits on the curve
+      const ry = Math.min(box.h / 6, box.w / 4)
+      return { top: 2 * ry + 3, bottom: ry + 6, left: 6, right: 6 }
+    }
     case 'trapezoid':
     case 'trapezoidAlt':
       return { top: 5, bottom: 5, left: box.w * 0.1, right: box.w * 0.1 }
@@ -48,14 +56,14 @@ const SHAPE: Record<Subtype, ShapeId> = {
   'microservice': 'rect',
   'database': 'cylinder',
   'cache': 'cylinder',
-  'message-queue': 'bars',
+  'message-queue': 'subroutine',
   'file-storage': 'rect',
   'search-engine': 'circle',
   'load-balancer': 'diamond',
   'cdn': 'circle',
   'serverless-function': 'hexagon',
-  'batch-job': 'bars',
-  'container-registry': 'bars',
+  'batch-job': 'subroutine',
+  'container-registry': 'subroutine',
   'dns': 'circle',
   'api-gateway': 'subroutine',
 
@@ -67,7 +75,7 @@ const SHAPE: Record<Subtype, ShapeId> = {
   'plugin': 'rect',
   'module': 'rect',
   'event-handler': 'hexagon',
-  'job': 'bars',
+  'job': 'subroutine',
   'adapter': 'parallelogram',
   'saga': 'diamond',
   'workflow': 'diamond',
@@ -80,7 +88,7 @@ const SHAPE: Record<Subtype, ShapeId> = {
   'interface': 'trapezoid',
   'abstract-class': 'trapezoidAlt',
   'function': 'rect',
-  'enum': 'bars',
+  'enum': 'subroutine',
   'type-alias': 'rect',
   'c4-module': 'rect',
   'schema': 'cylinder',
@@ -156,12 +164,6 @@ export function shapePath(shape: ShapeId, box: Box): string {
     case 'trapezoidAlt': {
       const c = Math.min(w * 0.16, h * 0.5)
       return poly([[x, y], [x2, y], [x2 - c, y2], [x + c, y2]])
-    }
-    case 'bars': {
-      const bh = h / 5
-      return [0, 2, 4]
-        .map((k) => `M${n(x)} ${n(y + k * bh)}H${n(x2)}V${n(y + (k + 1) * bh)}H${n(x)}Z`)
-        .join('')
     }
     case 'actor': {
       const r = Math.min(w * 0.22, h * 0.2)

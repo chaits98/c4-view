@@ -78,6 +78,10 @@ Never commit with `--no-verify`. A hook slow enough to tempt you is a hook bug: 
 
 Unit tests do not prove integration: use `curl` against a running `c4v serve`, or the testbed.
 
+**`c4v serve` reads `src/` at boot and `public/` per request.** A change under `src/` that the server has
+not restarted for is not live, and a screenshot of it is a screenshot of the old code — this has made the
+app look broken twice. Restart the process before you look at it, and say which build the screenshot is of.
+
 ## Grading the skill (only when `skill/` changed)
 
 ```bash

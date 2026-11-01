@@ -38,8 +38,12 @@ function zoomOf(raw: string | null): number | null {
   return LADDER.reduce((best, step) => (Math.abs(step - wanted) < Math.abs(best - wanted) ? step : best), LADDER[0])
 }
 
+/** `100%`, `125%`, … or the word `Fit`, from a ladder step. */
+const percentOf = (zoom: number | null): number => (zoom === null ? 0 : Math.round(zoom * 100))
+const sizeOf = (percent: number): string => (percent === 0 ? 'Fit' : `${percent}%`)
+
 /** The zoom cluster: three preset links (real hrefs, so they survive JS being off) and −/+. */
-function zoomBar(href: (value: string) => string, zoom: number | null): string {
+function zoomBar(href: (value: string) => string, zoom: number | null, percent: number): string {
   const presets = PRESETS.map(([value, text]) => {
     const on = value === 'fit' ? zoom === null : Number(value) === zoom
     return `<a class="c4-zoom-btn" href="${href(value)}" data-zoom="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
@@ -48,14 +52,12 @@ function zoomBar(href: (value: string) => string, zoom: number | null): string {
     ...presets,
     '<button type="button" class="c4-zoom-btn" data-step="-1" aria-label="Zoom out">−</button>',
     '<button type="button" class="c4-zoom-btn" data-step="1" aria-label="Zoom in">+</button>',
-    `<span id="c4-zoom-readout" class="c4-zoom-readout">${zoom === null ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>`,
+    `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(percent)}</span>`,
   ].join('')
 }
 
-export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
-  const drawn = renderModel(model, level, paletteOf(theme)).levels[0]
-  const levels = levelOrder(model)
-  const root = `/d/${model.id}`
+/** `all / id / level…`, each ancestor a real link, the last one plain text. */
+function crumbsFor(model: Model, level: string, root: string): string[] {
   const crumbs = [`<a href="/">all</a>`, `<a href="${esc(root)}">${esc(model.id)}</a>`]
   let at = ''
   for (const segment of level ? level.split('/') : []) {
@@ -63,15 +65,24 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
     const found = levelOf(model, at)
     if (!found) continue
     const title = esc(found.title ?? found.path)
-    const href = `${root}/${at}`
+    const href = root + '/' + at
     crumbs.push(at === level ? `<span>${title}</span>` : `<a href="${esc(href)}">${title}</a>`)
   }
   if (level === '') crumbs.push(`<span>${esc(levelOf(model, '')?.title ?? 'Overview')}</span>`)
-  const options = levels
+  return crumbs
+}
+
+export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
+  const drawn = renderModel(model, level, paletteOf(theme)).levels[0]
+  const root = `/d/${model.id}`
+  const crumbs = crumbsFor(model, level, root)
+  const options = levelOrder(model)
     .map((l) => `<option value="${esc(l.path)}"${l.path === level ? ' selected' : ''}>${esc(l.title ?? l.path)}</option>`)
     .join('')
   const zoom = zoomOf(zoomRaw)
-  const zoomHref = (value: string): string => esc(`${root}${level ? `/${level}` : ''}?zoom=${value}`)
+  const percent = percentOf(zoom)
+  const levelRoot = level ? root + '/' + level : root
+  const zoomHref = (value: string): string => esc(levelRoot + '?zoom=' + value)
 
   // ONE template: public/viewer.html. A second, hardcoded copy in this file silently dropped
   // /flow.js from the page and the animation never ran (measured 2026-10-28).
@@ -81,8 +92,8 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
-    .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
-    .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoom === null ? 'zoom-fit' : `zoom-${Math.round(zoom * 100)}`}"`)
+    .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
+    .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
     .replace('<!--SVG-->', () => drawn.svg)
     .replace(
       ' data-diagram="" data-level="" data-root=""',

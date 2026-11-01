@@ -132,7 +132,12 @@ Orthogonal, one track per jog, **no two routes may share a collinear segment**.
   viewer's only contract.
 - Shapes: see `src/svg/shapes.ts` — one function per shape id producing a path/element string inside the
   box; the mapping subtype → shape is in the app's original taxonomy (stadium, actor/rounded, cylinder,
-  hexagon, diamond, subroutine, trapezoid, trapezoidAlt, bars, circle, parallelogram, rect).
+  hexagon, diamond, subroutine, trapezoid, trapezoidAlt, circle, parallelogram, rect). There is no `bars`:
+  a striped silhouette left 13.6px gaps that a three-line label fell into, so queues and jobs draw as a
+  `subroutine` (a box with bars at its ends) and keep a normal text area.
+- **The silhouette owns its text band.** `shapeTextInset` says how much of the box a head, an ellipse or a
+  sloped edge eats, and `measureNode` grows the box by that inset before it is placed — so a node is always
+  big enough for its own text. `test/emit.test.ts` asserts it for every subtype.
 
 ## 6. `audit(placed, routed, level): AuditReport` — `src/audit.ts` (orchestrator-owned)
 

@@ -3,14 +3,39 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
-## [Unreleased]
+## [0.4.0] — the viewer stops looking like 2023
 
 ### Added
-- Design research for the viewer UI (UX guideline + Material 3 light/dark token set) in `docs/design/`.
-  **Not implemented**; it lands as its own feature.
-- `docs/design/PARKED.md` — every feature we decided on and have not started (viewer UI, single-file HTML
-  export, grid sort/filter, portrait layout, macOS/Windows service, public release), each with what it
-  takes to start.
+- **Pan + zoom on the diagram page.** The canvas is a native scroll container and `?zoom=fit|0.5…3` is a
+  class the server renders, so a shared link, a reload and Back all restore the reading size before the
+  first paint, with JS off. `Fit / 100% / 200% / − / +` in the header. Measured at 1280: a 3016 px level
+  draws its 12 px labels at 12 px at `100%` (was 5 px at fit).
+- **Honest cards.** A drawing wider than 3:1 is cropped to the middle with edge fades instead of squeezed
+  into a smear, and the countable facts (`3 levels · 6 nodes · 5 flows`) are text. Same card measured
+  before/after: labels 5 px → 11 px at the cost of showing 48 % of the width, declared by the crop.
+- **A flow-control contract.** Paused on step 1 at first paint, caption `{from} → {to} · {label} · {n} /
+  {total}` in node labels, keys scoped to the bar, `aria-live` off while playing and polite when stepping,
+  Replay at the end, no loop. The rules live in `public/flow-model.js` and are held by `node --test`.
+- **`public/tokens.css`** — the Material 3 baseline as one `light-dark()` pair per colour, plus a semantic
+  green for the audit-pass chip (M3 ships no success role). `tools/contrast.mjs` measures 27 pairs and runs
+  in `--fast`.
+- **A colour-scheme control** on the grid: `Auto · Light · Dark` as links, remembered in a cookie and
+  rendered as `data-theme`. The diagram canvas follows it — the server draws `LIGHT` or `DARK` from
+  `src/theme.ts`, because SVG colours are attributes and cannot answer a media query.
+
+### Fixed
+- A node's text could render outside its own silhouette: an actor's last line sat 7.8 px below the shape,
+  a cylinder wrote its id across the top ellipse, and `bars` left 13.6 px gaps that a three-line label fell
+  into (queues and jobs now draw as a `subroutine`). The silhouette declares its text band and
+  `measureNode` grows the box to fit it; `test/emit.test.ts` asserts that for every subtype. Goldens were
+  re-baselined deliberately (11 levels, geometry change).
+- `check.sh --full` claimed `PASS sonar` while the quality gate was red: the scanner exits 0 once the
+  analysis is *uploaded*, and nobody read the verdict. The step now queries the gate API and fails on it.
+  With that in place: two unreviewed `S4036` hotspots in `src/service.ts` (systemctl resolved through PATH
+  — it is now an absolute path) and four `viewer-page.ts` smells were fixed. Open issues: 0.
+
+- `docs/design/README.md` — the measured contrast table (27 pairs) and how the scheme is decided, so the
+  design docs and the shipped tokens cannot drift apart.
 
 ### Changed
 - SKILL.md 5,154 → 3,617 tokens (-30%) with the rules intact. Measured, not assumed: four runs of the

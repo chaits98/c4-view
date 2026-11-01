@@ -8,7 +8,7 @@
  */
 import { homedir } from 'node:os'
 import { describe, harnesses, installInto, installed, isSkillDir, plan } from './skill-install.ts'
-import { answer, greeting, loadPrefs, pending, prefsPath, questions, savePrefs } from './prefs.ts'
+import { answer, greeting, loadPrefs, pending, prefsPath, questions, savePrefs, type Prefs, type Question } from './prefs.ts'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -83,6 +83,34 @@ export function skillCommand(argv: string[]): number {
   return 0
 }
 
+function prefsShow(prefs: Prefs): number {
+  console.log(`store: ${prefsPath()}`)
+  const entries = Object.entries(prefs.answers)
+  if (!entries.length) console.log('  (nothing answered yet — run: c4v prefs pending)')
+  for (const [key, value] of entries) console.log(`  ${key} = ${value}`)
+  if (prefs.seen) console.log(`  (version last seen: ${prefs.seen.version})`)
+  return 0
+}
+
+function prefsSet(all: Question[], prefs: Prefs, pair: string): number {
+  const [id, ...valueParts] = pair.split('=')
+  const value = valueParts.join('=')
+  if (!id || !value) {
+    console.error('usage: c4v prefs set <question-id>=<answer>')
+    return 2
+  }
+  try {
+    const next = answer(all, prefs, id, value)
+    // answering stamps the version, so the NEXT release can say "updated" instead of asking again
+    savePrefs({ ...next, seen: { version: currentVersion(), at: new Date().toISOString() } })
+    console.log(`${id} = ${value}`)
+    return 0
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    return 2
+  }
+}
+
 /** `prefs show|pending|set|greeting`. */
 export function prefsCommand(argv: string[]): number {
   const { opt, rest } = flags(argv)
@@ -90,14 +118,7 @@ export function prefsCommand(argv: string[]): number {
   const all = questions()
   const prefs = loadPrefs()
 
-  if (action === 'show' || action === undefined) {
-    console.log(`store: ${prefsPath()}`)
-    const entries = Object.entries(prefs.answers)
-    if (!entries.length) console.log('  (nothing answered yet — run: c4v prefs pending)')
-    for (const [key, value] of entries) console.log(`  ${key} = ${value}`)
-    if (prefs.seen) console.log(`  (version last seen: ${prefs.seen.version})`)
-    return 0
-  }
+  if (action === 'show' || action === undefined) return prefsShow(prefs)
   if (action === 'pending') {
     const waiting = pending(all, prefs)
     console.log(JSON.stringify(waiting.map((q) => ({ id: q.id, question: q.question, options: q.options, default: q.default, why: q.why })), null, 2))
@@ -109,25 +130,7 @@ export function prefsCommand(argv: string[]): number {
     if (line) console.log(line)
     return 0
   }
-  if (action === 'set') {
-    const pair = rest[2] ?? ''
-    const [id, ...valueParts] = pair.split('=')
-    const value = valueParts.join('=')
-    if (!id || !value) {
-      console.error('usage: c4v prefs set <question-id>=<answer>')
-      return 2
-    }
-    try {
-      const next = answer(all, prefs, id, value)
-      // answering stamps the version, so the NEXT release can say "updated" instead of asking again
-      savePrefs({ ...next, seen: { version: currentVersion(), at: new Date().toISOString() } })
-      console.log(`${id} = ${value}`)
-      return 0
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error))
-      return 2
-    }
-  }
+  if (action === 'set') return prefsSet(all, prefs, rest[2] ?? '')
   console.error(`unknown action "${action}"\n\n${SKILL_USAGE}`)
   return 2
 }

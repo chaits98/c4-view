@@ -1,0 +1,19 @@
+# gitleaks config — one narrow exception, and the reason for it.
+#
+# `scripts/check.sh` reads the SonarQube gate with `curl -u "$TOKEN:"`. gitleaks' `curl-auth-user`
+# rule matches the *shape* of that argument, not a value: what it found was `${SONAR_READ_TOKEN:-…}`,
+# an environment-variable reference, and there is no credential in the file. The code has moved to a
+# computed `Authorization` header anyway; this allowlist keeps the historical commit scannable instead
+# of forcing a history rewrite for a scanner false positive.
+#
+# Keep it this narrow: one path, one pattern, and only for the sonar auth line. A broad allowlist on
+# `curl-auth-user` would hide a real `-u user:password` one directory over.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "curl-auth-user"
+  [[rules.allowlists]]
+  paths = ['''scripts/check\.sh$''']
+  regexTarget = "match"
+  regexes = ['''SONAR_(READ_)?TOKEN''']
