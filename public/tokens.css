@@ -1,0 +1,182 @@
+/* c4-view design tokens — the Material 3 baseline, one file, no build step.
+ *
+ * Every colour, radius, space step, duration and type role the viewer and the grid use is
+ * declared here and nowhere else: the other two stylesheets are made of var() and layout,
+ * so a scheme flip is CSS answering the OS, not JavaScript rewriting attributes.
+ *
+ * Provenance: visual-spec-m3.md §1 (colour), §4 (type), §5 (shape), §6 (space),
+ * §7 (motion), §11 (this sheet). `node tools/contrast.mjs` re-measures every pair below
+ * and fails if one drops under its WCAG threshold.
+ *
+ * One deliberate exception to "both schemes": the diagram canvas and the SVG palette stay
+ * on the dark column in both. The SVG's colours are attributes written by the generator and
+ * attributes cannot answer a media query (§8.1), so the document surface keeps its own
+ * theme — the same call Figma and every PDF viewer make.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* shape */
+  --shape-none: 0;
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 28px;
+  --shape-full: 9999px;
+
+  /* space, on the 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* motion */
+  --dur-short2: 100ms;
+  --dur-short3: 150ms;
+  --dur-short4: 200ms;
+  --dur-med1: 250ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-decel: cubic-bezier(0, 0, 0, 1);
+  --ease-emph-dec: cubic-bezier(.05, .7, .1, 1);
+
+  /* type */
+  --font-plain: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* elevation (level 1 and 2 are the only ones this product floats) */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px 1px rgb(0 0 0 / 15%);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px 2px rgb(0 0 0 / 15%);
+
+  /* light scheme */
+  --surface: #fef7ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f7f2fa;
+  --surface-container: #f3edf7;
+  --surface-container-high: #ece6f0;
+  --surface-container-highest: #e6e0e9;
+  --on-surface: #1d1b20;
+  --on-surface-variant: #49454f;
+  --outline: #79747e;
+  --outline-variant: #cac4d0;
+  --primary: #6750a4;
+  --on-primary: #ffffff;
+  --primary-container: #eaddff;
+  --on-primary-container: #21005d;
+  --secondary: #625b71;
+  --secondary-container: #e8def8;
+  --on-secondary-container: #1d192b;
+  --tertiary: #7d5260;
+  --error: #b3261e;
+  --on-error: #ffffff;
+  --error-container: #f9dedc;
+  --on-error-container: #410e0b;
+  --inverse-surface: #322f35;
+  --inverse-on-surface: #f5eff7;
+
+  /* the diagram document surface and its palette — the dark column, always (§8.1) */
+  --canvas: #0f0d13;
+  --d-node-fill: #36343b;
+  --d-node-text: #e6e0e9;
+  --d-node-internal: #d0bcff;
+  --d-node-person: #efb8c8;
+  --d-node-external: #cac4d0;
+  --d-node-store: #ccc2dc;
+  --d-node-fail: #f2b8b5;
+  --d-edge: #938f99;
+  --d-edge-active: #d0bcff;
+  --d-edge-label: #cac4d0;
+  --d-group: #938f99;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #141218;
+    --surface-container-lowest: #0f0d13;
+    --surface-container-low: #1d1b20;
+    --surface-container: #211f26;
+    --surface-container-high: #2b2930;
+    --surface-container-highest: #36343b;
+    --on-surface: #e6e0e9;
+    --on-surface-variant: #cac4d0;
+    --outline: #938f99;
+    --outline-variant: #49454f;
+    --primary: #d0bcff;
+    --on-primary: #381e72;
+    --primary-container: #4f378b;
+    --on-primary-container: #eaddff;
+    --secondary: #ccc2dc;
+    --secondary-container: #4a4458;
+    --on-secondary-container: #e8def8;
+    --tertiary: #efb8c8;
+    --error: #f2b8b5;
+    --on-error: #601410;
+    --error-container: #8c1d18;
+    --on-error-container: #f9dedc;
+    --inverse-surface: #e6e0e9;
+    --inverse-on-surface: #322f35;
+  }
+}
+
+/* type utilities — one class per role this product actually sets (§4) */
+.t-headline-s {
+  font: 400 24px/32px var(--font-plain);
+  letter-spacing: 0;
+}
+
+.t-title-m {
+  font: 500 16px/24px var(--font-plain);
+  letter-spacing: 0.15px;
+}
+
+.t-body-l {
+  font: 400 16px/24px var(--font-plain);
+  letter-spacing: 0.5px;
+}
+
+.t-body-m {
+  font: 400 14px/20px var(--font-plain);
+  letter-spacing: 0.25px;
+}
+
+.t-body-s {
+  font: 400 12px/16px var(--font-plain);
+  letter-spacing: 0.4px;
+}
+
+.t-label-l {
+  font: 500 14px/20px var(--font-plain);
+  letter-spacing: 0.1px;
+}
+
+.t-label-m {
+  font: 500 12px/16px var(--font-plain);
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* focus is a ring, never a fading colour: 2px primary at 2px offset (SC 2.4.7 / 2.4.13) */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* motion is honoured, not offered as a toggle (SC 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

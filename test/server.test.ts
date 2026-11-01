@@ -76,7 +76,9 @@ test('GET /d/:id is the root level, server-rendered', async () => {
   assert.ok(html.includes('data-diagram="' + ID + '"'))
   assert.ok(html.includes('data-level=""'))
   assert.ok(html.includes('data-root="/d/' + ID + '"'))
+  assert.ok(html.includes('href="/tokens.css"'), 'tokens load before the sheet that uses them')
   assert.ok(html.includes('href="/viewer.css"'))
+  assert.equal((html.match(/style="/g) ?? []).length, 0, 'no inline style: the CSP allows none')
   assert.ok(html.includes('src="/viewer.js" defer'))
 })
 
@@ -187,10 +189,10 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.match(page.body, new RegExp(`href="/d/${ID}"`))
   assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
   assert.match(page.body, /audit clean/)
-  assert.equal(page.body.match(/<h2>/g)?.length, 1)
+  assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
   assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)
-  assert.match(page.body, /<span class="chip">wide · 1089 px<\/span>/)
+  assert.match(page.body, /<span class="chip t-label-m">wide · 1089 px<\/span>/)
   assert.match(page.body, /6 levels · 5 nodes · 8 flows/, 'the countable facts are text')
 })
 

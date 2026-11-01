@@ -5,7 +5,7 @@
 # exists in CI, a contributor finds out after the push; if it only exists in the hook, CI can drift from
 # it. One script, three callers.
 #
-#   ./scripts/check.sh            # --fast: gates, types, tests, goldens, secrets   (~10 s)
+#   ./scripts/check.sh            # --fast: gates, types, tests, goldens, tokens, secrets (~10 s)
 #   ./scripts/check.sh --full     # + skill scanners, SonarQube, deps, doctor       (~2 min)
 #   ./scripts/check.sh --list     # print the steps and exit
 #
@@ -52,6 +52,7 @@ step "audit: every fixture and example is green"       bash -c '
   for f in fixtures/*.json examples/*.json docs/c4/*.json skill/assets/*.json; do
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }
   done'
+step "tokens: every measured contrast pair clears its WCAG threshold" node tools/contrast.mjs
 
 # ── secrets: cheap, and the one class of mistake git keeps forever ────────────
 if have gitleaks; then

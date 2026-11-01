@@ -74,10 +74,10 @@ function card(entry: IndexEntry): string {
     // the drawing is the emitter's own escaped output — never re-escape it. A crop is
     // declared in text ("wide · 3000 px") rather than passed off as the whole drawing.
     `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}` +
-    `${entry.wide ? `<span class="chip">wide · ${entry.width} px</span>` : ''}</span>` +
-    `<span class="meta"><h2>${esc(entry.title)}</h2>` +
-    `<p>${esc(entry.id)} · ${facts}</p>` +
-    `<span class="badge ${entry.ok ? 'ok' : 'bad'}">${state}</span></span></a>`
+    `${entry.wide ? `<span class="chip t-label-m">wide · ${entry.width} px</span>` : ''}</span>` +
+    `<span class="meta"><h2 class="t-title-m">${esc(entry.title)}</h2>` +
+    `<p class="t-body-s">${esc(entry.id)} · ${facts}</p>` +
+    `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}">${state}</span></span></a>`
   )
 }
 

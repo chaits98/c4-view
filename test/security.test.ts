@@ -40,6 +40,8 @@ test('every response carries CSP, nosniff and no framing', () => {
   const res = { headers: {} as Record<string, string>, setHeader(k: string, v: string) { this.headers[k] = v } }
   applyHeaders(res as unknown as Parameters<typeof applyHeaders>[0])
   assert.match(res.headers['Content-Security-Policy'], /script-src 'self'/)
+  assert.match(res.headers['Content-Security-Policy'], /style-src 'self'(;|$)/)
+  assert.doesNotMatch(res.headers['Content-Security-Policy'], /unsafe-inline/, 'nothing inline to allow')
   assert.match(res.headers['Content-Security-Policy'], /frame-ancestors 'none'/)
   assert.equal(res.headers['X-Content-Type-Options'], 'nosniff')
   assert.equal(res.headers['X-Frame-Options'], 'DENY')
