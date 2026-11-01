@@ -1,9 +1,9 @@
 fixtures/agent-org.json# ede2906776cb3161 ok
 fixtures/droid.json# c386aebda0d48167 ok
-fixtures/droid.json#droid 0906158dd128bdcd ok
-fixtures/droid.json#droid/frontend 02dc52c3f9c2eff1 ok
+fixtures/droid.json#droid cf3c4bba0a938cf7 ok
+fixtures/droid.json#droid/frontend 7689d0496c277467 ok
 fixtures/droid.json#droid/org_bridge 50f6021c9d061e02 ok
-fixtures/droid.json#droid/rust_core de88eb0d7a4116c5 ok
+fixtures/droid.json#droid/rust_core 6d2bc965ef9c02b4 ok
 fixtures/droid.json#droid/rust_core/cmd_map 9edb3b469bdbb7cf ok
 fixtures/not-magic.json# e58cc8f35e9105af ok
 examples/lens.json# 9e33740876ee7a53 ok

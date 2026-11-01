@@ -157,7 +157,7 @@ function buildPolyline(c: Chain, pieces: Piece[], tracks: Map<number, Map<string
   return pts
 }
 
-export function route(placed: Placed, cfg: LayoutConfig, m: Measure): Routed {
+export function route(placed: Placed, cfg: LayoutConfig, m: Measure, labels = true): Routed {
   const ports = buildPorts(placed.chains, placed.items)
   const { pieces, joggers } = planPieces(placed.chains, placed.items, ports)
   const tracks = allocateTracks(placed, cfg, joggers)
@@ -173,5 +173,5 @@ export function route(placed: Placed, cfg: LayoutConfig, m: Measure): Routed {
 
   const lastRow = backs.size ? placed.size.h + CORRIDOR_PAD + (backs.size - 1) * (cfg.lane + 4) : 0
   const size = { w: placed.size.w, h: Math.max(placed.size.h, lastRow + cfg.lane) }
-  return { routes: placeLabels(routes, placed, cfg, m), size }
+  return { routes: labels ? placeLabels(routes, placed, cfg, m) : routes, size }
 }

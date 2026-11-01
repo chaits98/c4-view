@@ -37,7 +37,11 @@ function sizeItem(item: RankItem, specs: Map<string, NodeSpec>, ports: Ports, cf
   if (!node) return { w: item.w, h: item.h }
   const t = measureNode(node, cfg, m)
   const p = Math.max(ports.out.get(item.id) ?? 0, ports.into.get(item.id) ?? 0)
-  return { w: Math.ceil(t.w), h: Math.ceil(Math.max(t.h, (p + 1) * cfg.portGap)) }
+  const box = { w: Math.ceil(t.w), h: Math.ceil(Math.max(t.h, (p + 1) * cfg.portGap)) }
+  // A top-to-bottom drawing is laid out left-to-right and then transposed, so the space a node needs is
+  // claimed on the other axis: reserve its text width as height here, and the transpose hands it back as
+  // width. Without this the box ends up as wide as a row is tall and the label hangs out of it.
+  return cfg.direction === 'TB' ? { w: box.h, h: box.w } : box
 }
 
 /**

@@ -3,6 +3,24 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.9.3] — an upright picture keeps its text inside its boxes
+
+Three bugs the vertical layout shipped with, all found by looking at the drawing:
+
+- **Boxes were as wide as a row is tall.** The upright picture was the horizontal one transposed, so every box
+  inherited the row's height as its width and its label hung outside. A top-to-bottom level is now **laid out**
+  with the axes declared: each node claims its text width on the axis that will carry it, and the transpose
+  hands it back.
+- **Edge labels had nowhere to sit.** Chip placement only ever looked for horizontal runs, and an upright
+  picture has vertical wires, so every chip fell back to the wire's first point — on top of a box. Runs are now
+  taken along the polyline's dominant axis, a chip slides along the run (needing its own height of room), and a
+  vertical run that is too short for two chips lets one sit beside the wire.
+- **A chip could still touch another by a fraction of a pixel.** The audit counts every overlap; placement
+  counted only those over half a pixel. Placement now matches the audit.
+
+Standing a level up is also measured, not assumed: when the upright layout would cross more wires than the
+horizontal one (26 → 50 on a corpus level), the strip is kept.
+
 ## [0.9.2] — the strip stands up: vertical replaces the row wrap
 
 The row wrap from 0.9.0 is **gone** — code, tests and the width budget with it. A wide level is now transposed:

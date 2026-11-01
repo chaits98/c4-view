@@ -17,6 +17,7 @@ import { route } from './layout/route.ts'
 import { emit } from './svg/emit.ts'
 import { DARK, type Theme } from './theme.ts'
 import { audit } from './audit.ts'
+import { placeLabels } from './layout/labels.ts'
 import { measure } from './metrics.ts'
 import { flowIndex } from './flow.ts'
 import type { AuditReport, LevelSpec, Model } from './types.ts'
@@ -61,9 +62,9 @@ export function transpose(placed: ReturnType<typeof place>, routed: ReturnType<t
 /**
  * One layout attempt at a given width budget.
  */
-function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
+function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>, labels = true): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
   const placed = place(order(rank(level, cfg), cfg), level, cfg, measure)
-  const routed = route(placed, cfg, measure)
+  const routed = route(placed, cfg, measure, labels)
   return { placed, routed, audit: audit(placed, routed, level) }
 }
 
@@ -82,8 +83,17 @@ export function layoutLevel(level: LevelSpec, cfg: ReturnType<typeof layoutOf>):
   const fits = wide.routed.size.w <= MAX_WIDTH
   const turn = cfg.direction === 'TB' || (cfg.direction === 'auto' && !fits && wide.audit.aspect > WIDE_ASPECT)
   if (!turn) return wide
-  const upright = transpose(wide.placed, wide.routed)
-  return { ...upright, audit: audit(upright.placed, upright.routed, level) }
+  // lay it out again with the axes declared, so each node claims its text width on the axis that will carry
+  // it, then transpose. Transposing the first attempt alone sized every box as wide as a row is tall.
+  const turned = attempt(level, { ...cfg, direction: 'TB' }, false)
+  // an upright drawing is laid out again, not merely rotated, so it is a different drawing: keep the strip when
+  // standing it up would make the picture harder to follow (measured: 26 crossings → 50 on one corpus level)
+  if (cfg.direction === 'auto' && turned.audit.crossings > wide.audit.crossings) return wide
+  const upright = transpose(turned.placed, turned.routed)
+  // chips are placed AFTER the transpose: a chip is text, text is always horizontal, so it has to be measured
+  // in the orientation the reader sees it in — placing it in the turned world made every chip one glyph wide
+  const labelled = { ...upright.routed, routes: placeLabels(upright.routed.routes, upright.placed, { ...cfg, direction: 'TB' }, measure) }
+  return { placed: upright.placed, routed: labelled, audit: audit(upright.placed, labelled, level) }
 }
 
 /** Past this many pixels a drawing has to be panned on a laptop, which is worse than scrolling. */

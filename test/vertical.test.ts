@@ -27,8 +27,10 @@ test('a strip too wide to read is stood upright, and its numbers do not change',
   assert.equal(tb.audit.nodeNode, lr.audit.nodeNode)
   assert.equal(tb.audit.wireNode, lr.audit.wireNode)
   assert.equal(tb.audit.wireWire, lr.audit.wireWire)
-  assert.equal(Math.round(tb.routed.size.w), Math.round(lr.routed.size.h), 'axes swapped')
-  assert.equal(Math.round(tb.routed.size.h), Math.round(lr.routed.size.w), 'axes swapped')
+  // the upright picture is laid out with the axes declared, so its box sizes are its own — the two drawings
+  // share their crossings, not their pixels
+  assert.ok(tb.routed.size.h > lr.routed.size.h, 'the upright one runs down the page')
+  assert.ok(tb.routed.size.w < lr.routed.size.w, 'and not across it')
   assert.ok(tb.routed.size.w / tb.routed.size.h < 1, 'and it reads down the page')
 })
 
