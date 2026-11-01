@@ -63,7 +63,7 @@ function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<stri
   })
 }
 
-function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>): string[] {
+function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, linkBase?: string): string[] {
   const small = Math.max(9, cfg.fontSize - 2)
   const lh = lineHeight(cfg.fontSize)
   const slh = lineHeight(small)
@@ -81,7 +81,11 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     if (node.desc) attrs.push(`data-desc="${esc(node.desc)}"`)
     const child = drill.get(node.id)
     if (child) attrs.push(`data-drill="${esc(child)}"`)
-    const parts = [`<g class="node" ${attrs.join(' ')}>`]
+    // A drill is navigation, so it is a real link when the caller can name one: middle-click, Back,
+    // copy-link and screen readers all work, and the page needs no JS to follow it.
+    const open = child && linkBase ? `<a class="c4-link" href="${esc(`${linkBase}/${child}`)}">` : ''
+    const close = open ? '</a>' : ''
+    const parts = [open + `<g class="node" ${attrs.join(' ')}>`]
     parts.push(`<path d="${shapePath(shape, box)}" fill="${k.fill}" stroke="${k.stroke}" stroke-width="1.4"/>`)
     // text lives in the shape's own text band and is centred in it — an actor's head is
     // part of the box, not something to write over
@@ -98,7 +102,7 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     t.lines.forEach((line, i) => parts.push(text(cx, cursor + lh / 2 + i * lh, cfg.fontSize, theme.fg, line)))
     cursor += t.lines.length * lh
     if (t.tech) parts.push(text(cx, cursor + slh / 2, small, theme.dim, t.tech))
-    parts.push('</g>')
+    parts.push(`</g>${close}`)
     return parts
   })
 }
@@ -118,6 +122,7 @@ function chipLayer(routed: Routed, cfg: LayoutConfig, theme: Theme): string[] {
 export function emit(
   placed: Placed, routed: Routed, level: LevelSpec,
   cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, flow: Map<string, number> = new Map(),
+  linkBase?: string,
 ): string {
   // drawn size never below the boxes it must contain, even if a route stage underpays
   const w = Math.max(placed.size.w, routed.size.w) + 16
@@ -125,7 +130,7 @@ export function emit(
   const body = [
     ...groupLayer(placed, theme),
     ...routeLayer(routed, placed, theme, flow),
-    ...nodeLayer(level, placed, cfg, theme, drill),
+    ...nodeLayer(level, placed, cfg, theme, drill, linkBase),
     ...chipLayer(routed, cfg, theme),
   ]
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +

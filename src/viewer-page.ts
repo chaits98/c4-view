@@ -15,15 +15,19 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { levelOf, levelOrder } from './model.ts'
 import type { AuditReport } from './types.ts'
-import { renderModel } from './render.ts'
+import { renderLevel, renderModel, type RenderedLevel } from './render.ts'
+import { expandLevel } from './expand.ts'
+import { hostOf } from './lens.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
-import type { Model } from './types.ts'
+import type { LevelSpec, Model } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** The zoom ladder, mirrored in public/viewer.js — a class per step, so `?zoom=` needs no JS. */
 const LADDER = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
+/** The laptop stage the design is measured against; wider drawings open at 100% instead of Fit. */
+const STAGE_W = 1280
 const PRESETS: ReadonlyArray<readonly [string, string]> = [['fit', 'Fit'], ['1', '100%'], ['2', '200%']]
 
 /** Every untrusted string in the page goes through this; the svg is already escaped. */
@@ -61,20 +65,36 @@ function zoomBar(href: (value: string) => string, zoom: number | null, percent: 
   ].join('')
 }
 
-/** `all / id / level…`, each ancestor a real link, the last one plain text. */
+/**
+ * `all / id / box…`, each ancestor a real link, the current one an `<h1>` — the page's only heading,
+ * named after the box you are inside (the frame's label), not after the file that holds its nodes.
+ */
 function crumbsFor(model: Model, level: string, root: string): string[] {
   const crumbs = [`<a href="/">all</a>`, `<a href="${esc(root)}">${esc(model.id)}</a>`]
+  const segments = level ? level.split('/') : []
+  const found: Array<{ at: string; title: string }> = []
   let at = ''
-  for (const segment of level ? level.split('/') : []) {
+  for (const segment of segments) {
     at = at ? `${at}/${segment}` : segment
-    const found = levelOf(model, at)
-    if (!found) continue
-    const title = esc(found.title ?? found.path)
-    const href = root + '/' + at
-    crumbs.push(at === level ? `<span aria-current="page">${title}</span>` : `<a href="${esc(href)}">${title}</a>`)
+    const level = levelOf(model, at)
+    if (!level) continue // a segment the model does not have is not a place, so it is not a crumb
+    found.push({ at, title: esc(hostLabel(model, at) ?? level.title ?? segment) })
   }
-  if (level === '') crumbs.push(`<span aria-current="page">${esc(levelOf(model, '')?.title ?? 'Overview')}</span>`)
+  found.forEach((crumb, i) => {
+    crumbs.push(
+      i === found.length - 1
+        ? `<h1 class="c4-crumb-h1" aria-current="page">${crumb.title}</h1>`
+        : `<a href="${esc(root + '/' + crumb.at)}">${crumb.title}</a>`,
+    )
+  })
+  if (!segments.length) crumbs.push(`<h1 class="c4-crumb-h1" aria-current="page">${esc(levelOf(model, '')?.title ?? 'Overview')}</h1>`)
   return crumbs
+}
+
+/** The node in the parent level that this path opens — the box whose name the page should show. */
+function hostLabel(model: Model, path: string): string | undefined {
+  const { parent, hostId } = hostOf({ path, nodes: [], edges: [] }, model)
+  return parent?.nodes.find((n) => n.id === hostId)?.label
 }
 
 /**
@@ -83,8 +103,8 @@ function crumbsFor(model: Model, level: string, root: string): string[] {
  * Not decoration. A screen reader gets nothing useful from the SVG, a human greps a text version
  * faster than they read a drawing, and it is the only way to copy an id out of a diagram.
  */
-function textVersion(model: Model, level: string): string {
-  const found = levelOf(model, level)
+function textVersion(model: Model, level: string, drawn?: LevelSpec): string {
+  const found = drawn ?? levelOf(model, level)
   if (!found) return ''
   const nodes = found.nodes
     .map((n) => {
@@ -131,15 +151,69 @@ export function auditBanner(report: AuditReport): string {
   )
 }
 
+/**
+ * What this page shows. `/d/<id>` is the root level; `/d/<id>/<path>` is that box EXPANDED — the parent
+ * level with the host turned into a dashed frame — because a drill is a lens on one box, not a jump to
+ * another drawing. A level that cannot expand (no ports, older model) still renders standalone, with a
+ * note, rather than 404-ing on a link somebody shared.
+ */
+function draw(model: Model, level: string, theme: Theme): { level: RenderedLevel; spec: LevelSpec; note: string } {
+  if (level !== '') {
+    try {
+      const expansion = expandLevel(model, level)
+      const rendered = renderLevel(model, expansion.level, paletteOf(theme), drillFor(model, level), `/d/${model.id}`)
+      return { level: rendered, spec: expansion.level, note: '' }
+    } catch (error) {
+      const found = levelOf(model, level)
+      if (!found) throw error
+      return {
+        level: renderModel(model, level, paletteOf(theme), `/d/${model.id}`).levels[0],
+        spec: found,
+        note: `This level is not a lens: ${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
+  }
+  const root = levelOf(model, '')
+  const rendered = renderModel(model, level, paletteOf(theme), `/d/${model.id}`).levels[0]
+  return { level: rendered, spec: root ?? { path: '', nodes: [], edges: [] }, note: '' }
+}
+
+/** Drill targets for a composed level: an interior node's own level is `<path>/<inner id>`. */
+function drillFor(model: Model, path: string): Map<string, string> {
+  const { level } = expandLevel(model, path)
+  const drill = new Map<string, string>()
+  for (const node of level.nodes) {
+    const target = node.id.startsWith(`${path}/`) ? node.id : undefined
+    if (target && model.levels.some((l) => l.path === target)) drill.set(node.id, target)
+  }
+  return drill
+}
+
+/** Width of the drawing, from the viewBox the renderer just emitted. */
+function svgWidth(svg: string): number {
+  const box = /viewBox="0 0 ([\d.]+)/.exec(svg)
+  return box ? Number(box[1]) : 0
+}
+
+/** A model that cannot expand still answers the link, and says why the picture is flat. */
+function noteBanner(note: string): string {
+  if (!note) return ''
+  return `<section class="c4-audit" role="status"><h2 class="t-title-s">Not a lens</h2><p class="t-body-s">${esc(note)}</p></section>`
+}
+
 export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
-  const drawn = renderModel(model, level, paletteOf(theme)).levels[0]
+  const drawn = draw(model, level, theme)
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
   const options = levelOrder(model)
     .map((l) => `<option value="${esc(l.path)}"${l.path === level ? ' selected' : ''}>${esc(l.title ?? l.path)}</option>`)
     .join('')
-  const zoom = zoomOf(zoomRaw)
+  // A drawing more than ~1.6x the design stage renders ~5px labels at Fit; opening it at 100% is the
+  // difference between "complete but unreadable" and "readable but partial". Explicit ?zoom= wins.
+  const wide = zoomRaw === null && svgWidth(drawn.level.svg) > STAGE_W * 1.6
+  const zoom = zoomOf(zoomRaw) ?? (wide ? 1 : null)
   const percent = percentOf(zoom)
+  const wideNote = wide ? '<p class="c4-note t-body-s">Too wide to fit — opened at 100%. Scroll to pan, or pick Fit for the overview.</p>' : ''
   const levelRoot = level ? root + '/' + level : root
   const zoomHref = (value: string): string => esc(levelRoot + '?zoom=' + value)
 
@@ -147,15 +221,15 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
   // /flow.js from the page and the animation never ran (measured 2026-10-28).
   const template = readFileSync(join(PUBLIC, 'viewer.html'), 'utf8')
   return template
-    .replace('<title>C4 viewer</title>', () => `<title>${esc(drawn.title)} — ${esc(model.title)}</title>`)
+    .replace('<title>C4 viewer</title>', () => `<title>${esc(drawn.level.title)} — ${esc(model.title)}</title>`)
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
-    .replace('<!--AUDIT-->', () => auditBanner(drawn.audit))
-    .replace('<!--TEXT-->', () => textVersion(model, level))
-    .replace('<!--SVG-->', () => drawn.svg)
+    .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note) + wideNote)
+    .replace('<!--TEXT-->', () => textVersion(model, level, drawn.spec))
+    .replace('<!--SVG-->', () => drawn.level.svg)
     .replace(
       ' data-diagram="" data-level="" data-root=""',
       () => ` data-diagram="${esc(model.id)}" data-level="${esc(level)}" data-root="${esc(root)}"`,

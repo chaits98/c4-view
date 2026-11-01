@@ -37,25 +37,25 @@ export interface Rendered {
 }
 
 /** Render one level: the whole pipeline, in order, with no hidden state. */
-export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>): RenderedLevel {
+export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>, linkBase?: string): RenderedLevel {
   const cfg = layoutOf(model)
   const ranked = order(rank(level, cfg), cfg)
   const placed = place(ranked, level, cfg, measure)
   const routed = route(placed, cfg, measure)
   // a composed (expanded) level is not in the model, so its drill map is supplied by the caller
-  const svg = emit(placed, routed, level, cfg, palette, drill ?? drillTargets(model, level), flowIndex(level))
+  const svg = emit(placed, routed, level, cfg, palette, drill ?? drillTargets(model, level), flowIndex(level), linkBase)
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: audit(placed, routed, level) }
 }
 
 /** Render every level (root first, then by depth). */
-export function renderModel(model: Model, only?: string, palette: Theme = DARK): Rendered {
+export function renderModel(model: Model, only?: string, palette: Theme = DARK, linkBase?: string): Rendered {
   const levels = levelOrder(model).filter((l) => only === undefined || l.path === only)
   if (!levels.length) {
     const known = levelOrder(model).map((l) => l.path || '(root)').join(', ')
     throw new Error(`no level "${only ?? ''}" — this model has: ${known}`)
   }
   const lens = lensReport(model)
-  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette)), lens }
+  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette, undefined, linkBase)), lens }
 }
 
 /**
@@ -70,7 +70,12 @@ export function renderExpanded(model: Model, path: string, palette: Theme = DARK
     const target = innerId ? `${path}/${innerId}` : null
     if (target && model.levels.some((l) => l.path === target)) drill.set(node.id, target)
   }
-  return { id: model.id, title: model.title, levels: [renderLevel(model, level, palette, drill)], lens: lensReport(model) }
+  return {
+    id: model.id,
+    title: model.title,
+    levels: [renderLevel(model, level, palette, drill, `/d/${model.id}`)],
+    lens: lensReport(model),
+  }
 }
 
 /** Read + validate + render a model file, optionally with one box expanded in place. */

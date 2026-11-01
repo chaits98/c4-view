@@ -263,3 +263,21 @@ body {
   stroke-width: 2;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--d-edge-active) 80%, transparent));
 }
+
+/* The current crumb is the page's h1: same voice, no second title competing with the bar. */
+#c4-crumbs .c4-crumb-h1 {
+  font: inherit;
+  margin: 0;
+  display: inline;
+  color: var(--c4-fg);
+}
+/* A drill is a link: show it, and keep the focus ring the browser already draws. */
+#c4-stage a.c4-link {
+  cursor: pointer;
+  text-decoration: none;
+}
+/* The one line that explains why a wide drawing opened at 100%. */
+.c4-note {
+  margin: 8px 24px 0;
+  color: var(--c4-dim);
+}

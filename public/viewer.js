@@ -126,10 +126,13 @@
   stage.addEventListener('pointerleave', hideHover)
   stage.addEventListener('scroll', hideHover, { passive: true })
 
-  // a click on a node with data-drill opens that level; the SVG has no <a> in it
+  // The SVG carries real <a href> links for drills when the server rendered the page, so the
+  // browser already handles click, middle-click and Back. This handler only covers an SVG that
+  // arrived without links (a pasted export), and never fights a real anchor.
   stage.addEventListener('click', (e) => {
     const node = e.target.closest ? e.target.closest('g[data-id]') : null
-    const drill = node && node.dataset && node.dataset.drill
+    if (!node || node.closest('a')) return
+    const drill = node.dataset && node.dataset.drill
     if (drill) location.href = `${root()}/${drill}`
   })
 

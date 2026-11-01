@@ -140,7 +140,10 @@ test('a level with a path but no title is named by its path, in the crumbs and t
   ] })
   const html = viewerPage(bare, 'api/v1')
   assert.ok(html.includes('<option value="api/v1" selected>api/v1</option>'), 'the select falls back to the path')
-  assert.ok(html.includes('<span aria-current="page">api/v1</span>'), 'and so does the crumb, marked as the current page')
+  assert.ok(
+    html.includes('<h1 class="c4-crumb-h1" aria-current="page">api/v1</h1>'),
+    'and so does the crumb, as the page heading and the current page',
+  )
 })
 
 test('a node with a desc but no tech keeps the desc line', () => {
