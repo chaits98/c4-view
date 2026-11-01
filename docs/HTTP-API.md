@@ -59,6 +59,7 @@ Breadcrumbs always start with `<a href="/">all</a>`, so one diagram is never a d
   <div id="c4-legend"></div>                         <!-- kind swatches, built by viewer.js -->
   <div id="c4-mini"></div>                           <!-- minimap host, optional to fill -->
   <script src="/viewer.js" defer></script>
+  <script src="/flow.js" type="module"></script>       <!-- creates #c4-flow-caption -->
 </body>
 ```
 
@@ -97,4 +98,11 @@ Behaviour, in this order of importance:
    first node of that kind — never a hardcoded palette.
 8. No editing, no dragging of nodes, no network calls other than navigation.
 
-Expose `window.__c4 = { zoom, setZoom }` (`current step`, `set a step`) for the headless probe.
+**Flow** (`public/flow.js`, module; rules in `public/flow-model.js`): the emitter's `path[data-flow]`
+order, one dot at a time. First paint is paused on step 1 — first edge lit, caption `{from} → {to} ·
+{label} · {n} / {total}` in node labels, nothing moving, nothing announced. Keys are scoped to the bar
+(Space play/pause, ←/→ step, Home/End, `r` replay, Esc stop) and the document has none. The caption's
+`aria-live` is `off` while playing and `polite` when stepping or paused. At the last edge the dot and
+`{total} / {total}` stay and the primary button reads Replay; it never loops.
+
+Expose `window.__c4 = { zoom, setZoom, labelOf, flow }` for the headless probe.

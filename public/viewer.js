@@ -162,7 +162,8 @@
     })
   }
 
-  window.__c4 = { zoom: () => LADDER[current()], setZoom: (step) => setZoom(LADDER.indexOf(step)) }
+  // flow.js captions name the nodes, so the label reading is shared rather than copied
+  window.__c4 = { zoom: () => LADDER[current()], setZoom: (step) => setZoom(LADDER.indexOf(step)), labelOf: labelOfNode }
 
   buildLegend()
 })()

@@ -253,33 +253,48 @@ body {
 }
 
 #c4-flow-text {
+  margin: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
-#c4-flow-play {
+/* four controls, all 40 px (SC 2.5.8 asks 24): play/pause is the only one with a word */
+.c4-flow-btn {
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
   color: var(--fg);
   background: #1a2838;
   border: 1px solid #24344a;
-  border-radius: 50%;
+  border-radius: 999px;
   font: 12px/1 ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
 }
 
-#c4-flow-play:hover {
+.c4-flow-btn:hover {
   background: #223349;
 }
 
-#c4-flow-play:focus-visible {
+.c4-flow-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.c4-flow-btn[aria-disabled='true'] {
+  opacity: 0.38;
+  cursor: default;
+}
+
+#c4-flow-play {
+  padding: 0 14px;
+  font-weight: 600;
 }
 
 .c4-dot {
