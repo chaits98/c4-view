@@ -12,7 +12,7 @@ import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
 import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
-import { denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
+import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
 import type { Model } from './types.ts'
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -38,8 +38,11 @@ export async function serve(opts: { port: number; root: string; host?: string; t
     res.on('finish', () => console.log(`${req.method} ${pathname ?? req.url} ${res.statusCode} ${Date.now() - started}ms`))
     void handle(root, guard, req, res, pathname).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
-      if (res.headersSent) res.destroy()
-      else json(res, 500, { error: message })
+      if (res.headersSent) return res.destroy()
+      // a route that names a diagram can say which file is broken; anything else can only say 500
+      const id = /\.(svg|png)$/.test(pathname ?? '') ? pathname?.slice(3).replace(/\.(svg|png)$/, '') : pathname?.startsWith('/d/') ? pathname.slice(3).split('/')[0] : null
+      if (id) return broken(req, res, decodeURIComponent(id))
+      json(res, 500, { error: message })
     })
   })
   await new Promise<void>((done, fail) => {
@@ -103,31 +106,31 @@ function validLevel(path: string): boolean {
   return path === '' || path.split('/').every((segment) => ID.test(segment))
 }
 
-function sendModel(root: string, res: ServerResponse, id: string): void {
+function sendModel(root: string, req: IncomingMessage, res: ServerResponse, id: string): void {
   const file = modelFile(root, id)
-  if (!existsSync(file)) return missing(res, id)
+  if (!existsSync(file)) return missing(req, res, id)
   send(res, 200, 'application/json; charset=utf-8', readFileSync(file))
 }
 
-function sendAudit(root: string, res: ServerResponse, id: string, level: string | null): void {
+function sendAudit(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string | null): void {
   const model = loadModel(root, id)
-  if (!model) return missing(res, id)
+  if (!model) return missing(req, res, id)
   if (level === null) return json(res, 200, renderModel(model).levels.map((l) => l.audit))
-  if (!findLevel(model, level)) return noLevel(res, level, model)
+  if (!findLevel(model, level)) return noLevel(req, res, level, model)
   json(res, 200, renderModel(model, level).levels[0].audit)
 }
 
-function sendPage(root: string, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
+function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
   const model = loadModel(root, id)
-  if (!model) return missing(res, id)
-  if (!findLevel(model, level)) return noLevel(res, level, model)
+  if (!model) return missing(req, res, id)
+  if (!findLevel(model, level)) return noLevel(req, res, level, model)
   send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme))
 }
 
-function sendExport(root: string, res: ServerResponse, id: string, level: string, format: 'svg' | 'png'): void {
+function sendExport(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, format: 'svg' | 'png'): void {
   const model = loadModel(root, id)
-  if (!model) return missing(res, id)
-  if (!findLevel(model, level)) return noLevel(res, level, model)
+  if (!model) return missing(req, res, id)
+  if (!findLevel(model, level)) return noLevel(req, res, level, model)
   if (format === 'svg') return send(res, 200, 'image/svg+xml; charset=utf-8', renderModel(model, level).levels[0].svg)
   send(res, 200, 'image/png', readFileSync(pngFor(root, model, level)))
 }
@@ -173,13 +176,13 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
     case 'diagrams':
       return method === 'POST' ? create(root, req, res) : json(res, 200, list(root))
     case 'model':
-      return sendModel(root, res, route.id)
+      return sendModel(root, req, res, route.id)
     case 'audit':
-      return sendAudit(root, res, route.id, level)
+      return sendAudit(root, req, res, route.id, level)
     case 'page':
-      return sendPage(root, res, route.id, route.level, url.searchParams.get('zoom'), theme)
+      return sendPage(root, req, res, route.id, route.level, url.searchParams.get('zoom'), theme)
     case 'export':
-      return sendExport(root, res, route.id, level ?? '', route.format)
+      return sendExport(root, req, res, route.id, level ?? '', route.format)
     case 'asset':
       return sendAsset(res, route.name)
   }

@@ -93,7 +93,7 @@ export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto')
   const sorted = [...entries].sort(byUpdated)
   const cards = sorted.length
     ? sorted.map(card).join('')
-    : `<div class="empty"><p>No diagrams yet.</p><p>Post a model: <code>curl -X POST --data @model.json http://calm:8788/api/diagrams</code></p></div>`
+    : `<div class="empty"><h1 class="t-headline-s">No diagrams yet</h1><p>This store is empty, so there is nothing to draw.</p><p>Send one: <code>c4v render model.json</code>, or <code>curl -X POST --data @model.json &lt;this-host&gt;/api/diagrams</code>.</p></div>`
   const diagramCount = sorted.length === 1 ? '1 diagram' : `${sorted.length} diagrams`
   return readFileSync(`${PUBLIC}index.html`, 'utf8')
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))

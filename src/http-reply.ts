@@ -8,6 +8,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Model } from './types.ts'
 import { levelOrder } from './model.ts'
 import { deniedPage } from './denied-page.ts'
+import { brokenModel, missingDiagram, missingLevel } from './state-page.ts'
 
 export function send(res: ServerResponse, status: number, type: string, body: string | Buffer): void {
   // a page built from the token-bearing request must not be cached by anything on the way back
@@ -38,11 +39,21 @@ export function redirectClean(res: ServerResponse, url: URL): void {
 export function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, 'application/json; charset=utf-8', JSON.stringify(value))
 }
-export function missing(res: ServerResponse, id: string): void {
+/** No diagram: a page for a browser, JSON for an agent. */
+export function missing(req: IncomingMessage, res: ServerResponse, id: string): void {
+  if (acceptsHtml(req)) return send(res, 404, 'text/html; charset=utf-8', missingDiagram(id))
   json(res, 404, { error: `no diagram "${id}"` })
 }
-export function noLevel(res: ServerResponse, level: string, model: Model): void {
-  json(res, 404, { error: `no level "${level}"`, levels: levelOrder(model).map((l) => l.path) })
+export function noLevel(req: IncomingMessage, res: ServerResponse, level: string, model: Model): void {
+  const paths = levelOrder(model).map((l) => l.path)
+  if (acceptsHtml(req)) return send(res, 404, 'text/html; charset=utf-8', missingLevel(level, paths))
+  json(res, 404, { error: `no level "${level}"`, levels: paths })
+}
+
+/** A model on disk that will not parse: 500, and a page that says which file to fix. */
+export function broken(req: IncomingMessage, res: ServerResponse, id: string): void {
+  if (acceptsHtml(req)) return send(res, 500, 'text/html; charset=utf-8', brokenModel(id))
+  json(res, 500, { error: `model "${id}" is not valid JSON or does not validate` })
 }
 
 /** The 401: a browser gets a page that states one cause, an agent gets JSON. */

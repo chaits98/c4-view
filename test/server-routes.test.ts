@@ -126,3 +126,39 @@ test('the page carries a text version, and a skip link before the header', async
   assert.match(html, /Flows \(\d+\)/)
   assert.ok(!/<details[^>]*>[\s\S]*<svg/.test(html.slice(html.indexOf('<details'))), 'and no drawing inside it')
 })
+
+test('the states a first-time reader meets are pages, not JSON', async () => {
+  const html = { accept: 'text/html' }
+  const missing = await fetch(`${base}/d/no-such-diagram`, { headers: html })
+  assert.equal(missing.status, 404)
+  const missingBody = await missing.text()
+  assert.match(missingBody, /<h1[^>]*>There is no diagram called/, 'one heading, one cause')
+  assert.match(missingBody, /href="\/">all diagrams<\/a>/, 'and one action')
+
+  const level = await fetch(`${base}/d/${ID}/no/such/level`, { headers: html })
+  assert.equal(level.status, 404)
+  assert.match(await level.text(), /has no level/, 'the level 404 is a page too')
+
+  // a model that is on disk and will not parse is 500, not "no such diagram"
+  mkdirSync(join(root, 'torn'), { recursive: true })
+  writeFileSync(join(root, 'torn', 'model.json'), '{"id": "torn", "levels": [')
+  const broken = await fetch(`${base}/d/torn`, { headers: html })
+  assert.equal(broken.status, 500)
+  assert.match(await broken.text(), /will not parse/, 'and says which file to fix')
+
+  const agent = await fetch(`${base}/d/no-such-diagram`)
+  assert.match(await agent.text(), /"error"/, 'an agent still gets JSON')
+})
+
+test('an empty store says so in words, with the next action', async () => {
+  const emptyRoot = mkdtempSync(join(tmpdir(), 'c4-view-empty-'))
+  const empty = await serve({ port: 0, root: emptyRoot })
+  try {
+    const page = await (await fetch(`http://127.0.0.1:${(empty.address() as AddressInfo).port}/`)).text()
+    assert.match(page, /<h1[^>]*>No diagrams yet<\/h1>/)
+    assert.match(page, /c4v render model\.json/, 'the action is a command, not a shrug')
+  } finally {
+    await new Promise<void>((done) => empty.close(() => done()))
+    rmSync(emptyRoot, { recursive: true, force: true })
+  }
+})
