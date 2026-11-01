@@ -11,6 +11,8 @@
     "test:coverage": "node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info",
     "check": "tsc --noEmit",
     "gate": "node tools/gate.mjs && npx tsc --noEmit && node --test",
+    "goldens": "node tools/golden.mjs",
+    "goldens:update": "node tools/golden.mjs --save",
     "render": "node src/cli.ts render",
     "serve": "node src/cli.ts serve",
     "fixtures": "node scripts/export-fixtures.ts",
