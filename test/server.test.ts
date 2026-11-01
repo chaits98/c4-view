@@ -80,6 +80,19 @@ test('GET /d/:id is the root level, server-rendered', async () => {
   assert.ok(html.includes('src="/viewer.js" defer'))
 })
 
+test('?zoom= picks a ladder step, and nonsense falls back to Fit', async () => {
+  const page = async (query: string): Promise<string> => (await fetch(`${base}/d/${ID}${query}`)).text()
+  assert.match(await page('?zoom=1'), /class="zoom-100"/)
+  assert.match(await page('?zoom=2'), /class="zoom-200"/)
+  assert.match(await page('?zoom=1.3'), /class="zoom-125"/, 'the nearest step wins')
+  assert.match(await page(''), /class="zoom-fit"/)
+  assert.match(await page('?zoom=bogus'), /class="zoom-fit"/)
+  const html = await page('?zoom=1')
+  assert.ok(html.includes('data-zoom="1" aria-current="true"'), 'the active preset is announced')
+  assert.ok(html.includes('href="/d/' + ID + '?zoom=2"'), 'presets are real links')
+  assert.ok(html.includes('<span id="c4-zoom-readout" class="c4-zoom-readout">100%</span>'))
+})
+
 test('deep link renders that level, with breadcrumbs', async () => {
   const res = await fetch(`${base}/d/${ID}/droid/frontend`)
   assert.equal(res.status, 200)
@@ -175,4 +188,15 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
   assert.match(page.body, /audit clean/)
   assert.equal(page.body.match(/<h2>/g)?.length, 1)
+  // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
+  assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)
+  assert.match(page.body, /<span class="chip">wide · 1089 px<\/span>/)
+  assert.match(page.body, /6 levels · 5 nodes · 8 flows/, 'the countable facts are text')
+})
+
+test('a narrow drawing is letterboxed, not cropped and chipped', () => {
+  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, width: 622, nodes: 1, flows: 0, wide: false }])
+  assert.match(page, /class="thumb" aria-hidden="true"/)
+  assert.doesNotMatch(page, /class="chip"/)
+  assert.match(page, /1 level · 1 node · 0 flows/, 'singulars stay singular')
 })

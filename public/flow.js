@@ -1,201 +1,245 @@
-/* c4-view flow — the linear narration: exactly one dot, one edge at a time, in
- * the emitter's data-flow order. Loaded after viewer.js; reads the same drawing. */
-(() => {
-  'use strict'
+/* c4-view flow — the linear narration: one dot, one edge at a time, in the emitter's
+ * data-flow order. Loaded after viewer.js as a module; reads the same drawing.
+ *
+ * Contract (ux-guideline §4): the rules live in flow-model.js (caption format, keys,
+ * button face, live region); this file drives the drawing with them.
+ *   - first paint is paused on step 1: the first edge is lit, the caption filled with
+ *     `1 / {total}`, nothing moving and nothing announced;
+ *   - keys are scoped to this bar, never the document;
+ *   - at the last edge the dot and the caption stay and the button reads Replay — no loop.
+ */
+import { actionOf, caption, face, live } from './flow-model.js'
 
-  const stage = document.getElementById('c4-stage')
-  const svg = stage && stage.querySelector('svg')
-  const rootG = svg && (svg.querySelector('g.c4-root') || svg.querySelector('g'))
-  if (!rootG) return
-
+const stage = document.getElementById('c4-stage')
+const svg = stage && stage.querySelector('svg')
+const rootG = svg && (svg.querySelector('g.c4-root') || svg.querySelector('g'))
+if (rootG) {
   const NS = 'http://www.w3.org/2000/svg'
   const reduce = matchMedia('(prefers-reduced-motion: reduce)')
-  const domPaths = [...svg.querySelectorAll('path[data-flow]')]
+  /** ux-guideline §4.1: ~1.1 s per step — 900 ms of travel, then the caption holds. */
+  const TRAVEL = 900
+  const DWELL = 200
+  /** reduced motion still advances, as a slide deck: no interpolation at all. */
+  const STEPPED = 1600
 
-  // a chip carries its edge key now; the positional pairing stays as the fallback
-  // for an older exported svg
+  const domPaths = [...svg.querySelectorAll('path[data-flow]')]
+  // a chip carries its edge key now; the positional pairing stays as the fallback for an
+  // older exported svg
   const chipEls = [...svg.querySelectorAll('g[data-chip]')]
   const byKey = new Map(chipEls.filter((g) => g.dataset.key).map((g) => [g.dataset.key, g.textContent.trim()]))
   const positional = chipEls.length === domPaths.length
     ? new Map(domPaths.map((el, i) => [el.dataset.key, chipEls[i].textContent.trim()]))
     : new Map()
-  const labels = new Map(domPaths.map((el) => [el, byKey.get(el.dataset.key) ?? positional.get(el.dataset.key) ?? '']))
-
   const edges = domPaths
-    .map((el) => ({ el, step: Number(el.dataset.flow), key: el.dataset.key || '', label: labels.get(el) || '' }))
+    .map((el) => ({
+      el,
+      step: Number(el.dataset.flow),
+      key: el.dataset.key || '',
+      label: byKey.get(el.dataset.key) ?? positional.get(el.dataset.key) ?? '',
+    }))
     .filter((e) => Number.isFinite(e.step))
     .sort((a, b) => a.step - b.step)
-  if (!edges.length) return
 
-  const bar = document.createElement('div')
-  bar.id = 'c4-flow-caption'
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.id = 'c4-flow-play'
-  button.textContent = '▶'
-  button.setAttribute('aria-label', 'Play or pause the flow')
-  const text = document.createElement('span')
-  text.id = 'c4-flow-text'
-  bar.append(button, text)
-  document.body.append(bar)
-
-  let index = -1
-  let playing = false
-  let done = false
-  let elapsed = 0
-  let startAt = 0
-  let length = 0
-  let duration = 0
-  let raf = 0
-  let dot = null
-
-  const caption = (msg) => {
-    text.textContent = msg
+  // the caption names nodes the way the drawing does; viewer.js owns that reading
+  const nodeById = new Map([...svg.querySelectorAll('g[data-id]')].map((g) => [g.dataset.id, g]))
+  const labelOf = (id) => {
+    const node = nodeById.get(id)
+    const read = window.__c4 && window.__c4.labelOf
+    return (node && read ? read(node) : '') || id
   }
 
-  function place(frac) {
-    const edge = edges[index]
-    if (!edge) return
-    const p = edge.el.getPointAtLength(length * frac)
-    if (!dot) {
-      dot = document.createElementNS(NS, 'circle')
-      dot.setAttribute('class', 'c4-dot')
-      dot.setAttribute('r', '5')
-      dot.setAttribute('pointer-events', 'none')
+  function button(id, glyph, name) {
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.id = id
+    el.className = 'c4-flow-btn'
+    el.setAttribute('aria-label', name)
+    const icon = document.createElement('span')
+    icon.className = 'c4-flow-icon'
+    icon.setAttribute('aria-hidden', 'true')
+    icon.textContent = glyph
+    el.append(icon)
+    return el
+  }
+
+  if (edges.length) {
+    const bar = document.createElement('div')
+    bar.id = 'c4-flow-caption'
+    bar.setAttribute('role', 'group')
+    bar.setAttribute('aria-label', 'Flow')
+    const play = button('c4-flow-play', '▶', 'Play the flow')
+    const prev = button('c4-flow-prev', '◀', 'Previous flow')
+    const next = button('c4-flow-next', '▶', 'Next flow')
+    const replay = button('c4-flow-replay', '↻', 'Replay the flow')
+    const word = document.createElement('span')
+    word.className = 'c4-flow-word'
+    word.setAttribute('aria-hidden', 'true')
+    play.append(word)
+    const text = document.createElement('p')
+    text.id = 'c4-flow-text'
+    text.setAttribute('aria-live', 'polite')
+    text.setAttribute('aria-atomic', 'true')
+    bar.append(play, prev, next, replay, text)
+    document.body.append(bar)
+
+    let index = 0
+    let playing = false
+    let raf = 0
+    let timer = 0
+    let dot = null
+    let length = 0
+
+    const atEnd = () => index === edges.length - 1
+
+    function place(frac) {
+      const edge = edges[index]
+      if (!edge) return
+      const point = edge.el.getPointAtLength(length * frac)
+      if (!dot) {
+        dot = document.createElementNS(NS, 'circle')
+        dot.setAttribute('class', 'c4-dot')
+        dot.setAttribute('r', '5')
+        dot.setAttribute('pointer-events', 'none')
+      }
+      // one dot, always: re-added to the routes' own group so it shares their coordinates
+      if (dot.parentNode !== rootG) rootG.append(dot)
+      dot.setAttribute('cx', String(point.x))
+      dot.setAttribute('cy', String(point.y))
     }
-    // one dot, always: re-added to the routes' own group so it shares their coordinates
-    if (dot.parentNode !== rootG) rootG.append(dot)
-    dot.setAttribute('cx', String(p.x))
-    dot.setAttribute('cy', String(p.y))
-  }
 
-  function hideDot() {
-    if (dot && dot.parentNode) dot.remove()
-  }
-
-  function describe(edge) {
-    const [from, to] = edge.key.split('->')
-    const label = edge.label ? ` · ${edge.label}` : ''
-    return `${from || edge.key} → ${to || ''}${label} · ${index + 1} / ${edges.length}`
-  }
-
-  function measure(edge) {
-    length = edge.el.getTotalLength()
-    duration = Math.min(2000, Math.max(400, (length / 120) * 1000))
-  }
-
-  function begin(i, resume = 0) {
-    index = i
-    done = false
-    measure(edges[i])
-    elapsed = resume
-    startAt = performance.now() - resume
-    caption(describe(edges[i]))
-    if (reduce.matches) {
+    function stop() {
       playing = false
-      button.textContent = '▶'
+      if (raf) cancelAnimationFrame(raf)
+      if (timer) clearTimeout(timer)
+      raf = 0
+      timer = 0
+    }
+
+    /** One edge's text: the caption, and the live region that is allowed to say it. */
+    function say(edge) {
+      const [from, to] = edge.key.split('->')
+      text.setAttribute('aria-live', live(playing))
+      text.textContent = caption(labelOf(from || ''), to ? labelOf(to) : '', edge.label, index, edges.length)
+    }
+
+    function paint() {
+      const look = face(index, edges.length, playing)
+      word.textContent = look.word
+      play.querySelector('.c4-flow-icon').textContent = look.glyph
+      play.setAttribute('aria-label', `${look.word} the flow`)
+      play.dataset.state = look.state
+      replay.setAttribute('aria-disabled', look.replay ? 'false' : 'true')
+    }
+
+    /** One step, drawn and nothing else: dot at the midpoint, caption, buttons. */
+    function show(i) {
+      stop()
+      index = Math.max(0, Math.min(edges.length - 1, i))
+      length = edges[index].el.getTotalLength()
       place(0.5)
-      return
+      say(edges[index])
+      paint()
     }
-    playing = true
-    button.textContent = '⏸'
-    place(duration ? Math.min(1, resume / duration) : 0)
-    raf = requestAnimationFrame(tick)
-  }
 
-  function tick(now) {
-    elapsed = now - startAt
-    const t = duration > 0 ? Math.min(1, elapsed / duration) : 1
-    place(t)
-    if (t < 1) {
+    /** One step of autoplay: travel, then hold; reduced motion jumps instead. */
+    function begin(i) {
+      index = i
+      length = edges[index].el.getTotalLength()
+      say(edges[index])
+      const after = () => (atEnd() ? end() : begin(index + 1))
+      if (reduce.matches) {
+        place(0.5)
+        timer = setTimeout(after, STEPPED)
+        return
+      }
+      const start = performance.now()
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / TRAVEL)
+        place(t)
+        if (t < 1) {
+          raf = requestAnimationFrame(tick)
+          return
+        }
+        raf = 0
+        timer = setTimeout(after, DWELL)
+      }
       raf = requestAnimationFrame(tick)
-      return
     }
-    raf = 0
-    if (index < edges.length - 1) begin(index + 1)
-    else finish()
-  }
 
-  function finish() {
-    playing = false
-    done = true
-    if (raf) cancelAnimationFrame(raf)
-    raf = 0
-    hideDot()
-    button.textContent = '▶'
-    caption(`replay · ${edges.length} / ${edges.length}`)
-  }
+    function end() {
+      stop()
+      index = edges.length - 1
+      length = edges[index].el.getTotalLength()
+      place(1)
+      say(edges[index])
+      paint()
+    }
 
-  function pause() {
-    if (!playing) return
-    playing = false
-    if (raf) cancelAnimationFrame(raf)
-    raf = 0
-    elapsed = performance.now() - startAt
-    button.textContent = '▶'
-    if (index >= 0) place(duration ? Math.min(1, elapsed / duration) : 1)
-  }
+    function start() {
+      playing = true
+      paint()
+      begin(index)
+    }
 
-  function play() {
-    if (playing) return
-    if (done) return begin(0)
-    if (index < 0) return begin(0)
-    begin(index, elapsed >= duration ? 0 : elapsed)
-  }
+    function toggle() {
+      if (playing) return show(index)
+      if (atEnd()) index = 0
+      start()
+    }
 
-  /** Paused view of one edge: dot at its midpoint, caption up to date. */
-  function show(i) {
-    playing = false
-    done = false
-    if (raf) cancelAnimationFrame(raf)
-    raf = 0
-    index = i
-    measure(edges[i])
-    elapsed = duration / 2
-    button.textContent = '▶'
-    caption(describe(edges[i]))
-    place(0.5)
-  }
+    function step(dir) {
+      show(Math.max(0, Math.min(edges.length - 1, index + dir)))
+    }
 
-  function step(dir = 1) {
-    pause()
-    const next = Math.max(0, index + dir)
-    if (next >= edges.length) return finish()
-    show(next)
-  }
+    function replayNow() {
+      index = 0
+      start()
+    }
 
-  button.addEventListener('click', () => (playing ? pause() : play()))
-
-  for (const [i, edge] of edges.entries()) {
-    edge.el.addEventListener('click', () => {
-      pause()
-      show(i)
+    play.addEventListener('click', toggle)
+    prev.addEventListener('click', () => step(-1))
+    next.addEventListener('click', () => step(1))
+    replay.addEventListener('click', () => {
+      if (replay.getAttribute('aria-disabled') !== 'true') replayNow()
     })
-  }
 
-  document.addEventListener('keydown', (e) => {
-    const tag = e.target && e.target.tagName
-    if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return
-    if (e.key === ' ' || e.key === 'Spacebar') {
+    // clicking an edge jumps to its step
+    for (const [i, edge] of edges.entries()) edge.el.addEventListener('click', () => show(i))
+
+    // keys belong to the bar: a global Space or arrow steals page scroll from someone who
+    // never asked for the animation (ux-guideline §4.3)
+    bar.addEventListener('keydown', (e) => {
+      const action = actionOf(e)
+      if (!action) return
+      if (action === 'toggle') toggle()
+      else if (action === 'next') step(1)
+      else if (action === 'prev') step(-1)
+      else if (action === 'first') show(0)
+      else if (action === 'last') show(edges.length - 1)
+      else if (action === 'replay') replayNow()
+      else if (action === 'stop') stop()
       e.preventDefault()
-      if (playing) pause()
-      else play()
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault()
-      step(1)
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      step(-1)
+    })
+
+    // first paint: paused on step 1, edge lit, caption filled, zero motion
+    show(0)
+
+    window.__c4 = window.__c4 || {}
+    window.__c4.flow = {
+      order: edges.map((e) => e.step),
+      play: toggle,
+      pause: () => show(index),
+      step: (dir = 1) => step(dir),
+      current: () => index,
+      state: () => ({
+        index,
+        total: edges.length,
+        playing,
+        live: text.getAttribute('aria-live'),
+        caption: text.textContent,
+        button: play.dataset.state,
+        replay: replay.getAttribute('aria-disabled'),
+      }),
     }
-  })
-
-  caption(`flow · ${edges.length} edges · press play`)
-  window.__c4 = window.__c4 || {}
-  window.__c4.flow = {
-    order: edges.map((e) => e.step),
-    play,
-    pause,
-    step,
-    current: () => index,
   }
-})()
+}

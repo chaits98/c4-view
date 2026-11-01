@@ -29,6 +29,7 @@ body {
 .c4-bar {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   padding: 8px 14px;
@@ -74,17 +75,12 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
-  overflow: hidden;
-  cursor: grab;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
+  /* the canvas is the scroll container: pan is native scroll, so arrow keys, touch and the
+     scrollbar all work without a drag handler */
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--line) transparent;
   background: var(--bg);
-}
-
-#c4-stage.is-panning,
-#c4-stage.is-panning * {
-  cursor: grabbing;
 }
 
 #c4-stage:focus-visible {
@@ -92,15 +88,83 @@ body {
   outline-offset: -2px;
 }
 
-/* the emitted svg keeps its width/height/viewBox attributes; only its box is scaled */
+/* Fit is the overview: the svg meets its own box, nothing scrolls.
+   Any other step renders the drawing at its intrinsic px × the step, so 100% is 100%:
+   12px labels are 12px, and the canvas scrolls around them. */
 #c4-stage svg {
   display: block;
+}
+
+#c4-stage.zoom-fit {
+  padding: 12px;
+}
+
+#c4-stage.zoom-fit svg {
   width: 100%;
   height: 100%;
 }
 
+#c4-stage:not(.zoom-fit) svg {
+  width: auto;
+  height: auto;
+  zoom: var(--zoom);
+}
+
+#c4-stage.zoom-50 { --zoom: 0.5; }
+#c4-stage.zoom-75 { --zoom: 0.75; }
+#c4-stage.zoom-100 { --zoom: 1; }
+#c4-stage.zoom-125 { --zoom: 1.25; }
+#c4-stage.zoom-150 { --zoom: 1.5; }
+#c4-stage.zoom-200 { --zoom: 2; }
+#c4-stage.zoom-300 { --zoom: 3; }
+
 #c4-stage svg g[data-id][data-drill] {
   cursor: pointer;
+}
+
+#c4-zoom {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.c4-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.c4-zoom-btn:hover {
+  background: #223349;
+}
+
+.c4-zoom-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.c4-zoom-btn[aria-current='true'] {
+  color: #fff;
+  background: #24344a;
+  border-color: var(--accent);
+}
+
+.c4-zoom-readout {
+  min-width: 44px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 #c4-hover {
@@ -189,33 +253,48 @@ body {
 }
 
 #c4-flow-text {
+  margin: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
-#c4-flow-play {
+/* four controls, all 40 px (SC 2.5.8 asks 24): play/pause is the only one with a word */
+.c4-flow-btn {
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
   color: var(--fg);
   background: #1a2838;
   border: 1px solid #24344a;
-  border-radius: 50%;
+  border-radius: 999px;
   font: 12px/1 ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
 }
 
-#c4-flow-play:hover {
+.c4-flow-btn:hover {
   background: #223349;
 }
 
-#c4-flow-play:focus-visible {
+.c4-flow-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.c4-flow-btn[aria-disabled='true'] {
+  opacity: 0.38;
+  cursor: default;
+}
+
+#c4-flow-play {
+  padding: 0 14px;
+  font-weight: 600;
 }
 
 .c4-dot {
