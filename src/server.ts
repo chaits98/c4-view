@@ -7,6 +7,7 @@ import { ModelError, levelOf, parseModel } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { docsDir, levelDocs } from './docs.ts'
 import { pictureAudits, renderExpanded, renderModel } from './render.ts'
+import { lensReport } from './lens.ts'
 import { list, loadModel, modelFile, save } from './store.ts'
 import { viewerPage } from './viewer-page.ts'
 import { buildStamp } from './build.ts'
@@ -224,7 +225,15 @@ async function create(root: string, req: IncomingMessage, res: ServerResponse): 
     throw error
   }
   save(root, model.id, raw)
-  return json(res, 201, { id: model.id, url: `/d/${model.id}`, audit: pictureAudits(model) })
+  const failures = lensReport(model).problems
+  return json(res, 201, {
+    id: model.id,
+    url: `/d/${model.id}`,
+    audit: pictureAudits(model),
+    // what a badge can trust: geometry per picture, plus the modelling checks
+    ok: pictureAudits(model).every((a) => a.ok) && failures.length === 0,
+    lens: failures,
+  })
 }
 
 /** The body as text, or null once a 413 has been answered and the socket closed. */

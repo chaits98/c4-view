@@ -14,6 +14,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { lensReport } from './lens.ts'
 import { renderModel } from './render.ts'
 import { paletteOf } from './theme.ts'
 import { compareKeys } from './layout/geometry.ts'
@@ -58,7 +59,10 @@ export function indexEntries(
     const box = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(root.svg)
     const [width, height] = box ? [Number(box[1]), Number(box[2])] : [0, 0]
     /* node:coverage enable */
-    return [{ ...row, svg: root.svg, ok: root.audit.ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
+    // the badge is the verdict: geometry AND the modelling checks, the same thing `c4v audit --strict` says.
+    // A card that says "clean" while `audit` fails the model is worse than no badge at all.
+    const ok = root.audit.ok && lensReport(model).problems.length === 0
+    return [{ ...row, svg: root.svg, ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
   })
 }
 

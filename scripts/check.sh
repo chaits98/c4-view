@@ -54,7 +54,9 @@ step "goldens: every corpus level byte-identical"      node tools/golden.mjs --c
 step "audit: fixtures flat, examples and our own model composed" bash -c '
   for f in fixtures/*.json; do
     [ -f "$f" ] || continue
-    node src/cli.ts audit "$f" --strict --flat >/dev/null || { echo "failed: $f"; exit 1; }
+    # --no-lens: the corpus predates the modelling rules (dead ends, identity merges); geometry is what it
+    # is here to exercise
+    node src/cli.ts audit "$f" --strict --flat --no-lens >/dev/null || { echo "failed: $f"; exit 1; }
   done
   for f in examples/*.json docs/c4/*.json skill/assets/*.json; do
     [ -f "$f" ] || continue   # an empty doc dir must not fail the glob itself

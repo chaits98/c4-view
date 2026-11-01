@@ -194,6 +194,8 @@ export interface Routed {
 // ── audit ────────────────────────────────────────────────────────────────────
 
 export interface AuditReport {
+  /** true when this report is of a drilled picture (parent level with one box expanded) */
+  composed?: boolean
   level: string
   nodes: number
   edges: number

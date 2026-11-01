@@ -112,7 +112,7 @@ export function pictureAudits(model: Model): AuditReport[] {
   return model.levels.map((level) => {
     if (!level.path) return renderModel(model, level.path).levels[0].audit
     try {
-      return renderExpanded(model, level.path).levels[0].audit
+      return { ...renderExpanded(model, level.path).levels[0].audit, composed: true }
     } catch {
       // a level whose box does not exist above it cannot be drawn at all: report that as a failure, not a 500
       return { ...renderModel(model, level.path).levels[0].audit, ok: false }

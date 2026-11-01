@@ -116,9 +116,13 @@ test('a child level that repeats a parent box with the same identity is composin
   const raw = {
     id: 'merge', title: 'Merge',
     levels: [
-      { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }, { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' }], edges: [{ from: 'ext', to: 'host' }] },
       {
-        path: 'host', ports: { 'ext->host': 'a' },
+        path: '',
+        nodes: [{ id: 'host', label: 'Host', subtype: 'system' }, { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' }, { id: 'sink', label: 'Sink', subtype: 'file-storage' }],
+        edges: [{ from: 'ext', to: 'host' }, { from: 'host', to: 'sink' }],
+      },
+      {
+        path: 'host', ports: { 'ext->host': 'a', 'host->sink': 'a' },
         nodes: [
           { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' },
           { id: 'a', label: 'A', subtype: 'service-logic' },

@@ -97,6 +97,21 @@ drawing.
 
 ## Commands
 
+Audit judges the picture a page draws: a level with a parent is reported **composed** and the line says so
+(`level="c4view/cli" (composed)`). `--flat` audits the authored level instead, for corpus checks only.
+
+```bash
+node src/cli.ts audit  model.json --strict --require-docs   # exit 0 is the deliverable
+node src/cli.ts render model.json --out out/                # one file per level, flat
+node src/cli.ts render model.json --expand c4v/cli --out out/   # the composed picture, as a page draws it
+node src/cli.ts serve  --port 8788                          # read-only viewer
+```
+
+Docs live beside the model, **flat**, one directory for the whole model: `docs/c4/<id>/nodes/<node-id>.md` and
+`docs/c4/<id>/edges/<from>__<to>.md`. `--require-docs` fails when any node or edge of any level has nothing to
+say; `--json` prints the per-picture reports as JSON for a script.
+
+
 `c4v` is on PATH when the package is installed. There is **no checkout to find and no `src/cli.ts` to run** —
 looking for one hits a sandbox denial, burns the budget on rejected commands, and ships a model that was never
 audited. If `c4v` is missing: `npm i -g c4-view`, once.
@@ -137,11 +152,14 @@ works before any JS runs.
 1. **Skipping C2.** Source files on the second level is not a container diagram — it is a component diagram
    wearing the wrong label. If a box would not appear in a deployment diagram (a process, a port, a store),
    it does not belong on C2.
-2. **One lens per layer.** A layer where a single box opens and the rest are dead says the system has depth in
+2. **A lens for every container you can describe.** Ship C1 and C2 always; then one C3 per container you can
+   honestly break into 6–12 components, and say in your hand-back which containers got one and why the others
+   did not. There is no bonus for a fifth C3 and no credit for a layer of dead boxes.
+3. **One lens per layer.** A layer where a single box opens and the rest are dead says the system has depth in
    exactly one place. That is almost never true: each container on C2 gets its own child level, and each of
    those opens in place, one at a time. Boxes that are genuinely leaves (a browser, an external API) stay leaves —
    that is a decision you can defend, not a default you were too lazy to check.
-3. **Trusting a green audit that judged the wrong picture.** `c4v audit` judges **what a page draws**: a level
+4. **Trusting a green audit that judged the wrong picture.** `c4v audit` judges **what a page draws**: a level
    with a parent is composed (parent, with that box expanded), because that is the picture a reader opens.
    `--flat` audits the authored level alone and is for corpus checks only — never for a claim that a drill looks
    right.
@@ -159,7 +177,9 @@ ever sees the level immediately above: leave the actor out of the container leve
 somebody drills one level deeper — the component page ends up with one input where the context page showed
 three.
 
-**Every lens needs an entry and an exit.** A drilled page shows only the boxes whose edges cross the frame —
+**Every lens needs an entry and an exit — and the audit enforces it.** A box with edges in only one direction is
+a `dead end` failure unless it is a `file-storage`, `database`, `cache` or `external-system` (sinks by nature).
+A drilled page shows only the boxes whose edges cross the frame —
 that is what makes it a lens. If the page has no inbound edge, the parent level is missing who calls this box;
 if it has no outbound edge, the box looks like a dead end. Both are model gaps, not rendering choices: add the
 edge (or say in the hand-back that the box is a genuine sink).
@@ -175,12 +195,16 @@ an installed package.
 | `levels[].path` | `""` at the root; a child is the parent path + node id (`api`, `api/db`). A node with a matching child level becomes clickable — expect several clickable boxes per layer, each with its own level. |
 | `subtype` | exactly one of these 49 — it decides shape and colour: `system, person, role, external-system, boundary, web-application, microservice, database, cache, message-queue, file-storage, search-engine, load-balancer, cdn, serverless-function, batch-job, container-registry, dns, api-gateway, ui-component, api-controller, service-logic, repository, middleware, plugin, module, event-handler, job, adapter, saga, workflow, library, config, migration, test-suite, class, interface, abstract-class, function, enum, type-alias, c4-module, schema, dto, constant, test-file, migration-file, config-file, script`. |
 | `tech` | second line: technology only, ≤5 words. |
-| `identity` | **required on every node**: a short stable id (`SHP-3`, `C4V-11`), unique in the model, kept
-across edits. It is drawn on the box and it is how a person names a node to you ("C4V-11 does X") — without it
-the user has to describe a box by position and you get to guess wrong. Never re-use an id for a different box. |
+| `identity` | **required on every node**: a short stable id (`SHP-3`, `C4V-11`), kept across edits. Unique per
+**element**: the same element drawn on two levels (an external system at C1 and C2) carries the SAME identity,
+and that is what tells composition to draw it once. Two different boxes never share one. It is drawn on the box
+and it is how a person names a box to you ("C4V-11 does X") — without it the user describes a box by position
+and you get to guess wrong. |
 | `rank` | absolute column hint, only when computed order fights the truth (an external that must sit right of everything). A hint is a promise about columns: hint a node left of its predecessor and you have declared that edge backward, and the router answers with a corridor under the whole drawing. |
 | `flow` | the linear narration, every edge key once. Omit → derived depth-first from the source nodes. |
-| `groups` | C4 boundaries; members must be **adjacent in the drawing**. |
+| `groups` | C4 boundaries (e.g. "what we run" vs "what we rent"); members must be **adjacent in the drawing**.
+Do **not** wrap a drill level's interior in a group — composition already draws the dashed `frame-<host>` around
+it, and an authored one on top doubles the boundary. |
 
 ## Authoring rules
 

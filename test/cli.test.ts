@@ -234,3 +234,9 @@ test('--flat audits the authored level; the default audits the picture a page dr
   assert.ok([0, 1].includes(await run(['audit', file, '--strict'])))
   assert.equal(await run(['audit', file, '--json']), 0)
 })
+
+test('--no-lens is geometry only, so a corpus fixture is judged on its drawing', async () => {
+  const fixture = join(ROOT, 'fixtures', 'droid.json')
+  // this corpus has drilled levels that are dead ends; --no-lens says "geometry only", and says so explicitly
+  assert.equal(await run(['audit', fixture, '--strict', '--flat', '--no-lens']), 0)
+})

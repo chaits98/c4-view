@@ -3,6 +3,22 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.7] — a badge that means what the audit means
+
+### Fixed
+- **A card could say "audit clean" for a model `c4v audit --strict` refuses.** The badge read geometry only, so
+  a lens with a dead end (a box nothing enters or nothing leaves) scored clean on the grid and failed on the
+  command line. The badge and the `POST /api/diagrams` response now carry the same verdict as the audit:
+  every composed picture, plus the modelling checks.
+- The audit line marks a composed picture — `level="c4view/cli" (composed)` — so a green line cannot be
+  mistaken for the authored level passing when it was the drilled picture that was judged.
+
+### Added
+- **Dead-end lenses are a failure.** A drilled box with edges in only one direction is refused unless it is a
+  `file-storage`, `database`, `cache` or `external-system` (sinks by nature): a page with an entry and no exit
+  is a model gap, not a rendering choice.
+- `audit --no-lens` — geometry only, for corpus fixtures that predate the modelling rules.
+
 ## [0.6.6] — the health stamp tells you which code is actually running
 
 ### Fixed

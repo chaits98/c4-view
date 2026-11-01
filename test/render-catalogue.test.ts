@@ -168,3 +168,9 @@ test('identity and tech are drawn independently', () => {
   assert.match(svg, /Node 22/, 'tech is drawn when it is the only small line')
   assert.match(svg, /team-payments/, 'identity is drawn when it is the only small line')
 })
+
+test('sorting by title falls back to the id when two titles match', () => {
+  const base = { levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
+  const html = indexPage([{ ...base, id: 'b', title: 'Same' }, { ...base, id: 'a', title: 'Same' }], 'auto', 'title')
+  assert.ok(html.indexOf('/d/a"') < html.indexOf('/d/b"'), 'the id decides, so the order is stable')
+})

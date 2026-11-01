@@ -83,6 +83,8 @@ export interface ReportArgs {
   requireDocs: boolean
   /** audit the authored levels instead of the composed pictures a reader opens */
   flat: boolean
+  /** geometry only: skip the modelling checks (lens problems), for corpus fixtures */
+  noLens: boolean
   render: boolean
   out?: string
   png: boolean
@@ -102,8 +104,8 @@ export function reportCommand(args: ReportArgs, report: Rendered, model: Model):
     const where = args.flat ? 'level(s)' : 'picture(s)'
     console.error(`\n${failed.length}/${audits.length} ${where} failed the geometry gate — fix the model, not the picture`)
   }
-  if (report.lens.problems.length) {
+  if (!args.noLens && report.lens.problems.length) {
     console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
   }
-  return failed.length || report.lens.problems.length || docsMissing ? 1 : 0
+  return failed.length || (args.noLens ? 0 : report.lens.problems.length) || docsMissing ? 1 : 0
 }

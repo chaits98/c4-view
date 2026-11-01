@@ -202,7 +202,9 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.equal(page.body.match(/class="card"/g)?.length, 1, 'one card per diagram')
   assert.match(page.body, new RegExp(`href="/d/${ID}"`))
   assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
-  assert.match(page.body, /audit clean/)
+  // the badge is the verdict now, and this fixture has drilled levels that are dead ends: the card says so
+  // instead of advertising "clean" while `c4v audit --strict` fails the same model
+  assert.match(page.body, /audit failed/)
   assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
   assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)
@@ -217,19 +219,16 @@ test('a narrow drawing is letterboxed, not cropped and chipped', () => {
 
 test('the error paths answer with a status, never a stack trace', async () => {
   // a model file that is not JSON: the page must not leak a raw exception
-  const brokenDir = join(root, 'halfwritten')
-  mkdirSync(brokenDir, { recursive: true })
-  writeFileSync(join(brokenDir, 'model.json'), '{"id": "halfwritten", "levels": [')
+  mkdirSync(join(root, 'halfwritten'), { recursive: true })
+  writeFileSync(join(root, 'halfwritten', 'model.json'), '{"id": "halfwritten", "levels": [')
   const broken = await fetch(`${base}/d/halfwritten`)
   assert.equal(broken.status, 500)
   assert.match(await broken.text(), /error/i)
 
-  // malformed percent-encoding is a 404 with a reason, not a crash
-  const malformed = await raw('GET', '/d/%E0%A4%A')
+  const malformed = await raw('GET', '/d/%E0%A4%A') // malformed percent-encoding
   assert.equal(malformed.status, 404)
   assert.match(malformed.body, /malformed path/)
 
-  // an asset that is not installed says so instead of 500
   const asset = await fetch(`${base}/not-a-real-asset.css`)
   assert.equal(asset.status, 404)
   assert.match(await asset.text(), /not installed yet/)
@@ -270,11 +269,12 @@ test('writes are validated before they are stored', async () => {
   assert.ok(!existsSync(join(root, 'bad model')), 'and nothing is written')
 })
 
-test('a missing diagram and a missing level both say what does exist', async () => {
+test('a missing diagram, its audit, and a missing level all say what does exist', async () => {
   const absent = await fetch(`${base}/d/no-such-diagram`)
   assert.equal(absent.status, 404)
-  const absentBody = (await absent.json()) as { error: string }
-  assert.equal(absentBody.error, 'no diagram "no-such-diagram"')
+  assert.equal(((await absent.json()) as { error: string }).error, 'no diagram "no-such-diagram"')
+
+  assert.equal((await fetch(`${base}/api/diagrams/no-such-diagram/audit`)).status, 404, 'and neither does its audit')
 
   const level = await fetch(`${base}/d/${ID}/no/such/level`)
   assert.equal(level.status, 404)

@@ -53,6 +53,17 @@ function levelProblems(model: Model, level: LevelSpec): string[] {
   }
   const problems: string[] = []
   checkPorts(level, parent, hostId, ports, problems)
+  const at = `level "${level.path}"`
+  const into = parent.edges.filter((e) => e.to === hostId).length
+  const out = parent.edges.filter((e) => e.from === hostId).length
+  const sink = parent.nodes.find((n) => n.id === hostId)?.subtype
+  const naturalSink = sink === 'file-storage' || sink === 'database' || sink === 'cache' || sink === 'external-system'
+  if (!naturalSink && (!into || !out)) {
+    problems.push(
+      `${at}: dead end — ${into ? 'nothing leaves' : 'nothing enters'} this box on the level above, so its page ` +
+      `shows ${into ? 'an entry with no exit' : 'an exit with no entry'}; add the missing edge or model the box as what it is`,
+    )
+  }
   return problems
 }
 
