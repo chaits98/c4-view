@@ -47,3 +47,39 @@ test('c4v doctor exits 1 with an unusable store', async () => {
   writeFileSync(file, 'x')
   assert.equal(await run(['doctor', '--root', file]), 1)
 })
+
+test('a browser named in the environment is used, and a wrong path is reported as a note, not a failure', () => {
+  const saved = process.env.C4_CHROMIUM
+  try {
+    process.env.C4_CHROMIUM = '/bin/sh'
+    const withBrowser = checks(scratch()).find((row) => row.name === 'chromium')
+    assert.equal(withBrowser?.ok, true, 'an executable path is taken at its word')
+    assert.equal(withBrowser?.required, false, 'but PNG is never a requirement')
+
+    process.env.C4_CHROMIUM = '/nowhere/chrome'
+    const without = checks(scratch()).find((row) => row.name === 'chromium')
+    assert.equal(without?.ok, false, 'a path that is not there is not a browser')
+    assert.match(without?.detail ?? '', /C4_CHROMIUM/, 'and the row says which variable to set')
+  } finally {
+    if (saved === undefined) delete process.env.C4_CHROMIUM
+    else process.env.C4_CHROMIUM = saved
+  }
+})
+
+test('a store that cannot be written is a FAIL, and doctor returns false for it', () => {
+  const blocked = join(scratch(), 'file-not-dir')
+  writeFileSync(blocked, 'x')
+  const rows = checks(join(blocked, 'store'))
+  const store = rows.find((row) => row.name === 'store')
+  assert.equal(store?.ok, false)
+  assert.equal(store?.required, true, 'an unwritable store is not a note')
+  assert.match(store?.detail ?? '', /store/, 'and the detail names the path')
+
+  const out = console.log
+  console.log = () => {}
+  try {
+    assert.equal(doctor(join(blocked, 'store')), false, 'doctor answers false when a requirement fails')
+  } finally {
+    console.log = out
+  }
+})

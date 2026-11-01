@@ -176,3 +176,31 @@ test('a layout knob that cannot work is refused, not silently ignored', () => {
   const kept = parseModel(withLayout({ direction: 'LR', rankGap: 96 }))
   assert.deepEqual({ ...layoutOf(kept) }, { ...DEFAULT_LAYOUT, direction: 'LR', rankGap: 96 }, 'known knobs are kept')
 })
+
+test('a fully specified model keeps every field it was given', () => {
+  const full = parseModel({
+    ...base(),
+    layout: { direction: 'LR', rankGap: 140, nodeGap: 40, lane: 14, portGap: 14, labelMaxChars: 40, fontSize: 14, nodePadX: 16, nodePadY: 12, minW: 130 },
+    levels: [
+      {
+        path: '',
+        title: 'Everything',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system', tech: 'Node', desc: 'd', identity: 'i', group: 'g', rank: 0 },
+          { id: 'b', label: 'B', subtype: 'microservice', tech: '', desc: '', identity: '', group: '' },
+        ],
+        edges: [{ from: 'a', to: 'b', label: 'calls', style: 'dep' }],
+        groups: [{ id: 'g', label: 'Group', members: ['a', 7, null, 'b'] }],
+        flow: ['a->b'],
+      },
+    ],
+  })
+  assert.deepEqual(full.layout, { direction: 'LR', rankGap: 140, nodeGap: 40, lane: 14, portGap: 14, labelMaxChars: 40, fontSize: 14, nodePadX: 16, nodePadY: 12, minW: 130 })
+  const level = full.levels[0]
+  assert.equal(level.title, 'Everything')
+  assert.equal(level.nodes[0].rank, 0, 'a direct rank is kept')
+  assert.equal(level.nodes[1].tech, '', 'an empty string is still a string')
+  assert.deepEqual(level.groups?.[0].members, ['a', 'b'], 'non-strings in members are dropped')
+  assert.deepEqual(level.flow, ['a->b'])
+  assert.equal(level.edges[0].style, 'dep')
+})
