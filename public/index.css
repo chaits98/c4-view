@@ -205,3 +205,12 @@ body {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* A card too heavy to inline draws a placeholder — the grid stays one frame. */
+.thumb.is-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  color: var(--on-surface-variant);
+  background: var(--surface-container-low);
+}

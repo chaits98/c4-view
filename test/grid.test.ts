@@ -29,7 +29,7 @@ before(async () => {
   root = mkdtempSync(join(tmpdir(), 'c4-view-grid-'))
   server = await serve({ port: 0, root })
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
-  for (const [id, title, count] of [['alpha', 'Alpha', 2], ['zulu', 'Zulu', 3], ['ten-in-a-row', 'Ten', 10]] as Array<[string, string, number]>) {
+  for (const [id, title, count] of [['alpha', 'Alpha', 2], ['zulu', 'Zulu', 3], ['ten-in-a-row', 'Ten', 10], ['huge', 'Huge', 401]] as Array<[string, string, number]>) {
     await fetch(`${base}/api/diagrams`, { method: 'POST', body: JSON.stringify(model(id, title, count)) })
   }
 })
@@ -89,4 +89,34 @@ test('an empty store says so in words, with the next action', async () => {
     await new Promise<void>((done) => empty.close(() => done()))
     rmSync(emptyRoot, { recursive: true, force: true })
   }
+})
+
+test('a card too heavy to inline draws a placeholder, and the grid keeps its frame', async () => {
+  const page = await (await fetch(`${base}/`)).text()
+  const cardOf = (id: string): string => {
+    const at = page.indexOf(`href="/d/${id}"`)
+    return page.slice(at, page.indexOf('</a>', at))
+  }
+  assert.match(cardOf('huge'), /is-placeholder/, '401 nodes is too many to inline')
+  assert.ok(!cardOf('huge').includes('<svg'), 'so no drawing is inlined')
+  assert.match(cardOf('alpha'), /<svg/, 'a small card still shows its drawing')
+
+  const started = performance.now()
+  await fetch(`${base}/`)
+  const elapsed = performance.now() - started
+  assert.ok(elapsed < 250, `the grid with a 401-node diagram answers in ${Math.round(elapsed)}ms`)
+})
+
+test('the audit banner names what failed, three at most, then counts the rest', async () => {
+  const { auditBanner } = await import('../src/viewer-page.ts')
+  const report = { level: '', nodes: 2, edges: 1, nodeNode: 0, wireNode: 0, wireWire: 0, crossings: 0, backward: 0, chipChip: 0, chipNode: 0, groupNode: 0, ok: true, aspect: 1 }
+  assert.equal(auditBanner(report), '', 'a clean drawing has no banner')
+
+  const one = auditBanner({ ...report, ok: false, nodeNode: 2 })
+  assert.match(one, /two containers overlap \(2\)/, 'a failing gate is named, with its count')
+  assert.match(one, /role="status"/, 'and it is announced, not just painted')
+
+  const many = auditBanner({ ...report, ok: false, nodeNode: 1, wireNode: 1, wireWire: 1, chipNode: 1, chipChip: 1 })
+  assert.match(many, /and 2 more checks/, 'five failures print three and a count')
+  assert.equal((many.match(/<li>/g) ?? []).length, 4, 'three names plus the count')
 })

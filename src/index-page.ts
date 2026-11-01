@@ -66,16 +66,24 @@ function byUpdated(a: IndexEntry, b: IndexEntry): number {
 
 const count = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
+/** Above this the card is a placeholder: inlining the drawing costs the whole grid a frame. */
+const HEAVY_NODES = 400
+const HEAVY_BYTES = 200_000
+
 function card(entry: IndexEntry): string {
   const facts = `${count(entry.levels.length, 'level')} · ${count(entry.nodes, 'node')} · ${count(entry.flows, 'flow')}`
   const state = entry.ok ? 'audit clean' : 'audit failed'
+  const heavy = entry.nodes > HEAVY_NODES || entry.svg.length > HEAVY_BYTES
+  const thumb = heavy
+    ? `<span class="thumb is-placeholder" aria-hidden="true"><span class="t-label-m">${facts} — open to draw</span></span>`
+    : `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}</span>`
   // the whole card is the link, so middle-click and cmd-click work without a handler
   return (
     `<a class="card" href="/d/${encodeURIComponent(entry.id)}">` +
     // the drawing is the emitter's own escaped output — never re-escape it. A crop is
     // declared in text ("wide · 3000 px") rather than passed off as the whole drawing.
     // A crop is shown by cropping — the card does not print its own diagnostics at the reader
-    `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}</span>` +
+    thumb +
     `<span class="meta"><h2 class="t-title-m">${esc(entry.title)}</h2>` +
     `<p class="t-body-s">${esc(entry.id)} · ${facts}</p>` +
     `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}"><span aria-hidden="true">${entry.ok ? '✓' : '!'}</span>${state}</span></span></a>`

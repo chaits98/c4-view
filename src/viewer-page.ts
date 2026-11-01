@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { levelOf, levelOrder } from './model.ts'
+import type { AuditReport } from './types.ts'
 import { renderModel } from './render.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
@@ -100,6 +101,32 @@ function textVersion(model: Model, level: string): string {
   )
 }
 
+const GATES: Array<{ key: keyof AuditReport; says: string }> = [
+  { key: 'nodeNode', says: 'two containers overlap' },
+  { key: 'wireNode', says: 'a wire runs through a container' },
+  { key: 'wireWire', says: 'two wires share a track' },
+  { key: 'chipNode', says: 'a label sits on a container' },
+  { key: 'chipChip', says: 'two labels overlap' },
+  { key: 'groupNode', says: 'a boundary box covers a container it does not own' },
+]
+
+/**
+ * Why this drawing failed its audit, in words, above the canvas — three checks and a count, because
+ * a stack of fifteen numbers is the same as none. The badge says *that* it failed; this says why.
+ */
+export function auditBanner(report: AuditReport): string {
+  const failing = GATES.filter((gate) => (report[gate.key] as number) > 0)
+  if (!failing.length) return ''
+  const named = failing.slice(0, 3).map((gate) => `<li>${gate.says} (${String(report[gate.key])})</li>`)
+  const more = failing.length > 3 ? `<li>and ${failing.length - 3} more check${failing.length - 3 === 1 ? '' : 's'}</li>` : ''
+  return (
+    `<section class="c4-audit" role="status">` +
+    `<h2 class="t-title-s"><span aria-hidden="true">!</span> This drawing failed its audit</h2>` +
+    `<ul class="t-body-s">${named.join('')}${more}</ul>` +
+    `</section>`
+  )
+}
+
 export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
   const drawn = renderModel(model, level, paletteOf(theme)).levels[0]
   const root = `/d/${model.id}`
@@ -122,6 +149,7 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
+    .replace('<!--AUDIT-->', () => auditBanner(drawn.audit))
     .replace('<!--TEXT-->', () => textVersion(model, level))
     .replace('<!--SVG-->', () => drawn.svg)
     .replace(
