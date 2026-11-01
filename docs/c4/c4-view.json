@@ -117,6 +117,22 @@
           "desc": "Read-only pages behind a token. It never writes a diagram."
         },
         {
+          "id": "who",
+          "identity": "C4V-01",
+          "label": "Agent or owner",
+          "subtype": "person",
+          "tech": "any harness",
+          "desc": "The actor. Same box as on the context level, same identity."
+        },
+        {
+          "id": "files",
+          "identity": "C4V-04",
+          "label": "repo files",
+          "subtype": "file-storage",
+          "tech": "model + docs",
+          "desc": "The store the CLI reads and writes. Same box as on the context level."
+        },
+        {
           "id": "git",
           "identity": "C4V-03",
           "label": "git",
@@ -134,6 +150,18 @@
         }
       ],
       "edges": [
+        {
+          "from": "who",
+          "to": "cli",
+          "label": "asks",
+          "style": "flow"
+        },
+        {
+          "from": "files",
+          "to": "cli",
+          "label": "reads",
+          "style": "dep"
+        },
         {
           "from": "git",
           "to": "hook",
@@ -160,6 +188,8 @@
         }
       ],
       "flow": [
+        "who->cli",
+        "files->cli",
         "git->hook",
         "hook->cli",
         "cli->server",
@@ -170,6 +200,8 @@
       "path": "c4v/cli",
       "title": "L3 — components inside the CLI",
       "ports": {
+        "who->cli": "argv",
+        "files->cli": "model",
         "hook->cli": "gate",
         "cli->server": "argv"
       },

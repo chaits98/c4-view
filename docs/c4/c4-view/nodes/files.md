@@ -1,3 +1,3 @@
 # repo files
 
-Model and one doc per node and edge, both in the user's repo.
+The store the CLI reads and writes. Same box as on the context level.

@@ -1,3 +1,3 @@
 # Agent or owner
 
-Says what it wants; never edits a drawing.
+The actor. Same box as on the context level, same identity.

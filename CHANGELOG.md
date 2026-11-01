@@ -3,6 +3,19 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.5] — the component page keeps its inputs
+
+### Fixed
+- The CLI's component page had **one** input (`git hook`) where the context page showed three. Composition
+  only sees the level immediately above, and the container level had dropped the actor and the store: `who`
+  and `files` were on C1 and nowhere else, so they vanished one drill down. Both now appear on the container
+  level with the same id and identity, edges merged by identity — the component page shows `C4V-01`,
+  `C4V-04`, `C4V-10` in, `C4V-12` out.
+
+### Documentation
+- Skill: an element that talks to a box must appear on **every** level between it and that box — otherwise
+  it disappears at the next drill.
+
 ## [0.6.4] — one box, one name, one door in and one out
 
 ### Fixed

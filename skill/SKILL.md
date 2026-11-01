@@ -154,6 +154,11 @@ container diagram does show what it talks to), give it the **same id and the sam
 Composition merges them; different ids make the page draw the same element twice, which is how a reader ends
 up asking why there are two browsers.
 
+**An element that talks to a box must appear on every level between it and that box.** Composition only
+ever sees the level immediately above: leave the actor out of the container level and it vanishes the moment
+somebody drills one level deeper — the component page ends up with one input where the context page showed
+three.
+
 **Every lens needs an entry and an exit.** A drilled page shows only the boxes whose edges cross the frame —
 that is what makes it a lens. If the page has no inbound edge, the parent level is missing who calls this box;
 if it has no outbound edge, the box looks like a dead end. Both are model gaps, not rendering choices: add the
