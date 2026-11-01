@@ -256,3 +256,28 @@ test('a store the process cannot read is a 500, and the server keeps serving', a
     rmSync(lockedRoot, { recursive: true, force: true })
   }
 })
+
+test('a directory that looks like a diagram but has no model is not a diagram', async () => {
+  mkdirSync(join(root, 'empty-dir'), { recursive: true })
+  const page = await fetch(`${base}/`)
+  assert.equal(page.status, 200)
+  assert.ok(!(await page.text()).includes('empty-dir'), 'an empty directory is skipped by the grid')
+  assert.equal((await fetch(`${base}/d/empty-dir`)).status, 404, 'and asking for it is a 404, not a crash')
+})
+
+test('the png export answers with an image, and reuses the file it already rendered', async () => {
+  const first = await fetch(`${base}/d/${ID}.png`)
+  assert.equal(first.status, 200, 'a png is produced on demand')
+  assert.match(first.headers.get('content-type') ?? '', /^image\/png/)
+  const bytes = (await first.arrayBuffer()).byteLength
+  assert.ok(bytes > 0, 'and it has pixels in it')
+  const second = await fetch(`${base}/d/${ID}.png`)
+  assert.equal(second.status, 200, 'the second request hits the cache')
+  assert.equal((await second.arrayBuffer()).byteLength, bytes, 'with the same bytes')
+})
+
+test('a post with no body at all is a 400, not a hang', async () => {
+  const res = await fetch(`${base}/api/diagrams`, { method: 'POST', body: '' })
+  assert.equal(res.status, 400)
+  assert.match(await res.text(), /not valid JSON|problems/, 'and it says why')
+})
