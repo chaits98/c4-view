@@ -50,8 +50,9 @@ function check(file) {
 for (const file of walk(join(ROOT, 'src')).filter((f) => f.endsWith('.ts'))) check(file)
 for (const file of walk(join(ROOT, 'test')).filter((f) => f.endsWith('.ts'))) check(file)
 for (const file of walk(join(ROOT, 'scripts')).filter((f) => f.endsWith('.ts'))) check(file)
-// the browser script and the tooling obey the same ceiling — a viewer is not exempt from 300 lines
-for (const file of walk(join(ROOT, 'public')).filter((f) => f.endsWith('.js'))) check(file)
+// the browser script, the stylesheets and the tooling obey the same ceiling — a viewer is not
+// exempt from 300 lines, and a sheet that is exempt is where 330 lines of drift hides
+for (const file of walk(join(ROOT, 'public')).filter((f) => /\.(js|css)$/.test(f))) check(file)
 // the gate carries the banned patterns as its own rules: measure it, do not read it for violations
 for (const file of walk(join(ROOT, 'tools')).filter((f) => f.endsWith('.mjs') && !f.endsWith('gate.mjs'))) check(file)
 

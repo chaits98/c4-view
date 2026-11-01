@@ -1,0 +1,70 @@
+/**
+ * The states: the text version, the skip link, the audit banner, and the 401.
+ *
+ * Split from viewer.css when that file passed the 300-line ceiling — the gate checks .css now, and
+ * these styles belong to moments a reader only meets when something is missing or broken.
+ */
+/* The 401 page: one column at a readable measure, nothing to click, same surface as the viewer. */
+.c4-denied {
+  max-width: 62ch;
+  margin: 12vh auto 0;
+  padding: 0 var(--space-6) var(--space-6);
+  color: var(--on-surface);
+}
+
+.c4-denied h1 {
+  margin-block: 0 var(--space-4);
+}
+
+.c4-denied p {
+  margin-block: 0 var(--space-3);
+  color: var(--on-surface-variant);
+}
+
+.c4-denied code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* Skip link: off-screen until it is focused, then the first thing you can see. */
+.c4-skip {
+  position: absolute;
+  left: -9999px;
+  z-index: 2;
+}
+
+.c4-skip:focus {
+  left: var(--space-4);
+  top: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--shape-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* The text version: a readable column under the canvas, closed until asked for. */
+.c4-text {
+  max-width: 90ch;
+  margin: var(--space-4) auto var(--space-8);
+  padding: 0 var(--space-6);
+  color: var(--on-surface);
+}
+
+.c4-text summary {
+  cursor: pointer;
+  padding: var(--space-2) 0;
+}
+
+.c4-text h2 {
+  margin-block: var(--space-4) var(--space-2);
+  color: var(--on-surface-variant);
+}
+
+.c4-text ul {
+  margin: 0;
+  padding-inline-start: var(--space-6);
+}
+
+.c4-text li {
+  margin-block: var(--space-1);
+}

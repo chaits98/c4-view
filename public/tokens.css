@@ -90,6 +90,32 @@
   /* the diagram document surface follows the scheme now — the server draws the matching palette */
   --canvas: light-dark(#ffffff, #0a111b);
   --d-edge-active: light-dark(#1d4ed8, #d0bcff);
+  /* ── the canvas palette (SVG) ──────────────────────────────────────────────
+     The drawing is inline SVG whose colours are attributes, so it cannot answer a media query by
+     itself. These tokens are the answer: the emitter writes var(--c4-…) for `auto`, and the sheet
+     resolves it against the same scheme as the page — no request-time guess, no JavaScript.
+     An exported file gets the literal palette instead (a standalone SVG has no stylesheet). */
+  --c4-bg: light-dark(#ffffff, #0a111b);
+  --c4-fg: light-dark(#1d1b20, #e6edf6);
+  --c4-dim: light-dark(#49454f, #8fa3b8);
+  --c4-line: light-dark(#cac4d0, #2a3a4f);
+  --c4-chip-bg: light-dark(#f3edf7, #0f1a27);
+  --c4-chip-fg: light-dark(#1d1b20, #cfe3f2);
+  --c4-group-stroke: light-dark(#94a3b8, #4a6f95);
+  --c4-group-fill: light-dark(rgb(100 116 139 / 8%), rgb(40 70 105 / 12%));
+  --c4-concept-fill: light-dark(rgb(109 40 217 / 7%), rgb(139 92 246 / 16%));
+  --c4-concept-stroke: light-dark(#6d28d9, #8b5cf6);
+  --c4-step-fill: light-dark(rgb(29 78 216 / 7%), rgb(59 130 246 / 16%));
+  --c4-step-stroke: light-dark(#1d4ed8, #3b82f6);
+  --c4-tool-fill: light-dark(rgb(15 118 110 / 7%), rgb(45 212 191 / 14%));
+  --c4-tool-stroke: light-dark(#0f766e, #2dd4bf);
+  --c4-fact-fill: light-dark(rgb(180 83 9 / 9%), rgb(245 158 11 / 14%));
+  --c4-fact-stroke: light-dark(#b45309, #f59e0b);
+  --c4-edge-flow: light-dark(#1d4ed8, #3b82f6);
+  --c4-edge-dep: light-dark(#6b7280, #8fa3b8);
+  --c4-edge-tent: light-dark(#b45309, #f59e0b);
+  --c4-edge-dir: light-dark(#1d1b20, #e6edf6);
+
 }
 
 

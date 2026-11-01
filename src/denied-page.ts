@@ -7,16 +7,18 @@
  *
  * @module c4-view/denied-page
  */
+import { themeAttribute, type Theme } from './theme-choice.ts'
 
-export function deniedPage(): string {
+export function deniedPage(theme: Theme = 'auto'): string {
   return `<!doctype html>
-<html lang="en" data-theme="auto">
+<html lang="en"<!--THEMEATTR-->>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>c4-view — token required</title>
 <link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/viewer.css">
+<link rel="stylesheet" href="/viewer-states.css">
 </head>
 <body class="t-body-m">
 <main class="c4-denied">
@@ -27,5 +29,5 @@ export function deniedPage(): string {
 </main>
 </body>
 </html>
-`
+`.replace('<!--THEMEATTR-->', themeAttribute(theme))
 }

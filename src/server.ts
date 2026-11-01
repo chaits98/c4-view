@@ -62,31 +62,31 @@ function safePath(raw: string): string | null {
 }
 
 
-function sendModel(root: string, req: IncomingMessage, res: ServerResponse, id: string): void {
+function sendModel(root: string, req: IncomingMessage, res: ServerResponse, id: string, theme: Theme): void {
   const file = modelFile(root, id)
-  if (!existsSync(file)) return missing(req, res, id)
+  if (!existsSync(file)) return missing(req, res, id, theme)
   send(res, 200, 'application/json; charset=utf-8', readFileSync(file))
 }
 
-function sendAudit(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string | null): void {
+function sendAudit(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string | null, theme: Theme): void {
   const model = loadModel(root, id)
-  if (!model) return missing(req, res, id)
+  if (!model) return missing(req, res, id, theme)
   if (level === null) return json(res, 200, renderModel(model).levels.map((l) => l.audit))
-  if (!findLevel(model, level)) return noLevel(req, res, level, model)
+  if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
   json(res, 200, renderModel(model, level).levels[0].audit)
 }
 
 function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
   const model = loadModel(root, id)
-  if (!model) return missing(req, res, id)
-  if (!findLevel(model, level)) return noLevel(req, res, level, model)
+  if (!model) return missing(req, res, id, theme)
+  if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
   send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme))
 }
 
-function sendExport(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, format: 'svg' | 'png'): void {
+function sendExport(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, format: 'svg' | 'png', theme: Theme): void {
   const model = loadModel(root, id)
-  if (!model) return missing(req, res, id)
-  if (!findLevel(model, level)) return noLevel(req, res, level, model)
+  if (!model) return missing(req, res, id, theme)
+  if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
   if (format === 'svg') return send(res, 200, 'image/svg+xml; charset=utf-8', renderModel(model, level).levels[0].svg)
   send(res, 200, 'image/png', readFileSync(pngFor(root, model, level)))
 }
@@ -104,7 +104,7 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
   const url = new URL(req.url ?? '/', 'http://localhost')
   if (guard.token && pathname !== '/health') {
-    if (!allowed(guard, req, url)) return denied(req, res)
+    if (!allowed(guard, req, url)) return denied(req, res, themeOf(url.searchParams.get('theme'), req.headers.cookie))
     remember(guard, req, url, res)
     // the token leaves the address bar on the first hop: the cookie has it now, and a token left in
     // the URL ends up in a screenshot, in history, and in any Referer that slips out
@@ -138,13 +138,13 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
     case 'diagrams':
       return method === 'POST' ? create(root, req, res) : json(res, 200, list(root))
     case 'model':
-      return sendModel(root, req, res, route.id)
+      return sendModel(root, req, res, route.id, theme)
     case 'audit':
-      return sendAudit(root, req, res, route.id, level)
+      return sendAudit(root, req, res, route.id, level, theme)
     case 'page':
       return sendPage(root, req, res, route.id, route.level, url.searchParams.get('zoom'), theme)
     case 'export':
-      return sendExport(root, req, res, route.id, level ?? '', route.format)
+      return sendExport(root, req, res, route.id, level ?? '', route.format, theme)
     case 'asset':
       return sendAsset(res, route.name)
   }

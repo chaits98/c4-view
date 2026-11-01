@@ -16,7 +16,7 @@ import { lineHeight, textWidth } from './metrics.ts'
 import { CHROMIUM_ENV, findChromium } from './png.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
-const ASSETS = ['viewer.html', 'viewer.js', 'flow.js', 'flow-model.js', 'tokens.css', 'viewer.css', 'index.html', 'index.css']
+const ASSETS = ['viewer.html', 'viewer.js', 'flow.js', 'flow-model.js', 'tokens.css', 'viewer.css', 'viewer-states.css', 'index.html', 'index.css']
 
 /** `dist/` is plain JS (Node 18+); the TypeScript source needs the version that strips types. */
 const BUILT = import.meta.url.includes('/dist/')

@@ -49,11 +49,15 @@ function zoomBar(href: (value: string) => string, zoom: number | null, percent: 
     const on = value === 'fit' ? zoom === null : Number(value) === zoom
     return `<a class="c4-zoom-btn" href="${href(value)}" data-zoom="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
   })
+  // the readout only exists for the steps no preset names (75 %, 125 %, 150 %); repeating "Fit"
+  // next to a chip that already says "Fit" is noise, and 240px away from it at that
+  const named = PRESETS.some(([value]) => (value === 'fit' ? zoom === null : Number(value) === zoom))
+  const readout = named ? '' : `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(percent)}</span>`
   return [
     ...presets,
     '<button type="button" class="c4-zoom-btn" data-step="-1" aria-label="Zoom out">−</button>',
     '<button type="button" class="c4-zoom-btn" data-step="1" aria-label="Zoom in">+</button>',
-    `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(percent)}</span>`,
+    readout,
   ].join('')
 }
 
@@ -67,9 +71,9 @@ function crumbsFor(model: Model, level: string, root: string): string[] {
     if (!found) continue
     const title = esc(found.title ?? found.path)
     const href = root + '/' + at
-    crumbs.push(at === level ? `<span>${title}</span>` : `<a href="${esc(href)}">${title}</a>`)
+    crumbs.push(at === level ? `<span aria-current="page">${title}</span>` : `<a href="${esc(href)}">${title}</a>`)
   }
-  if (level === '') crumbs.push(`<span>${esc(levelOf(model, '')?.title ?? 'Overview')}</span>`)
+  if (level === '') crumbs.push(`<span aria-current="page">${esc(levelOf(model, '')?.title ?? 'Overview')}</span>`)
   return crumbs
 }
 
