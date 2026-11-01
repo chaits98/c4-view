@@ -115,11 +115,11 @@ function sendAudit(root: string, res: ServerResponse, id: string, level: string 
   json(res, 200, renderModel(model, level).levels[0].audit)
 }
 
-function sendPage(root: string, res: ServerResponse, id: string, level: string): void {
+function sendPage(root: string, res: ServerResponse, id: string, level: string, zoom: string | null): void {
   const model = loadModel(root, id)
   if (!model) return missing(res, id)
   if (!findLevel(model, level)) return noLevel(res, level, model)
-  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level))
+  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom))
 }
 
 function sendExport(root: string, res: ServerResponse, id: string, level: string, format: 'svg' | 'png'): void {
@@ -172,7 +172,7 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
     case 'audit':
       return sendAudit(root, res, route.id, level)
     case 'page':
-      return sendPage(root, res, route.id, route.level)
+      return sendPage(root, res, route.id, route.level, url.searchParams.get('zoom'))
     case 'export':
       return sendExport(root, res, route.id, level ?? '', route.format)
     case 'asset':

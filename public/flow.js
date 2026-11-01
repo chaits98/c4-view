@@ -176,6 +176,9 @@
   document.addEventListener('keydown', (e) => {
     const tag = e.target && e.target.tagName
     if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return
+    // the canvas owns its keys while it has focus: arrows scroll it, and a global
+    // preventDefault here would be the reason they could not
+    if (stage.contains(e.target)) return
     if (e.key === ' ' || e.key === 'Spacebar') {
       e.preventDefault()
       if (playing) pause()
