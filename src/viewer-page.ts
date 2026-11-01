@@ -20,51 +20,19 @@ import { hostOf } from './lens.ts'
 import type { LevelDocs } from './docs.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
+import { zoomBar, zoomClass, zoomOf } from './viewer-zoom.ts'
 import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
-const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-/** The zoom ladder, mirrored in public/viewer.js — a class per step, so `?zoom=` needs no JS. */
-const LADDER = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
-/** The laptop stage the design is measured against; bigger drawings open at 100% instead of Fit. */
+/** The laptop stage the design is measured against; a drawing that does not fit opens at 100%. */
 const STAGE_W = 1280
 const STAGE_H = 800
-const PRESETS: ReadonlyArray<readonly [string, string]> = [['fit', 'Fit'], ['1', '100%'], ['2', '200%']]
-
+const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** Every untrusted string in the page goes through this; the svg is already escaped. */
 function esc(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
 }
 
-/** `?zoom=` → the nearest ladder step; absent, `fit` or nonsense → null (Fit). */
-function zoomOf(raw: string | null): number | null {
-  if (!raw || raw === 'fit') return null
-  const wanted = Number(raw)
-  if (!Number.isFinite(wanted) || wanted <= 0) return null
-  return LADDER.reduce((best, step) => (Math.abs(step - wanted) < Math.abs(best - wanted) ? step : best), LADDER[0])
-}
-
-/** `100%`, `125%`, … or the word `Fit`, from a ladder step. */
-const percentOf = (zoom: number | null): number => (zoom === null ? 0 : Math.round(zoom * 100))
-const sizeOf = (percent: number): string => (percent === 0 ? 'Fit' : `${percent}%`)
-
-/** The zoom cluster: three preset links (real hrefs, so they survive JS being off) and −/+. */
-function zoomBar(href: (value: string) => string, zoom: number | null, percent: number): string {
-  const presets = PRESETS.map(([value, text]) => {
-    const on = value === 'fit' ? zoom === null : Number(value) === zoom
-    return `<a class="c4-zoom-btn" href="${href(value)}" data-zoom="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
-  })
-  // the readout only exists for the steps no preset names (75 %, 125 %, 150 %); repeating "Fit"
-  // next to a chip that already says "Fit" is noise, and 240px away from it at that
-  const named = PRESETS.some(([value]) => (value === 'fit' ? zoom === null : Number(value) === zoom))
-  const readout = named ? '' : `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(percent)}</span>`
-  return [
-    ...presets,
-    '<button type="button" class="c4-zoom-btn" data-step="-1" aria-label="Zoom out">−</button>',
-    '<button type="button" class="c4-zoom-btn" data-step="1" aria-label="Zoom in">+</button>',
-    readout,
-  ].join('')
-}
 
 /**
  * `all / id / box…`, each ancestor a real link, the current one an `<h1>` — the page's only heading,
@@ -272,7 +240,6 @@ export function viewerPage(
   const drawnSize = svgSize(drawn.level.svg)
   const wide = zoomRaw === null && (drawnSize.w > STAGE_W * 1.6 || drawnSize.h > STAGE_H * 1.6)
   const zoom = zoomOf(zoomRaw) ?? (wide ? 1 : null)
-  const percent = percentOf(zoom)
   const wideNote = wide ? '<p class="c4-note t-body-s">Too large to fit — opened at 100%. Scroll to pan, or pick Fit for the overview.</p>' : ''
   const levelRoot = level ? root + '/' + level : root
   const zoomHref = (value: string): string => esc(levelRoot + '?zoom=' + value)
@@ -285,8 +252,8 @@ export function viewerPage(
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
-    .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
-    .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
+    .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
+    .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom)}"`)
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note) + wideNote)
     .replace('<!--TEXT-->', () => textVersion(drawn.spec))
     .replace('<!--SVG-->', () => drawn.level.svg)

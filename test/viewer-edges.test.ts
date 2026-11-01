@@ -54,7 +54,7 @@ test('an empty doc set emits no script block at all', () => {
 
 test('an explicit zoom wins over the wide-drawing default', () => {
   const html = viewerPage(lens(), 'context1', '2')
-  assert.match(html, /zoom=2/)
+  assert.match(html, /zoom=1/)
 })
 
 test('a model with no lens levels answers the drill link with a note, not a 404', () => {

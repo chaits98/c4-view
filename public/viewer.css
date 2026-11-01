@@ -61,53 +61,6 @@ body {
   border-radius: var(--shape-sm);
 }
 
-#c4-stage {
-  flex: 1 1 auto;
-  min-height: 0;
-  position: relative;
-  /* the canvas is the scroll container: pan is native scroll, so arrow keys, touch and the
-     scrollbar all work without a drag handler */
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--outline) transparent;
-  background: var(--canvas);
-}
-
-/* the ring is the token one, pulled inside because the canvas is full-bleed */
-#c4-stage:focus-visible {
-  outline-offset: -2px;
-}
-
-/* Fit is the overview: the svg meets its own box, nothing scrolls.
-   Any other step renders the drawing at its intrinsic px × the step, so 100% is 100%:
-   12px labels are 12px, and the canvas scrolls around them. */
-#c4-stage svg {
-  display: block;
-}
-
-#c4-stage.zoom-fit {
-  padding: var(--space-3);
-}
-
-#c4-stage.zoom-fit svg {
-  width: 100%;
-  height: 100%;
-}
-
-#c4-stage:not(.zoom-fit) svg {
-  width: auto;
-  height: auto;
-  zoom: var(--zoom);
-}
-
-#c4-stage.zoom-50 { --zoom: 0.5; }
-#c4-stage.zoom-75 { --zoom: 0.75; }
-#c4-stage.zoom-100 { --zoom: 1; }
-#c4-stage.zoom-125 { --zoom: 1.25; }
-#c4-stage.zoom-150 { --zoom: 1.5; }
-#c4-stage.zoom-200 { --zoom: 2; }
-#c4-stage.zoom-300 { --zoom: 3; }
-
 #c4-stage svg g[data-id][data-drill] {
   cursor: pointer;
 }

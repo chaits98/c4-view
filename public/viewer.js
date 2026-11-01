@@ -53,7 +53,10 @@
     const next = Math.max(0, Math.min(LADDER.length - 1, at))
     const step = LADDER[next]
     const { fx, fy } = focusOf()
-    for (const other of LADDER) stage.classList.toggle(classOf(other), classOf(other) === classOf(step))
+    // clear every zoom class first: a page may have opened in zoom-fit-w or zoom-fit-h, and leaving one of
+    // those on with a ladder class beside it makes the stage obey whichever rule the stylesheet reads last
+    for (const name of [...stage.classList]) if (name.startsWith('zoom-')) stage.classList.remove(name)
+    stage.classList.add(classOf(step))
     stage.scrollLeft = fx * stage.scrollWidth - stage.clientWidth / 2
     stage.scrollTop = fy * stage.scrollHeight - stage.clientHeight / 2
     if (readout) readout.textContent = labelOf(step)

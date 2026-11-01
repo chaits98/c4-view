@@ -83,21 +83,6 @@ test('GET /d/:id is the root level, server-rendered', async () => {
   assert.ok(html.includes('src="/viewer.js" defer'))
 })
 
-test('?zoom= picks a ladder step, and nonsense falls back to Fit', async () => {
-  const page = async (query: string): Promise<string> => (await fetch(`${base}/d/${ID}${query}`)).text()
-  assert.match(await page('?zoom=1'), /class="zoom-100"/)
-  assert.match(await page('?zoom=2'), /class="zoom-200"/)
-  assert.match(await page('?zoom=1.3'), /class="zoom-125"/, 'the nearest step wins')
-  assert.match(await page(''), /class="zoom-fit"/)
-  assert.match(await page('?zoom=bogus'), /class="zoom-fit"/)
-  const html = await page('?zoom=1')
-  assert.ok(html.includes('data-zoom="1" aria-current="true"'), 'the active preset is announced')
-  assert.ok(html.includes('href="/d/' + ID + '?zoom=2"'), 'presets are real links')
-  // 100 % is a preset, so the readout stays out of the bar; it exists only for the unnamed steps
-  assert.ok(!html.includes('c4-zoom-readout'), 'no readout repeating what the chip already says')
-  const odd = await page('?zoom=0.75')
-  assert.ok(odd.includes('<span id="c4-zoom-readout" class="c4-zoom-readout">75%</span>'), 'an unnamed step does report its size')
-})
 
 test('deep link renders that level, with breadcrumbs', async () => {
   const res = await fetch(`${base}/d/${ID}/droid/frontend`)

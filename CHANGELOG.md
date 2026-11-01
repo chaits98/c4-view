@@ -3,6 +3,18 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.9.4] — a centred drawing, and Fit in both directions
+
+- **The canvas centres its drawing.** A tall column no longer hugs the left edge with dead space beside it;
+  a drawing smaller than the canvas is centred in both axes, and one larger than it still scrolls to its own
+  top-left corner (margin:auto inside a grid, the one centring that does not clip the overflow).
+- **Fit is now three ways.** `Fit` (whole drawing), **`Fit W`** (fit the width, scroll down — what a column
+  wants) and **`Fit H`** (fit the height, scroll across — what a strip wants), plus `100%`. Each is a real link,
+  so it works before any script runs; the stage class is one name per zoom, so no two rules can disagree.
+- The zoom model moved to `src/viewer-zoom.ts` and the stage rules to `public/stage.css`, both for the 300-line
+  cap; the old class-swapping in `viewer.js` now clears every zoom class first, so opening `?zoom=fit-w` and
+  then pressing + cannot leave two.
+
 ## [0.9.3] — an upright picture keeps its text inside its boxes
 
 Three bugs the vertical layout shipped with, all found by looking at the drawing:
