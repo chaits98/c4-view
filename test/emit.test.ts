@@ -43,7 +43,7 @@ function fixture(): Fixture {
   NODES.forEach((node, index) => {
     const t = measureNode(node, cfg, measure)
     const h = Math.max(t.h, cfg.portGap * 2)
-    const item: PlacedItem = { id: node.id, rank: 0, index, w: t.w, h, dummy: false, band: 0, x: 0, y }
+    const item: PlacedItem = { id: node.id, rank: 0, index, w: t.w, h, dummy: false, x: 0, y }
     items.set(node.id, item)
     boxes.set(node.id, { x: 0, y, w: t.w, h })
     w = Math.max(w, t.w)

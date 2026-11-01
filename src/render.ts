@@ -37,6 +37,28 @@ export interface Rendered {
 }
 
 /**
+ * Swap the axes: the same drawing read top to bottom. Every number the audit measures — crossings, overlaps,
+ * shared segments — is invariant under a swap of x and y, so a vertical picture is exactly as clean as the
+ * horizontal one it came from. That is why this is a transform and not a second layout engine.
+ */
+export function transpose(placed: ReturnType<typeof place>, routed: ReturnType<typeof route>): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route> } {
+  const items = new Map<string, ReturnType<typeof place>['items'] extends Map<string, infer I> ? I : never>()
+  for (const [id, it] of placed.items) items.set(id, { ...it, x: it.y, y: it.x, w: it.h, h: it.w })
+  const boxes = new Map<string, { x: number; y: number; w: number; h: number }>()
+  for (const [id, b] of placed.boxes) boxes.set(id, { x: b.y, y: b.x, w: b.h, h: b.w })
+  const groups = placed.groups.map((g) => ({ ...g, box: { x: g.box.y, y: g.box.x, w: g.box.h, h: g.box.w } }))
+  const routes = routed.routes.map((r) => ({
+    ...r,
+    pts: r.pts.map((p) => ({ x: p.y, y: p.x })),
+    ...(r.label ? { label: { text: r.label.text, box: { x: r.label.box.y, y: r.label.box.x, w: r.label.box.h, h: r.label.box.w } } } : {}),
+  }))
+  return {
+    placed: { ...placed, items, boxes, groups, size: { w: placed.size.h, h: placed.size.w } },
+    routed: { routes, size: { w: routed.size.h, h: routed.size.w } },
+  }
+}
+
+/**
  * One layout attempt at a given width budget.
  */
 function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
@@ -46,23 +68,28 @@ function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>): { placed: 
 }
 
 /**
- * Lay a level out, wrapping its columns only when wrapping does not cost more than it saves.
+ * Lay a level out. Columns run left to right by default — the C4 convention, and what a reader expects.
  *
- * A row of columns that runs past the width budget is panned instead of read, so wrapping is offered — but
- * the cross-row wires it needs can add crossings of their own, and on a dense level they can add more than the
- * width was worth (measured: a 21-node level went from 26 crossings to 56). So both are laid out and the one
- * with fewer crossings wins; on a tie the wrapped one, because it is the one that fits the screen.
+ * A strip more than five times as wide as it is tall cannot be read at 100% on a laptop, and panning it is
+ * worse than scrolling. So a level that comes out that wide is transposed: the same drawing read top to
+ * bottom. Transposing swaps x and y and nothing else, and every number the audit measures (crossings,
+ * overlaps, shared segments) is invariant under that swap — so the vertical picture is exactly as clean as the
+ * horizontal one, and there is no second layout engine to keep in step.
  */
 export function layoutLevel(level: LevelSpec, cfg: ReturnType<typeof layoutOf>): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
-  const flat = attempt(level, cfg.rowWidth > 0 ? { ...cfg, rowWidth: 0 } : cfg)
-  if (cfg.rowWidth <= 0) return flat
-  const wrapped = attempt(level, cfg)
-  if ((wrapped.placed.bands?.length ?? 0) < 2) return flat // coverage:invariant — place() always returns bands
-  const narrower = wrapped.routed.size.w < flat.routed.size.w * 0.75
-  const readable = wrapped.audit.crossingsPerEdge <= 1
-  // both, or the strip keeps its single row: wrapping that costs crossings buys width with legibility
-  return narrower && readable ? wrapped : flat
+  const wide = attempt(level, cfg)
+  // a strip only hurts when it does not fit: 600x53 is small and reads fine, 2900x270 does not fit a laptop
+  const fits = wide.routed.size.w <= MAX_WIDTH
+  const turn = cfg.direction === 'TB' || (cfg.direction === 'auto' && !fits && wide.audit.aspect > WIDE_ASPECT)
+  if (!turn) return wide
+  const upright = transpose(wide.placed, wide.routed)
+  return { ...upright, audit: audit(upright.placed, upright.routed, level) }
 }
+
+/** Past this many pixels a drawing has to be panned on a laptop, which is worse than scrolling. */
+const MAX_WIDTH = 1600
+/** And past this ratio it is a strip even before it is too wide. */
+const WIDE_ASPECT = 3
 
 /** Render one level: the whole pipeline, in order, with no hidden state. */
 export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>, linkBase?: string): RenderedLevel {

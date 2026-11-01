@@ -67,3 +67,13 @@ test('a cookie left over from a rotated token is replaced, not kept forever', as
   remember(guard as never, req(), url('not-the-token'), wrong as never)
   assert.equal(wrong.headers['set-cookie'], undefined, 'a token that does not check out is never remembered')
 })
+
+test('the token is printed to a terminal, and only its location to a log', async () => {
+  const { tokenLines } = await import('../src/cli.ts')
+  assert.deepEqual(tokenLines(null, true), [], 'no token, no line')
+  assert.deepEqual(tokenLines('', true), [], 'an empty token is no token')
+  assert.match(tokenLines('abc', true)[0], /token:\s+abc/, 'a human at a terminal gets it')
+  const logged = tokenLines('abc', false)[0]
+  assert.ok(!logged.includes('abc'), 'a service log does not')
+  assert.match(logged, /not printed/)
+})

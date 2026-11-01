@@ -63,7 +63,7 @@ test('ordering tolerates a chain whose items are not ranked', () => {
 })
 
 test('ports tolerate a chain with a single item', () => {
-  const items = new Map<string, PlacedItem>([['a', { id: 'a', rank: 0, index: 0, w: 100, h: 40, dummy: false, band: 0, x: 0, y: 0 }]])
+  const items = new Map<string, PlacedItem>([['a', { id: 'a', rank: 0, index: 0, w: 100, h: 40, dummy: false, x: 0, y: 0 }]])
   const ports = buildPorts([chainOf(['a'], 'a->a')], items)
   assert.ok([...ports.values()].every(finite), 'no NaN port from a chain that touches one side twice')
 })

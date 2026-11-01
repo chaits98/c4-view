@@ -26,8 +26,9 @@ const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** The zoom ladder, mirrored in public/viewer.js — a class per step, so `?zoom=` needs no JS. */
 const LADDER = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
-/** The laptop stage the design is measured against; wider drawings open at 100% instead of Fit. */
+/** The laptop stage the design is measured against; bigger drawings open at 100% instead of Fit. */
 const STAGE_W = 1280
+const STAGE_H = 800
 const PRESETS: ReadonlyArray<readonly [string, string]> = [['fit', 'Fit'], ['1', '100%'], ['2', '200%']]
 
 /** Every untrusted string in the page goes through this; the svg is already escaped. */
@@ -202,11 +203,12 @@ function drillFor(model: Model, path: string): Map<string, string> {
 /** The C4 level a path depth belongs to: 0 → C1, 1 → C2, and never past C4. */
 const levelTag = (depth: number): string => `C${Math.min(4, depth + 1)}`
 
-/** Width of the drawing, from the viewBox the renderer just emitted. */
-function svgWidth(svg: string): number {
+/** Width and height of the drawing, from the viewBox the renderer just emitted. */
+function svgSize(svg: string): { w: number; h: number } {
   // every string this reads was produced by emit(), which always writes a viewBox
-  const box = /viewBox="0 0 ([\d.]+)/.exec(svg)
-  return box ? Number(box[1]) : 0 // coverage:invariant — every string here came from emit(), which always writes a viewBox
+  const box = /viewBox="0 0 ([\d.]+) ([\d.]+)/.exec(svg)
+  // coverage:invariant — every string here came from emit(), which always writes a viewBox
+  return box ? { w: Number(box[1]), h: Number(box[2]) } : { w: 0, h: 0 }
 }
 
 /**
@@ -266,10 +268,12 @@ export function viewerPage(
     .join('')
   // A drawing more than ~1.6x the design stage renders ~5px labels at Fit; opening it at 100% is the
   // difference between "complete but unreadable" and "readable but partial". Explicit ?zoom= wins.
-  const wide = zoomRaw === null && svgWidth(drawn.level.svg) > STAGE_W * 1.6
+  // a picture can now be too tall as well as too wide: both are opened at 100% rather than squeezed
+  const drawnSize = svgSize(drawn.level.svg)
+  const wide = zoomRaw === null && (drawnSize.w > STAGE_W * 1.6 || drawnSize.h > STAGE_H * 1.6)
   const zoom = zoomOf(zoomRaw) ?? (wide ? 1 : null)
   const percent = percentOf(zoom)
-  const wideNote = wide ? '<p class="c4-note t-body-s">Too wide to fit — opened at 100%. Scroll to pan, or pick Fit for the overview.</p>' : ''
+  const wideNote = wide ? '<p class="c4-note t-body-s">Too large to fit — opened at 100%. Scroll to pan, or pick Fit for the overview.</p>' : ''
   const levelRoot = level ? root + '/' + level : root
   const zoomHref = (value: string): string => esc(levelRoot + '?zoom=' + value)
 

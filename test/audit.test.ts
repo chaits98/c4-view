@@ -16,10 +16,10 @@ const level = (nodes: number, edges = 0): LevelSpec => ({
 })
 
 const placed = (boxes: Record<string, Box>): Placed => ({
-  items: new Map(Object.entries(boxes).map(([id, b]) => [id, { id, rank: 0, index: 0, w: b.w, h: b.h, dummy: false, band: 0, x: b.x, y: b.y }])),
+  items: new Map(Object.entries(boxes).map(([id, b]) => [id, { id, rank: 0, index: 0, w: b.w, h: b.h, dummy: false, x: b.x, y: b.y }])),
   chains: [],
   boxes: new Map(Object.entries(boxes)),
-  groups: [], bands: [],
+  groups: [],
   size: { w: 900, h: 600 },
 })
 

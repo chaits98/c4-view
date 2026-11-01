@@ -62,7 +62,11 @@ export function indexEntries(
     // the badge is the verdict: geometry AND the modelling checks, the same thing `c4v audit --strict` says.
     // A card that says "clean" while `audit` fails the model is worse than no badge at all.
     const ok = root.audit.ok && lensReport(model).problems.length === 0
-    return [{ ...row, svg: root.svg, ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
+    // a card is the wrong shape for a strip in EITHER direction: past 3:1 across, or past 1:3 down, the
+    // thumbnail is a squeezed lie, so it crops and the crop is declared
+    // coverage:invariant — the drawing always carries a viewBox, so its height is never zero
+    const ratio = height > 0 ? width / height : 0
+    return [{ ...row, svg: root.svg, ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: ratio > WIDE || (ratio > 0 && ratio < 1 / WIDE) }]
   })
 }
 

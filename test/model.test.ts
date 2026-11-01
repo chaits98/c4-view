@@ -178,8 +178,8 @@ test('an optional field is normalised, and a bare level gets a name', () => {
 
 test('a layout knob that cannot work is refused, not silently ignored', () => {
   const withLayout = (layout: Record<string, unknown>) => ({ ...base(), layout })
-  assert.throws(() => parseModel(withLayout({ direction: 'TB' })), /"TB" is not implemented — use "LR"/, 'top-to-bottom is not built')
-  assert.throws(() => parseModel(withLayout({ direction: 'diagonal' })), /direction: "LR"/, 'and neither is anything else')
+  assert.equal(layoutOf(parseModel(withLayout({ direction: 'TB' }))).direction, 'TB', 'top-to-bottom is built')
+  assert.throws(() => parseModel(withLayout({ direction: 'diagonal' })), /direction: "LR", "TB" or "auto"/, 'anything else is refused')
   assert.throws(() => parseModel(withLayout({ rankGap: 0 })), /layout\.rankGap: must be a positive number/)
   assert.throws(() => parseModel(withLayout({ rankGap: 'wide' })), /layout\.rankGap: must be a positive number/)
   // JSON cannot carry these, but parseModel takes any object — so the guard is real, not decorative

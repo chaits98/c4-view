@@ -3,6 +3,24 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.9.2] — the strip stands up: vertical replaces the row wrap
+
+The row wrap from 0.9.0 is **gone** — code, tests and the width budget with it. A wide level is now transposed:
+the same drawing read top to bottom.
+
+- `layout.direction` accepts `auto` (default), `LR` and `TB`. `auto` keeps C4's left-to-right and stands a level
+  up only when it would not fit a laptop: wider than **1600 px** *and* past **3:1**.
+- The transpose swaps x and y and nothing else. Crossings, overlaps and shared segments are invariant under that
+  swap, so a vertical picture is provably as clean as the horizontal one — verified on the corpus: the same four
+  levels report the same crossings (0 / 4 / 7 / 8) and `wire∧node=0` either way.
+- The viewer opens a picture at 100% when it is too tall as well as too wide, and the card grid crops a thumbnail
+  that is a strip in either direction instead of squeezing it.
+
+Why this is better than wrapping: wrapping needed cross-row routing, a gap-lane allocator, per-row group frames
+and a chooser that measured both layouts before it would commit — and on a dense level it still lost (26
+crossings → 56). A transpose needs none of that, cannot regress, and vertical scrolling is what a browser
+already does well.
+
 ## [0.9.1] — a rotated token no longer locks a browser out
 
 `remember()` refused to rewrite a cookie that already existed, so a browser holding the token from before a

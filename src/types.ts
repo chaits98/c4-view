@@ -94,7 +94,8 @@ export interface LevelSpec {
 }
 
 export interface LayoutConfig {
-  direction: 'LR' | 'TB'
+  /** 'auto' keeps C4's left-to-right unless the drawing is a strip; 'LR' and 'TB' are the user's choice */
+  direction: 'auto' | 'LR' | 'TB'
   /** space between adjacent ranks (columns for LR) */
   rankGap: number
   /** vertical space between nodes inside one rank */
@@ -110,8 +111,6 @@ export interface LayoutConfig {
   nodePadY: number
   minW: number
   maxW: number
-  /** widest a drawing may get before its columns wrap into another row; 0 = never wrap */
-  rowWidth: number
 }
 
 export interface Model {
@@ -169,7 +168,7 @@ export interface Ranked {
   chains: Chain[]
 }
 
-export interface PlacedItem extends RankItem { x: number; y: number; /** which row of columns this sits in; 0 unless the level wraps */ band?: number }
+export interface PlacedItem extends RankItem { x: number; y: number }
 
 export interface Placed {
   items: Map<string, PlacedItem>
@@ -177,9 +176,6 @@ export interface Placed {
   /** real nodes only */
   boxes: Map<string, Box>
   groups: Array<{ id: string; label: string; box: Box }>
-  /** one entry per row of columns: where it starts and ends vertically, and the ranks it holds. Absent on a
-   *  hand-built `Placed` — treat that as one row. */
-  bands?: Array<{ top: number; bottom: number; ranks: number[] }>
   size: { w: number; h: number }
 }
 
@@ -256,7 +252,7 @@ export const SUBTYPE_KIND: Readonly<Record<Subtype, Kind>> = {
 
 /** The default layout config. A model may override any field. */
 export const DEFAULT_LAYOUT: LayoutConfig = {
-  direction: 'LR',
+  direction: 'auto',
   rankGap: 120,
   nodeGap: 36,
   lane: 12,
@@ -267,6 +263,4 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
   nodePadY: 10,
   minW: 120,
   maxW: 280,
-  // 1600 fits a 1920 screen with the page's margins: past that, a strip is panned, not read
-  rowWidth: 1600,
 }

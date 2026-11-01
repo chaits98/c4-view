@@ -229,8 +229,7 @@ function parseLayout(raw: unknown, bad: string[]): Partial<LayoutConfig> {
     const fallback = DEFAULT_LAYOUT[key as keyof LayoutConfig]
     if (fallback === undefined) { bad.push(`layout.${key}: unknown setting`); continue }
     if (key === 'direction') {
-      if (value === 'TB') bad.push('layout.direction: "TB" is not implemented — use "LR"')
-      else if (value !== 'LR') bad.push('layout.direction: "LR"')
+      if (value !== 'LR' && value !== 'TB' && value !== 'auto') bad.push('layout.direction: "LR", "TB" or "auto"')
       else out.direction = value
       continue
     }
