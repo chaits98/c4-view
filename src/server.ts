@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync,
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ModelError, levelOf, levelOrder, parseModel } from './model.ts'
-import { indexEntries, indexPage } from './index-page.ts'
+import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { renderModel } from './render.ts'
 import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
@@ -13,7 +13,7 @@ import { allowed, applyHeaders, guardFor, remember, type Guard } from './securit
 import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
-import { ID, diagramRoute, routeOf, validLevel } from './routes.ts'
+import { ID, diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
 import type { Model } from './types.ts'
 
 const MAX_BODY = 2 * 1024 * 1024
@@ -97,31 +97,53 @@ function sendAsset(res: ServerResponse, name: string): void {
   send(res, 200, name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8', readFileSync(file))
 }
 
+/**
+ * The token gate, in the order it has to happen: decide, remember, then take the token out of the URL.
+ * Returns false when a response has already been sent, so `handle` stays a router.
+ */
+function admitted(guard: Guard, req: IncomingMessage, res: ServerResponse, url: URL, pathname: string): boolean {
+  // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
+  if (!guard.token || pathname === '/health') return true
+  if (!allowed(guard, req, url)) {
+    denied(req, res, themeOf(url.searchParams.get('theme'), req.headers.cookie))
+    return false
+  }
+  remember(guard, req, url, res)
+  // the token leaves the address bar on the first hop: the cookie has it now, and a token left in the
+  // URL ends up in a screenshot, in history, and in any Referer that slips out
+  if (url.searchParams.has('t')) redirectClean(res, url)
+  return !url.searchParams.has('t')
+}
+
+/** `?sort=` → the three orders the grid offers; anything else is "newest". */
+function sortOf(url: URL): Sort {
+  const raw = url.searchParams.get('sort')
+  return raw === 'title' || raw === 'audit' ? raw : 'updated'
+}
+
+const filterOf = (url: URL): Filter => (url.searchParams.get('audit') === 'fail' ? 'fail' : 'all')
+
+/** 405 with the right Allow header, or true when the method is fine. */
+function methodAllowed(route: Route, method: string, res: ServerResponse): boolean {
+  const allow = route.kind === 'diagrams' ? 'GET, POST' : 'GET'
+  if (allow.split(', ').includes(method)) return true
+  res.setHeader('Allow', allow)
+  json(res, 405, { error: `${method} is not allowed here` })
+  return false
+}
+
 async function handle(root: string, guard: Guard, req: IncomingMessage, res: ServerResponse, pathname: string | null): Promise<void> {
   applyHeaders(res)
   if (pathname === null) return json(res, 404, { error: 'malformed path' })
-
-  // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
   const url = new URL(req.url ?? '/', 'http://localhost')
-  if (guard.token && pathname !== '/health') {
-    if (!allowed(guard, req, url)) return denied(req, res, themeOf(url.searchParams.get('theme'), req.headers.cookie))
-    remember(guard, req, url, res)
-    // the token leaves the address bar on the first hop: the cookie has it now, and a token left in
-    // the URL ends up in a screenshot, in history, and in any Referer that slips out
-    if (url.searchParams.has('t')) return redirectClean(res, url)
-  }
+  if (!admitted(guard, req, res, url, pathname)) return
   const route = routeOf(pathname)
   if (!route) return json(res, 404, { error: `no route for ${pathname}` })
-
   /* node:coverage disable */
   // node sets `method` on every request; the fallback exists because the type says maybe
   const method = req.method ?? 'GET'
   /* node:coverage enable */
-  const allow = route.kind === 'diagrams' ? 'GET, POST' : 'GET'
-  if (!allow.split(', ').includes(method)) {
-    res.setHeader('Allow', allow)
-    return json(res, 405, { error: `${method} is not allowed here` })
-  }
+  if (!methodAllowed(route, method, res)) return
   const level = url.searchParams.get('level')
   // the scheme: URL → cookie; append, so the guard's token cookie survives this one
   const theme = themeOf(url.searchParams.get('theme'), req.headers.cookie)
@@ -129,9 +151,12 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
 
   switch (route.kind) {
     case 'index': {
-      const sort = url.searchParams.get('sort') === 'title' ? 'title' : url.searchParams.get('sort') === 'audit' ? 'audit' : 'updated'
-      const filter = url.searchParams.get('audit') === 'fail' ? 'fail' : 'all'
-      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sort, filter))
+      return send(
+        res,
+        200,
+        'text/html; charset=utf-8',
+        indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sortOf(url), filterOf(url)),
+      )
     }
     case 'health':
       return json(res, 200, { ok: true, diagrams: list(root).length })

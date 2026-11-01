@@ -90,7 +90,7 @@ function assignRanks(
 ): Map<string, number> {
   const rankOf = new Map<string, number>(ids.map((id) => [id, hint.get(id) ?? 0]))
   // every id is seeded above, so a miss here is a bug in this function, not a missing node
-  const at = (id: string): number => rankOf.get(id) as number
+  const at = (id: string): number => rankOrThrow(rankOf, id)
   for (const id of topo) {
     const want = at(id) + 1
     for (const ci of outgoing.get(id) ?? []) {
@@ -102,10 +102,17 @@ function assignRanks(
   return rankOf
 }
 
+/** Read a rank that must exist; a miss is a bug here, not a missing node, so it says so. */
+function rankOrThrow(rankOf: Map<string, number>, id: string): number {
+  const value = rankOf.get(id)
+  if (value === undefined) throw new Error(`rank missing for "${id}" — assignRanks seeds every id`)
+  return value
+}
+
 /** Shift every rank so the drawing starts at column 0. */
 function shiftToZero(ids: string[], rankOf: Map<string, number>): void {
   // seeded for every id (see assignRanks), so the reads are total
-  const at = (id: string): number => rankOf.get(id) as number
+  const at = (id: string): number => rankOrThrow(rankOf, id)
   let min = Infinity
   for (const id of ids) min = Math.min(min, at(id))
   if (min === 0) return

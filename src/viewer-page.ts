@@ -14,13 +14,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { levelOf, levelOrder } from './model.ts'
-import type { AuditReport } from './types.ts'
 import { renderLevel, renderModel, type RenderedLevel } from './render.ts'
 import { expandLevel } from './expand.ts'
 import { hostOf } from './lens.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
-import type { LevelSpec, Model } from './types.ts'
+import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
@@ -106,23 +105,27 @@ function hostLabel(model: Model, path: string): string | undefined {
 function textVersion(model: Model, level: string, drawn?: LevelSpec): string {
   const found = drawn ?? levelOf(model, level)
   if (!found) return ''
-  const nodes = found.nodes
-    .map((n) => {
-      const facts = [n.tech, n.desc].filter((v): v is string => Boolean(v))
-      return `<li><strong>${esc(n.label)}</strong> <code>${esc(n.id)}</code>${facts.length ? ` — ${facts.map(esc).join(' · ')}` : ''}</li>`
-    })
-    .join('')
-  const flows = found.edges
-    .map((e) => {
-      const from = found.nodes.find((n) => n.id === e.from)?.label ?? e.from
-      const to = found.nodes.find((n) => n.id === e.to)?.label ?? e.to
-      return `<li>${esc(from)} → ${esc(to)}${e.label ? ` — ${esc(e.label)}` : ''}</li>`
-    })
-    .join('')
+  const nodes = found.nodes.map((n) => nodeItem(n)).join('')
+  const flows = found.edges.map((e) => edgeItem(found, e)).join('')
   return (
     `<h2 class="t-label-l">Containers (${found.nodes.length})</h2><ul>${nodes}</ul>` +
     `<h2 class="t-label-l">Flows (${found.edges.length})</h2><ul>${flows || '<li>none on this level</li>'}</ul>`
   )
+}
+
+/** One container line: name, id, then whatever facts the model gives. */
+function nodeItem(node: NodeSpec): string {
+  const facts = [node.tech, node.desc].filter((v): v is string => Boolean(v))
+  const tail = facts.length ? ` — ${facts.map((f) => esc(f)).join(' · ')}` : ''
+  return `<li><strong>${esc(node.label)}</strong> <code>${esc(node.id)}</code>${tail}</li>`
+}
+
+/** One flow line, with both ends named the way a reader knows them. */
+function edgeItem(level: LevelSpec, edge: EdgeSpec): string {
+  const from = level.nodes.find((n) => n.id === edge.from)?.label ?? edge.from
+  const to = level.nodes.find((n) => n.id === edge.to)?.label ?? edge.to
+  const label = edge.label ? ` — ${esc(edge.label)}` : ''
+  return `<li>${esc(from)} → ${esc(to)}${label}</li>`
 }
 
 const GATES: Array<{ key: keyof AuditReport; says: string }> = [
@@ -142,7 +145,9 @@ export function auditBanner(report: AuditReport): string {
   const failing = GATES.filter((gate) => (report[gate.key] as number) > 0)
   if (!failing.length) return ''
   const named = failing.slice(0, 3).map((gate) => `<li>${gate.says} (${String(report[gate.key])})</li>`)
-  const more = failing.length > 3 ? `<li>and ${failing.length - 3} more check${failing.length - 3 === 1 ? '' : 's'}</li>` : ''
+  const rest = failing.length - 3
+  const word = rest === 1 ? 'check' : 'checks'
+  const more = rest > 0 ? `<li>and ${rest} more ${word}</li>` : ''
   return (
     `<section class="c4-audit" role="status">` +
     `<h2 class="t-title-s"><span aria-hidden="true">!</span> This drawing failed its audit</h2>` +

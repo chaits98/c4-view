@@ -43,7 +43,11 @@ export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DAR
   const placed = place(ranked, level, cfg, measure)
   const routed = route(placed, cfg, measure)
   // a composed (expanded) level is not in the model, so its drill map is supplied by the caller
-  const svg = emit(placed, routed, level, cfg, palette, drill ?? drillTargets(model, level), flowIndex(level), linkBase)
+  const svg = emit(placed, routed, level, cfg, palette, {
+    drill: drill ?? drillTargets(model, level),
+    flow: flowIndex(level),
+    linkBase,
+  })
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: audit(placed, routed, level) }
 }
 

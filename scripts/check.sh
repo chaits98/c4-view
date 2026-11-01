@@ -64,31 +64,10 @@ else
   skip "secrets: gitleaks" "not installed (setup-dev.sh fetches the image)"
 fi
 
-if [ "$mode" = fast ]; then
-  echo
-  echo "  $([ "$failed" -eq 0 ] && echo 'ok' || echo "$failed failed") · $skipped skipped · full suite runs on pre-push"
-  exit "$([ "$failed" -eq 0 ] && echo 0 || echo 1)"
-fi
-
-# ── full suite ────────────────────────────────────────────────────────────────
-# The skill is a shipped artefact. Scan it with the same engines CI uses, from whichever runtime exists
-# here: a host binary (pipx, what CI does) or the scanner image (what this box does). Never silently skip.
-if have skillspector; then
-  scan() { "$@" >/tmp/c4v-scan.out 2>&1; }   # CI path: pipx-installed binaries
-elif have docker && docker image inspect c4v-scanners:0.2 >/dev/null 2>&1; then
-  scan() { docker run --rm -v "$PWD/skill:/work/skill:ro" -w /work c4v-scanners:0.2 "$@" >/tmp/c4v-scan.out 2>&1; }
-else
-  scan() { return 127; }
-fi
-
-if scan skillspector scan skill --no-llm --format markdown; then pass "skill: skillspector (0 issues)"; else fail "skill: skillspector"; sed 's/^/        /' /tmp/c4v-scan.out | tail -10; fi
-if scan skill-scanner scan skill --policy low-noise --fail-on-severity high; then pass "skill: cisco skill-scanner"; else fail "skill: cisco skill-scanner"; sed 's/^/        /' /tmp/c4v-scan.out | tail -10; fi
-if scan skillfrisk scan skill; then pass "skill: skillfrisk"; else fail "skill: skillfrisk"; sed 's/^/        /' /tmp/c4v-scan.out | tail -10; fi
-if [ "$(type -t scan)" = function ] && scan true; then :; else fail "skill: no scanner runtime — install docker, or pipx install skillspector cisco-ai-skill-scanner skillfrisk"; fi
-
-step "deps: npm audit (0 runtime deps, dev tree only)" npm audit --audit-level=high
-step "doctor: this machine can still run the tool"   node src/cli.ts doctor
-
+# ── sonar: every commit -------------------------------------------------------
+# Measured here: ~5 s analysis, ~3 s coverage. It belongs on pre-commit, not only on pre-push:
+# this repo has no remote, so a push never happens, --full never runs, and the quality gate is
+# never consulted — which is how 17 smells and a red gate reached a branch nobody blocked.
 # SonarQube is self-hosted on the maintainer's box, so it is OPTIONAL for a contributor — but it must be
 # impossible to mistake "not run" for "passed", hence SKIP with the reason on its own line.
 if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "$HOME/.env" 2>/dev/null; then
@@ -132,6 +111,32 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
 else
   skip "sonar" "no SONAR_TOKEN — CI runs it on the maintainer's instance"
 fi
+
+if [ "$mode" = fast ]; then
+  echo
+  echo "  $([ "$failed" -eq 0 ] && echo 'ok' || echo "$failed failed") · $skipped skipped · full suite: skill scanners, deps, doctor"
+  exit "$([ "$failed" -eq 0 ] && echo 0 || echo 1)"
+fi
+
+# ── full suite ────────────────────────────────────────────────────────────────
+# The skill is a shipped artefact. Scan it with the same engines CI uses, from whichever runtime exists
+# here: a host binary (pipx, what CI does) or the scanner image (what this box does). Never silently skip.
+if have skillspector; then
+  scan() { "$@" >/tmp/c4v-scan.out 2>&1; }   # CI path: pipx-installed binaries
+elif have docker && docker image inspect c4v-scanners:0.2 >/dev/null 2>&1; then
+  scan() { docker run --rm -v "$PWD/skill:/work/skill:ro" -w /work c4v-scanners:0.2 "$@" >/tmp/c4v-scan.out 2>&1; }
+else
+  scan() { return 127; }
+fi
+
+if scan skillspector scan skill --no-llm --format markdown; then pass "skill: skillspector (0 issues)"; else fail "skill: skillspector"; sed 's/^/        /' /tmp/c4v-scan.out | tail -10; fi
+if scan skill-scanner scan skill --policy low-noise --fail-on-severity high; then pass "skill: cisco skill-scanner"; else fail "skill: cisco skill-scanner"; sed 's/^/        /' /tmp/c4v-scan.out | tail -10; fi
+if scan skillfrisk scan skill; then pass "skill: skillfrisk"; else fail "skill: skillfrisk"; sed 's/^/        /' /tmp/c4v-scan.out | tail -10; fi
+if [ "$(type -t scan)" = function ] && scan true; then :; else fail "skill: no scanner runtime — install docker, or pipx install skillspector cisco-ai-skill-scanner skillfrisk"; fi
+
+step "deps: npm audit (0 runtime deps, dev tree only)" npm audit --audit-level=high
+step "doctor: this machine can still run the tool"   node src/cli.ts doctor
+
 
 echo
 echo "  $([ "$failed" -eq 0 ] && echo 'ok' || echo "$failed failed") · $skipped skipped"

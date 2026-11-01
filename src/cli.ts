@@ -214,41 +214,54 @@ export async function run(argv: string[]): Promise<number> {
   }
 }
 
+/** Verbs that run before (and instead of) the render pipeline. null means "not one of mine". */
+async function otherCommand(args: Args, argv: string[]): Promise<number | null> {
+  switch (args.command) {
+    case 'serve': return serveCommand(args)
+    case 'skill': {
+      const { skillCommand } = await import('./cli-skill.ts')
+      return skillCommand(argv)
+    }
+    case 'prefs': {
+      const { prefsCommand } = await import('./cli-skill.ts')
+      return prefsCommand(argv)
+    }
+    case 'service': return serviceCommand(args)
+    case 'doctor': {
+      const { doctor } = await import('./doctor.ts')
+      return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1
+    }
+    default: return null
+  }
+}
+
+/** Render or audit: print the report, write files on `render`, and decide the exit code. */
+function reportCommand(args: Args, report: Rendered): number {
+  const failed = report.levels.filter((l) => !l.audit.ok)
+  printAudit(report.levels, args.has('json'))
+  printLens(report.lens, args.has('json'))
+  if (args.command === 'render') {
+    const scale = Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2))
+    writeOutputs(scale, args.opt('out'), args.has('png'), report)
+  }
+  if (!args.has('strict')) return 0
+  if (failed.length) {
+    console.error(`\n${failed.length}/${report.levels.length} level(s) failed the geometry gate — fix the model, not the picture`)
+  }
+  if (report.lens.problems.length) {
+    console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
+  }
+  return failed.length || report.lens.problems.length ? 1 : 0
+}
+
 async function dispatch(argv: string[]): Promise<number> {
   const args = parseArgs(argv)
   const early = argumentError(args)
   if (early !== null) return early
-  if (args.command === 'serve') return serveCommand(args)
-  if (args.command === 'skill') {
-    const { skillCommand } = await import('./cli-skill.ts')
-    return skillCommand(argv)
-  }
-  if (args.command === 'prefs') {
-    const { prefsCommand } = await import('./cli-skill.ts')
-    return prefsCommand(argv)
-  }
-  if (args.command === 'service') return await serviceCommand(args)
-  if (args.command === 'doctor') {
-    const { doctor } = await import('./doctor.ts')
-    return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1
-  }
-
+  const other = await otherCommand(args, argv)
+  if (other !== null) return other
   const report = args.file ? loadReport(args.file, args.opt('level'), args.opt('expand')) : null
-  if (!report) return 2
-
-  const failed = report.levels.filter((l) => !l.audit.ok)
-  printAudit(report.levels, args.has('json'))
-  printLens(report.lens, args.has('json'))
-  if (args.command === 'render') writeOutputs(Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2)), args.opt('out'), args.has('png'), report)
-  if (!args.has('strict')) return 0
-  const lensFailed = report.lens.problems.length > 0
-  if (failed.length) {
-    console.error(`\n${failed.length}/${report.levels.length} level(s) failed the geometry gate — fix the model, not the picture`)
-  }
-  if (lensFailed) {
-    console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
-  }
-  return failed.length || lensFailed ? 1 : 0
+  return report ? reportCommand(args, report) : 2
 }
 
 // Only the real binary exits the process; importing this module (the tests) must not.

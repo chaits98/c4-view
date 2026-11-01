@@ -32,43 +32,38 @@ export function hostOf(level: LevelSpec, model: Model): { parent?: LevelSpec; ho
 }
 
 export function lensReport(model: Model): LensReport {
-  const problems: string[] = []
-  for (const level of model.levels) {
-    if (!level.path) {
-      if (level.ports) problems.push('level "": ports on the root level — there is nothing above it to come from')
-      continue
-    }
-    const { parent, hostId } = hostOf(level, model)
-    if (!parent) {
-      problems.push(`level "${level.path}": parent level "${level.path.split('/').slice(0, -1).join('/') || '(root)'}" does not exist`)
-      continue
-    }
-    if (!parent.nodes.some((n) => n.id === hostId)) {
-      problems.push(
-        `level "${level.path}": "${hostId}" is not a node of the parent level — the drill has nothing to open (nodes there: ${parent.nodes.map((n) => n.id).join(', ')})`,
-      )
-      continue
-    }
-    const crossing = parent.edges.filter((e) => e.from === hostId || e.to === hostId)
-    const ports = level.ports
-    if (crossing.length > 0 && (!ports || Object.keys(ports).length === 0)) {
-      problems.push(
-        `level "${level.path}": ${crossing.length} edge(s) cross into "${hostId}" but no ports say where they land — the expanded view would lose them`,
-      )
-      continue
-    }
-    if (!ports) continue   // a box nothing connects to needs no ports
-    checkPorts(level, parent, hostId, ports, problems)
-  }
+  const problems = model.levels.flatMap((level) => levelProblems(model, level))
   return { problems }
 }
+
+/** Everything wrong with one level's claim to be a lens; empty for the root and for a good lens. */
+function levelProblems(model: Model, level: LevelSpec): string[] {
+  if (!level.path) return level.ports ? ['level "": ports on the root level — there is nothing above it to come from'] : []
+  const { parent, hostId } = hostOf(level, model)
+  if (!parent) return [`level "${level.path}": parent level "${parentPathOf(level.path)}" does not exist`]
+  if (!parent.nodes.some((n) => n.id === hostId)) {
+    const known = parent.nodes.map((n) => n.id).join(', ')
+    return [`level "${level.path}": "${hostId}" is not a node of the parent level — the drill has nothing to open (nodes there: ${known})`]
+  }
+  const crossing = parent.edges.filter((e) => crossesInto(e, hostId))
+  if (crossing.length === 0) return [] // a box nothing connects to needs no ports
+  const ports = level.ports
+  if (!ports || Object.keys(ports).length === 0) {
+    return [`level "${level.path}": ${crossing.length} edge(s) cross into "${hostId}" but no ports say where they land — the expanded view would lose them`]
+  }
+  const problems: string[] = []
+  checkPorts(level, parent, hostId, ports, problems)
+  return problems
+}
+
+const parentPathOf = (path: string): string => path.split('/').slice(0, -1).join('/') || '(root)'
+const crossesInto = (edge: EdgeSpec, hostId: string): boolean => edge.from === hostId || edge.to === hostId
 
 /** Every edge that crosses the lens boundary needs a port, and every port needs a real edge and node. */
 function checkPorts(level: LevelSpec, parent: LevelSpec, hostId: string, ports: Record<string, string>, problems: string[]): void {
   const at = `level "${level.path}"`
   const declared = new Map(Object.entries(ports))
-  const crossing = parent.edges.filter((e) => e.from === hostId || e.to === hostId)
-  for (const edge of crossing) {
+  for (const edge of parent.edges.filter((e) => crossesInto(e, hostId))) {
     if (!declared.has(edgeKey(edge))) {
       problems.push(`${at}: ports missing for parent edge "${edgeKey(edge)}" — it touches "${hostId}" and would vanish when expanded`)
     }

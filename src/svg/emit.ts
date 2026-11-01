@@ -83,7 +83,8 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     if (child) attrs.push(`data-drill="${esc(child)}"`)
     // A drill is navigation, so it is a real link when the caller can name one: middle-click, Back,
     // copy-link and screen readers all work, and the page needs no JS to follow it.
-    const open = child && linkBase ? `<a class="c4-link" href="${esc(`${linkBase}/${child}`)}">` : ''
+    const href = child && linkBase ? `${linkBase}/${child}` : ''
+    const open = href ? `<a class="c4-link" href="${esc(href)}">` : ''
     const close = open ? '</a>' : ''
     const parts = [open + `<g class="node" ${attrs.join(' ')}>`]
     parts.push(`<path d="${shapePath(shape, box)}" fill="${k.fill}" stroke="${k.stroke}" stroke-width="1.4"/>`)
@@ -119,11 +120,20 @@ function chipLayer(routed: Routed, cfg: LayoutConfig, theme: Theme): string[] {
   })
 }
 
+/** What the emitter needs beyond the geometry: where drills go, which edges animate, and how to link them. */
+export interface EmitOptions {
+  drill?: Map<string, string>
+  flow?: Map<string, number>
+  linkBase?: string
+}
+
 export function emit(
   placed: Placed, routed: Routed, level: LevelSpec,
-  cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, flow: Map<string, number> = new Map(),
-  linkBase?: string,
+  cfg: LayoutConfig, theme: Theme, options: EmitOptions = {},
 ): string {
+  const drill = options.drill ?? new Map<string, string>()
+  const flow = options.flow ?? new Map<string, number>()
+  const linkBase = options.linkBase
   // drawn size never below the boxes it must contain, even if a route stage underpays
   const w = Math.max(placed.size.w, routed.size.w) + 16
   const h = Math.max(placed.size.h, routed.size.h) + 16
