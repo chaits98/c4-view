@@ -55,9 +55,13 @@ export function gutterTrack(placed: Placed, cfg: LayoutConfig, g: number, used: 
       return x
     }
   }
+  /* node:coverage disable */
+  // Damage guard: 198 lanes is wider than any drawing this tool has produced; if it ever fills a
+  // gutter, the caller gets the gutter's middle and the audit reports the collision.
   const mid = (left + right) / 2
   taken.add(mid)
   return mid
+  /* node:coverage enable */
 }
 
 

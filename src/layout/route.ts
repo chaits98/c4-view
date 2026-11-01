@@ -38,11 +38,14 @@ function rankEdges(placed: Placed, r: number): { left: number; right: number } {
     right = Math.max(right, it.x + it.w)
   }
   if (Number.isFinite(left)) return { left, right }
-  // nothing at all on this rank: borrow the nearest rank that has something. One hop is enough —
-  // the borrowed rank has items by construction, so it returns at the check above.
+  /* node:coverage disable */
+  // Nothing at all on this rank: borrow the nearest rank that has something. `route()` only asks for
+  // gutters that have items on both sides, so this is a guard for a hand-built `Placed` — kept
+  // because returning {0,0} here once collapsed every track in the gutter (see the note above).
   const ranks = [...new Set([...placed.items.values()].map((it) => it.rank))].sort((a, b) => a - b)
   const ref = ranks.filter((x) => x < r).pop() ?? ranks.find((x) => x > r)
   return ref === undefined ? { left: 0, right: 0 } : rankEdges(placed, ref)
+  /* node:coverage enable */
 }
 
 /**

@@ -58,7 +58,11 @@ export function renderFile(file: string, only?: string): Rendered {
   try {
     raw = JSON.parse(readFileSync(file, 'utf8'))
   } catch (error) {
+    /* node:coverage disable */
+    // Damage guard: every throw from readFileSync/parseModel is an Error; the String() arm covers a
+    // library that throws a bare value.
     throw new Error(`${file}: ${error instanceof Error ? error.message : String(error)}`)
+    /* node:coverage enable */
   }
   return renderModel(parseModel(raw), only)
 }

@@ -180,3 +180,11 @@ test('actor and diamond text stays inside the shape silhouette', () => {
   const diamond = shapeTextInset('diamond', { x: 0, y: 0, w: 200, h: 100 })
   assert.ok(diamond.left >= 30 && diamond.top >= 18, `diamond inset too small: ${JSON.stringify(diamond)}`)
 })
+
+test('a label that will not fit three lines is truncated with an ellipsis, not clipped', () => {
+  const long = 'an extraordinarily long service name that keeps going past every limit'
+  const t = measureNode({ id: 'x', label: `${long} ${long}`, subtype: 'system', identity: `owner ${long}`, tech: long }, DEFAULT_LAYOUT, measure)
+  assert.equal(t.lines.length, 3, 'never more than three lines')
+  assert.ok(t.lines[2].endsWith('…'), `the last line is marked as cut: ${t.lines[2]}`)
+  assert.ok(t.identity?.endsWith('…') !== false, 'and so are the small lines when they are long')
+})

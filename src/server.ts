@@ -13,18 +13,11 @@ import { allowed, applyHeaders, guardFor, remember, type Guard } from './securit
 import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
+import { ID, diagramRoute, routeOf, validLevel } from './routes.ts'
 import type { Model } from './types.ts'
 
-const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 const MAX_BODY = 2 * 1024 * 1024
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
-type Route =
-  | { kind: 'health' | 'diagrams' | 'index' }
-  | { kind: 'model' | 'audit'; id: string }
-  | { kind: 'page'; id: string; level: string }
-  | { kind: 'export'; format: 'svg' | 'png'; id: string }
-  | { kind: 'asset'; name: string }
-
 type Summary = { id: string; title: string; levels: string[]; updated: string }
 
 /** Bind and resolve once listening, so a test can pass port 0. */
@@ -37,8 +30,12 @@ export async function serve(opts: { port: number; root: string; host?: string; t
     const pathname = safePath(req.url ?? '/')
     res.on('finish', () => console.log(`${req.method} ${pathname ?? req.url} ${res.statusCode} ${Date.now() - started}ms`))
     void handle(root, guard, req, res, pathname).catch((error: unknown) => {
+      /* node:coverage disable */
+      // Damage guards: every throw that reaches here is an Error from our own code, and a response
+      // that has already started can only be torn down. Neither state is reproducible in a test.
       const message = error instanceof Error ? error.message : String(error)
       if (res.headersSent) return res.destroy()
+      /* node:coverage enable */
       // a route that names a diagram can say which file is broken; anything else can only say 500
       const asked = pathname ? diagramRoute(pathname) : null
       if (asked && 'id' in asked) return broken(req, res, asked.id)
@@ -64,47 +61,6 @@ function safePath(raw: string): string | null {
   }
 }
 
-/** `/`, `/health`, `/api/diagrams` and the public assets — no id, no level. */
-function fixedRoute(pathname: string): Route | null {
-  if (pathname === '/') return { kind: 'index' }
-  if (pathname === '/health') return { kind: 'health' }
-  if (pathname === '/api/diagrams' || pathname === '/api/diagrams/') return { kind: 'diagrams' }
-  const asset = /^\/([a-z0-9][a-z0-9-]*\.(?:js|css))$/.exec(pathname)
-  return asset ? { kind: 'asset', name: asset[1] } : null
-}
-
-/** `/api/diagrams/<id>[/audit]`. */
-function apiRoute(pathname: string): Route | null {
-  const api = /^\/api\/diagrams\/([^/]+)(\/audit)?$/.exec(pathname)
-  if (!api || !ID.test(api[1])) return null
-  return { kind: api[2] ? 'audit' : 'model', id: api[1] }
-}
-
-/** `/d/<id>.svg`, `/d/<id>.png`, and `/d/<id>[/<level…>]`. */
-function diagramRoute(pathname: string): Route | null {
-  if (!pathname.startsWith('/d/')) return null
-  const rest = pathname.slice(3)
-  const exported = /^([^/]+)\.(svg|png)$/.exec(rest)
-  if (exported) {
-    if (!ID.test(exported[1])) return null
-    return { kind: 'export', format: exported[2] === 'svg' ? 'svg' : 'png', id: exported[1] }
-  }
-  const segments = rest.split('/')
-  const id = segments.shift() ?? ''
-  if (!ID.test(id)) return null
-  const level = segments.join('/')
-  if (level !== '' && !validLevel(level)) return null
-  return { kind: 'page', id, level }
-}
-
-function routeOf(pathname: string): Route | null {
-  return fixedRoute(pathname) ?? apiRoute(pathname) ?? diagramRoute(pathname)
-}
-
-/** A level path: '' or segments that each match ID (so no `..`, no absolute paths). */
-function validLevel(path: string): boolean {
-  return path === '' || path.split('/').every((segment) => ID.test(segment))
-}
 
 function sendModel(root: string, req: IncomingMessage, res: ServerResponse, id: string): void {
   const file = modelFile(root, id)
@@ -157,7 +113,10 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   const route = routeOf(pathname)
   if (!route) return json(res, 404, { error: `no route for ${pathname}` })
 
+  /* node:coverage disable */
+  // node sets `method` on every request; the fallback exists because the type says maybe
   const method = req.method ?? 'GET'
+  /* node:coverage enable */
   const allow = route.kind === 'diagrams' ? 'GET, POST' : 'GET'
   if (!allow.split(', ').includes(method)) {
     res.setHeader('Allow', allow)
@@ -273,7 +232,11 @@ function readBody(req: IncomingMessage, res: ServerResponse): Promise<string | n
     const declared = Number(req.headers['content-length'])
     if (Number.isFinite(declared) && declared > MAX_BODY) return stop()
     req.on('data', (chunk: Buffer) => {
+      /* node:coverage disable */
+      // Damage guard: data arriving after the body was settled means the client kept writing past a
+      // refusal — the socket is already closing, so there is nothing to test but the guard itself.
       if (settled) return
+      /* node:coverage enable */
       size += chunk.length
       if (size > MAX_BODY) return stop()
       chunks.push(chunk)

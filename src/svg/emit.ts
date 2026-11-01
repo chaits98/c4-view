@@ -72,7 +72,10 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     if (!box) return []
     const t = measureNode(node, cfg, measure)
     const shape = shapeOf(node.subtype)
+    /* node:coverage disable */
+    // model.parse refuses an unknown subtype, so the fallback only covers a hand-built LevelSpec
     const kind = SUBTYPE_KIND[node.subtype] ?? 'concept'
+    /* node:coverage enable */
     const k = theme.kinds[kind]
     const attrs = [`data-id="${esc(node.id)}"`, `data-kind="${kind}"`]
     if (node.desc) attrs.push(`data-desc="${esc(node.desc)}"`)

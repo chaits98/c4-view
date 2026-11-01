@@ -152,3 +152,13 @@ test('an edge with no label still appears in the text version, without a dash', 
   const one = parseModel({ id: 'unlabelled', title: 'U', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ from: 'a', to: 'b' }] }] })
   assert.ok(viewerPage(one, '').includes('<li>A → B</li>'), 'the flow is listed with no trailing dash')
 })
+
+test('identity and tech are drawn independently', () => {
+  const model2 = parseModel({ id: 'halves', title: 'Halves', levels: [{ path: '', nodes: [
+    { id: 'a', label: 'Tech only', subtype: 'system', tech: 'Node 22' },
+    { id: 'b', label: 'Owner only', subtype: 'system', identity: 'team-payments' },
+  ], edges: [{ from: 'a', to: 'b' }] }] })
+  const svg = renderModel(model2).levels[0].svg
+  assert.match(svg, /Node 22/, 'tech is drawn when it is the only small line')
+  assert.match(svg, /team-payments/, 'identity is drawn when it is the only small line')
+})

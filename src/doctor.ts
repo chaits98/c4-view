@@ -33,22 +33,23 @@ export interface Check {
 /** Which of the two entries is loaded decides the Node floor. */
 const BUILD_KIND = BUILT ? 'compiled build' : 'TypeScript source'
 
-function nodeCheck(): Check {
-  const [major, minor] = process.versions.node.split('.').map(Number)
+/** `version` is a seam: an old Node is the most common first-run failure, and it must be testable. */
+function nodeCheck(version: string = process.versions.node): Check {
+  const [major, minor] = version.split('.').map(Number)
   const ok = major > NODE_MAJOR || (major === NODE_MAJOR && minor >= NODE_MINOR)
   const detail = ok
-    ? `v${process.versions.node} — running the ${BUILD_KIND}`
-    : `v${process.versions.node} — needs >=${NODE_MAJOR}.${NODE_MINOR}: nvm install 22 && nvm use 22`
+    ? `v${version} — running the ${BUILD_KIND}`
+    : `v${version} — needs >=${NODE_MAJOR}.${NODE_MINOR}: nvm install 22 && nvm use 22`
   return { name: 'node', ok, required: true, detail }
 }
 
-function assetCheck(): Check {
-  const missing = ASSETS.filter((file) => !existsSync(join(PUBLIC, file)))
+function assetCheck(dir: string = PUBLIC): Check {
+  const missing = ASSETS.filter((file) => !existsSync(join(dir, file)))
   return {
     name: 'assets',
     ok: missing.length === 0,
     required: true,
-    detail: missing.length ? `missing ${missing.join(', ')} in ${PUBLIC}` : `${ASSETS.length} viewer files in ${PUBLIC}`,
+    detail: missing.length ? `missing ${missing.join(', ')} in ${dir}` : `${ASSETS.length} viewer files in ${dir}`,
   }
 }
 
@@ -87,8 +88,11 @@ function chromiumCheck(): Check {
 }
 
 /** Every check, in the order a failure would bite. */
-export function checks(root: string = join(homedir(), '.c4-view')): Check[] {
-  return [nodeCheck(), assetCheck(), fontCheck(), storeCheck(root), chromiumCheck()]
+export function checks(
+  root: string = join(homedir(), '.c4-view'),
+  probes: { version?: string; assets?: string } = {},
+): Check[] {
+  return [nodeCheck(probes.version), assetCheck(probes.assets), fontCheck(), storeCheck(root), chromiumCheck()]
 }
 
 /** ok, FAIL for a broken requirement, note for an optional absence. */

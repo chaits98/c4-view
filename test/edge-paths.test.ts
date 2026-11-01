@@ -23,10 +23,14 @@ test('png export names the fix when there is no browser, and refuses an svg with
     assert.throws(() => svgToPng('<svg></svg>', join(dir, 'a.png')), /no file at \/nowhere\/chrome \(\$C4_CHROMIUM\)/)
 
     delete process.env.C4_CHROMIUM
-    // this machine has a browser, so the size check is what fires next
-    if (process.env.C4_CHROMIUM === undefined) {
-      assert.throws(() => svgToPng('<svg></svg>', join(dir, 'b.png')), /carries no width\/height|no Chromium or Chrome found/)
-    }
+    // a machine with nothing on PATH and nothing in the known locations
+    assert.throws(
+      () => svgToPng('<svg></svg>', join(dir, 'b.png'), 2, () => null),
+      /no Chromium or Chrome found — nothing on PATH/,
+      'the message says where it looked',
+    )
+    // and a browser that exists is asked for an svg that declares no size
+    assert.throws(() => svgToPng('<svg></svg>', join(dir, 'c.png'), 2, () => '/bin/sh'), /carries no width\/height/)
   } finally {
     if (saved === undefined) delete process.env.C4_CHROMIUM
     else process.env.C4_CHROMIUM = saved
@@ -89,4 +93,59 @@ test('a backward gutter finds a free track between the columns', () => {
   const second = gutterTrack(placed, DEFAULT_LAYOUT, 0, used)
   assert.ok(first > 100 && first < 300, `the track lands in the gutter: ${first}`)
   assert.notEqual(first, second, 'a second wire in the same gutter takes a different track')
+})
+
+test('a damaged install is tested, not hoped about', async () => {
+  const { currentVersion, skillCommand } = await import('../src/cli-skill.ts')
+  const home = scratch()
+  assert.equal(currentVersion('/nowhere/package.json'), '0.0.0', 'no package.json, still a version string')
+  assert.match(currentVersion(), /^\d+\.\d+\.\d+/, 'and the real one is the release version')
+
+  assert.equal(skillCommand(['skill', 'list'], home, { harnesses: () => [] }), 1, 'no harness list is a damaged package')
+  assert.equal(skillCommand(['skill', 'install'], home, { skillDir: () => false }), 1, 'no SKILL.md is a damaged package')
+})
+
+test('a machine with no browser anywhere says so', async () => {
+  const { findChromium } = await import('../src/png.ts')
+  const saved = process.env.C4_CHROMIUM
+  delete process.env.C4_CHROMIUM
+  try {
+    assert.equal(findChromium(() => false), null, 'nothing in the known locations and nothing on PATH')
+    assert.match(findChromium((p: string) => p === '/usr/bin/chromium') ?? '', /chromium/, 'and a known location is found')
+  } finally {
+    if (saved !== undefined) process.env.C4_CHROMIUM = saved
+  }
+})
+
+test('an old node and a missing viewer file are the two failures doctor names first', async () => {
+  const { checks } = await import('../src/doctor.ts')
+  const rows = checks(scratch(), { version: '18.0.0', assets: '/nowhere/public' })
+  const node = rows.find((row) => row.name === 'node')
+  assert.equal(node?.ok, false, 'node 18 cannot strip types')
+  assert.match(node?.detail ?? '', /needs >=22\.18: nvm install 22/, 'and the row says exactly what to run')
+  const assets = rows.find((row) => row.name === 'assets')
+  assert.equal(assets?.ok, false, 'a package without its viewer files is broken')
+  assert.match(assets?.detail ?? '', /missing viewer\.html/, 'and the row names the first missing file')
+})
+
+test('the exact node version boundary is checked, not just "old"', async () => {
+  const { checks } = await import('../src/doctor.ts')
+  const row = (version: string) => checks(scratch(), { version }).find((r) => r.name === 'node')
+  assert.equal(row('22.18.0')?.ok, true, 'the minimum is enough')
+  assert.equal(row('22.17.0')?.ok, false, 'one patch below it is not')
+  assert.equal(row('23.0.0')?.ok, true, 'anything newer is fine')
+})
+
+test('an empty segment in PATH is skipped, not joined', async () => {
+  const { findChromium } = await import('../src/png.ts')
+  const savedPath = process.env.PATH
+  const savedEnv = process.env.C4_CHROMIUM
+  delete process.env.C4_CHROMIUM
+  try {
+    process.env.PATH = ':/usr/bin::/bin'
+    assert.equal(findChromium((p: string) => p === '/usr/bin/chromium'), '/usr/bin/chromium', 'the real segments are still searched')
+  } finally {
+    process.env.PATH = savedPath
+    if (savedEnv !== undefined) process.env.C4_CHROMIUM = savedEnv
+  }
 })

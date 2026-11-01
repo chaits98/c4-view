@@ -52,8 +52,12 @@ export function indexEntries(
     if (!model) return []
     const root = renderModel(model, '', paletteOf(theme)).levels[0]
     if (!root) return []
+    /* node:coverage disable */
+    // Damage guard: the emitter always writes a viewBox, so the no-viewBox arm means a renderer that
+    // broke — it is not a diagram a user can produce.
     const box = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(root.svg)
     const [width, height] = box ? [Number(box[1]), Number(box[2])] : [0, 0]
+    /* node:coverage enable */
     return [{ ...row, svg: root.svg, ok: root.audit.ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
   })
 }

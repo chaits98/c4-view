@@ -73,7 +73,13 @@ function checkNode(raw: Record<string, unknown>, at: string, ids: Set<string>, b
 
 /** Nodes of one level, plus the id set the edges and groups are checked against. */
 function parseNodes(raw: unknown, at: string, bad: string[]): { nodes: NodeSpec[]; ids: Set<string> } {
-  const list: unknown[] = Array.isArray(raw) ? raw : []
+  // a field that must be a list and is not is a mistake, not an absence: silently treating
+  // `"nodes": "a"` as no nodes would drop a whole level's contents without saying so
+  if (!Array.isArray(raw)) {
+    bad.push(`${at}.nodes: must be an array of nodes`)
+    return { nodes: [], ids: new Set<string>() }
+  }
+  const list: unknown[] = raw
   if (!list.length) bad.push(`${at}.nodes: at least one node is required`)
   const ids = new Set<string>()
   list.forEach((node, i) => {
@@ -98,7 +104,11 @@ function checkEdge(raw: Record<string, unknown>, at: string, ids: Set<string>, b
 function parseEdges(raw: unknown, at: string, ids: Set<string>, bad: string[]): { edges: EdgeSpec[]; keys: Set<string> } {
   const edges: EdgeSpec[] = []
   const keys = new Set<string>()
-  const list: unknown[] = Array.isArray(raw) ? raw : []
+  if (!Array.isArray(raw)) {
+    bad.push(`${at}.edges: must be an array of edges`)
+    return { edges, keys }
+  }
+  const list: unknown[] = raw
   list.forEach((edge, i) => {
     if (!isObj(edge)) { bad.push(`${at}.edges[${i}]: must be an object`); return }
     checkEdge(edge, `${at}.edges[${i}]`, ids, bad)
@@ -125,6 +135,10 @@ function checkGroup(raw: Record<string, unknown>, at: string, seen: Set<string>,
 function parseGroups(raw: unknown, at: string, ids: Set<string>, bad: string[]): GroupSpec[] {
   const groups: GroupSpec[] = []
   const seen = new Set<string>()
+  if (raw !== undefined && !Array.isArray(raw)) {
+    bad.push(`${at}.groups: must be an array of groups`)
+    return groups
+  }
   const list: unknown[] = Array.isArray(raw) ? raw : []
   list.forEach((group, i) => {
     const gAt = `${at}.groups[${i}]`

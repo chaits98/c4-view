@@ -125,9 +125,13 @@ async function serveCommand(args: Args): Promise<number> {
   const shown = typeof addr === 'object' && addr !== null ? addr.port : port
   for (const line of guardNotice(srv.guard, shown)) console.log(line)
   console.log(`  diagrams in ${root}`)
+  /* node:coverage disable */
+  // `serve` owns the process: it returns only through the exit below, so the promise never settles
+  // in a test — the spawned-process test proves the behaviour (boots, answers, exits on SIGTERM).
   const stop = (): void => {
     srv.close(() => process.exit(0))
   }
+  /* node:coverage enable */
   process.on('SIGINT', stop)
   process.on('SIGTERM', stop)
   return await new Promise<number>(() => {})
@@ -277,7 +281,10 @@ async function dispatch(argv: string[]): Promise<number> {
 }
 
 // Only the real binary exits the process; importing this module (the tests) must not.
+/* node:coverage disable */
+// Damage-free guard: when this file is imported, argv[1] is the test runner, so it never runs there.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  /* node:coverage enable */
   run(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (error: unknown) => {

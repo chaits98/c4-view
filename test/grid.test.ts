@@ -120,3 +120,11 @@ test('the audit banner names what failed, three at most, then counts the rest', 
   assert.match(many, /and 2 more checks/, 'five failures print three and a count')
   assert.equal((many.match(/<li>/g) ?? []).length, 4, 'three names plus the count')
 })
+
+test('four failing gates print three names and "and 1 more check"', async () => {
+  const { auditBanner } = await import('../src/viewer-page.ts')
+  const report = { level: '', nodes: 2, edges: 1, nodeNode: 1, wireNode: 1, wireWire: 1, crossings: 0, backward: 0, chipChip: 1, chipNode: 0, groupNode: 0, ok: false, aspect: 1 }
+  const html = auditBanner(report)
+  assert.match(html, /and 1 more check<\/li>/, 'singular, not "checks"')
+  assert.equal((html.match(/<li>/g) ?? []).length, 4)
+})

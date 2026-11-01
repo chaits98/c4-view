@@ -7,15 +7,15 @@
  * @module c4-view/cli-skill
  */
 import { homedir } from 'node:os'
-import { describe, harnesses, installInto, installed, isSkillDir, plan } from './skill-install.ts'
+import { describe, harnesses, installInto, installed, isSkillDir, plan, type Harness } from './skill-install.ts'
 import { answer, greeting, loadPrefs, pending, prefsPath, questions, savePrefs, type Prefs, type Question } from './prefs.ts'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 /** The version the user is now running, read from the package so it can never disagree with the release. */
-function currentVersion(): string {
+/** The package's own version. `pkg` is a seam: a damaged install is a state worth testing. */
+export function currentVersion(pkg: string = fileURLToPath(new URL('../package.json', import.meta.url))): string {
   try {
-    const pkg = fileURLToPath(new URL('../package.json', import.meta.url))
     return (JSON.parse(readFileSync(pkg, 'utf8')) as { version: string }).version
   } catch {
     return '0.0.0'
@@ -47,10 +47,14 @@ c4v prefs set <id>=<value>            record one answer
 c4v prefs greeting [--version x.y.z]  one sentence for the user, or nothing`
 
 /** `skill list|install`. Returns an exit code like every other verb. */
-export function skillCommand(argv: string[], home: string = homedir()): number {
+export function skillCommand(
+  argv: string[],
+  home: string = homedir(),
+  probes: { harnesses?: () => Harness[]; skillDir?: () => boolean } = {},
+): number {
   const { has, opt, rest } = flags(argv)
   const action = rest[1]
-  const all = harnesses()
+  const all = (probes.harnesses ?? harnesses)()
   if (!all.length) {
     console.error('skill/harnesses.jsonl is missing or empty — the package is damaged')
     return 1
@@ -65,7 +69,7 @@ export function skillCommand(argv: string[], home: string = homedir()): number {
     console.error(`unknown action "${action}"\n\n${SKILL_USAGE}`)
     return 2
   }
-  if (!isSkillDir()) {
+  if (!(probes.skillDir ?? isSkillDir)()) {
     console.error('this package does not contain a complete skill (SKILL.md + assets/)')
     return 1
   }
