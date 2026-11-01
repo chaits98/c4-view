@@ -78,9 +78,12 @@ test('a shared server refuses anonymous page requests and lets a token through',
     assert.match(String(anon.headers['www-authenticate']), /Bearer/)
     const health = await get(port, '/health')
     assert.equal(health.status, 200, '/health stays open for supervisors')
+    // the token in the URL is traded for a cookie and a redirect, so it never stays in the address bar
     const withToken = await get(port, '/?t=tok')
-    assert.equal(withToken.status, 200)
+    assert.equal(withToken.status, 302)
+    assert.equal(withToken.headers.location, '/')
     assert.match(String(withToken.headers['set-cookie']), /c4token=tok; HttpOnly; SameSite=Strict/)
+    assert.equal(withToken.headers['cache-control'], 'no-store')
     assert.match(String(withToken.headers['content-security-policy']), /frame-ancestors 'none'/)
     const viaCookie = await get(port, '/', { cookie: 'c4token=tok' })
     assert.equal(viaCookie.status, 200)

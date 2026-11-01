@@ -49,6 +49,16 @@ const ratio = (a, b) => {
 /** label, foreground token, background token, WCAG threshold, what it is */
 const PAIRS = [
   ['body text', 'on-surface', 'surface', 4.5, 'SC 1.4.3'],
+  // the canvas: a drawing that cannot be read is not a drawing. 4.5 for text, 3 for strokes (1.4.11)
+  ['canvas text', 'c4-fg', 'c4-bg', 4.5, 'SC 1.4.3'],
+  ['canvas secondary', 'c4-dim', 'c4-bg', 4.5, 'SC 1.4.3'],
+  ['canvas chip label', 'c4-chip-fg', 'c4-chip-bg', 4.5, 'SC 1.4.3'],
+  ['canvas concept stroke', 'c4-concept-stroke', 'c4-bg', 3, 'SC 1.4.11'],
+  ['canvas step stroke', 'c4-step-stroke', 'c4-bg', 3, 'SC 1.4.11'],
+  ['canvas tool stroke', 'c4-tool-stroke', 'c4-bg', 3, 'SC 1.4.11'],
+  ['canvas fact stroke', 'c4-fact-stroke', 'c4-bg', 3, 'SC 1.4.11'],
+  ['canvas flow wire', 'c4-edge-flow', 'c4-bg', 3, 'SC 1.4.11'],
+  ['canvas dep wire', 'c4-edge-dep', 'c4-bg', 3, 'SC 1.4.11'],
   ['secondary text', 'on-surface-variant', 'surface', 4.5, 'SC 1.4.3'],
   ['breadcrumb link', 'primary', 'surface', 4.5, 'SC 1.4.3'],
   ['button label on the bar', 'primary', 'surface-container', 4.5, 'SC 1.4.3'],

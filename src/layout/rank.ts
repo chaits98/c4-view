@@ -88,14 +88,15 @@ function assignRanks(
   back: Set<number>,
   hint: Map<string, number>,
 ): Map<string, number> {
-  const rankOf = new Map<string, number>()
-  for (const id of ids) rankOf.set(id, hint.get(id) ?? 0)
+  const rankOf = new Map<string, number>(ids.map((id) => [id, hint.get(id) ?? 0]))
+  // every id is seeded above, so a miss here is a bug in this function, not a missing node
+  const at = (id: string): number => rankOf.get(id) as number
   for (const id of topo) {
-    const want = (rankOf.get(id) ?? 0) + 1
+    const want = at(id) + 1
     for (const ci of outgoing.get(id) ?? []) {
       const to = edges[ci].to
       if (back.has(ci) || hint.has(to)) continue
-      if ((rankOf.get(to) ?? 0) < want) rankOf.set(to, want)
+      if (at(to) < want) rankOf.set(to, want)
     }
   }
   return rankOf
@@ -103,10 +104,12 @@ function assignRanks(
 
 /** Shift every rank so the drawing starts at column 0. */
 function shiftToZero(ids: string[], rankOf: Map<string, number>): void {
+  // seeded for every id (see assignRanks), so the reads are total
+  const at = (id: string): number => rankOf.get(id) as number
   let min = Infinity
-  for (const id of ids) min = Math.min(min, rankOf.get(id) ?? 0)
+  for (const id of ids) min = Math.min(min, at(id))
   if (min === 0) return
-  for (const id of ids) rankOf.set(id, (rankOf.get(id) ?? 0) - min)
+  for (const id of ids) rankOf.set(id, at(id) - min)
 }
 
 /** Chains, with a dummy item per column a forward chain crosses. */

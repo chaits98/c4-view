@@ -113,11 +113,16 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
     # The sonar gate on this instance is the built-in "Sonar way", whose coverage condition is 80 and
     # cannot be edited without admin rights. The project's own floor is 95, so it is enforced here —
     # measured the way sonar measures it: (covered lines + covered branches) / (lines + branches).
+    # Two floors: the sonar metric at 95, and branch coverage on a ratchet — it may only rise.
+    # Raise BRANCH_FLOOR with each batch of tests; never lower it to get green. The number is in the
+    # lcov basis used here (node's own summary reads ~0.1 higher: it counts a few branches lcov does
+    # not), so compare like with like.
     coverage_floor() {
       [ -f coverage/lcov.info ] || return 1
-      awk -F: '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
-        END { pct = (lh + bh) * 100 / (lf + bf); printf "%d of %d lines+branches = %.1f%%\n", lh + bh, lf + bf, pct;
-              exit (pct >= 95 ? 0 : 1) }' coverage/lcov.info
+      awk -F: -v floor="${BRANCH_FLOOR:-90}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
+        END { pct = (lh + bh) * 100 / (lf + bf); br = bh * 100 / bf;
+              printf "lines+branches %d/%d = %.1f%% (floor 95) · branches %d/%d = %.1f%% (floor %d)\n", lh + bh, lf + bf, pct, bh, bf, br, floor;
+              exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info
     }
     step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
   else

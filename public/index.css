@@ -21,6 +21,9 @@ body {
   align-items: center;
   gap: var(--space-3);
   min-height: 64px;
+  /* three groups (brand, count, sort, scheme) do not fit 390px on one line: wrap, never overflow */
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
   padding-inline: max(var(--space-4), calc((100% - 1680px) / 2));
   background: var(--surface-container);
   border-bottom: 1px solid var(--outline-variant);
@@ -37,8 +40,20 @@ body {
 /* three plain links: the scheme is URL state, remembered in a cookie, no script */
 .idx-scheme-group {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   margin-left: auto;
+}
+
+@media (max-width: 30rem) {
+  .idx-sort-group,
+  .idx-scheme-group {
+    margin-inline-start: 0;
+  }
+
+  .idx-bar h1 {
+    font-size: 1.25rem;
+  }
 }
 
 .idx-scheme {
@@ -180,4 +195,37 @@ body {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-xs);
+}
+
+/* Sort and filter: plain links, current one marked — same shape as the scheme control. */
+.idx-sort-group {
+  display: flex;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+}
+
+.idx-sort {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--shape-full);
+  color: var(--on-surface-variant);
+  text-decoration: none;
+}
+
+.idx-sort[aria-current='true'] {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.idx-sort:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* A card too heavy to inline draws a placeholder — the grid stays one frame. */
+.thumb.is-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  color: var(--on-surface-variant);
+  background: var(--surface-container-low);
 }

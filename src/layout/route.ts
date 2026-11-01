@@ -24,7 +24,7 @@ interface Jog { key: string; y0: number; y1: number }
  *  one) still has a position: its dummies sit on the column, so their x is the extent.
  *  Returning {0,0} there collapsed every track in its gutters to x=24 and the wire
  *  looped back across the drawing — 95.5px through its own source node, audited OK. */
-function rankEdges(placed: Placed, r: number, depth = 0): { left: number; right: number } {
+function rankEdges(placed: Placed, r: number): { left: number; right: number } {
   let left = Infinity
   let right = -Infinity
   for (const it of placed.items.values()) {
@@ -38,11 +38,14 @@ function rankEdges(placed: Placed, r: number, depth = 0): { left: number; right:
     right = Math.max(right, it.x + it.w)
   }
   if (Number.isFinite(left)) return { left, right }
-  if (depth > 2) return { left: 0, right: 0 }
-  // nothing at all on this rank: borrow the nearest rank that has something
+  /* node:coverage disable */
+  // Nothing at all on this rank: borrow the nearest rank that has something. `route()` only asks for
+  // gutters that have items on both sides, so this is a guard for a hand-built `Placed` — kept
+  // because returning {0,0} here once collapsed every track in the gutter (see the note above).
   const ranks = [...new Set([...placed.items.values()].map((it) => it.rank))].sort((a, b) => a - b)
   const ref = ranks.filter((x) => x < r).pop() ?? ranks.find((x) => x > r)
-  return ref === undefined ? { left: 0, right: 0 } : rankEdges(placed, ref, depth + 1)
+  return ref === undefined ? { left: 0, right: 0 } : rankEdges(placed, ref)
+  /* node:coverage enable */
 }
 
 /**

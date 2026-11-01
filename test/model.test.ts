@@ -112,12 +112,20 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['id with a space', { ...base(), id: 'not ok' }, /id: required/],
     ['no title', { ...base(), title: '   ' }, /title: required/],
     ['level not an object', { ...base(), levels: [42] }, /levels\[0\]: must be an object/],
+    ['level path not a string', { ...base(), levels: [{ path: 7, nodes: [], edges: [] }] }, /path|level/i],
+    ['nodes not an array', { ...base(), levels: [{ path: '', nodes: 'a', edges: [] }] }, /nodes/i],
+    ['edges not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: 5 }] }, /edges/i],
+    ['groups not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [], groups: {} }] }, /groups/i],
+    ['flow not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [], flow: 7 }] }, /flow/i],
     ['node not an object', withLevel({ nodes: [7] }), /nodes\[0\]: must be an object/],
     ['node with no id', node({ id: undefined }), /nodes\[0\]\.id: required/],
     ['node with no label', node({ label: '' }), /nodes\[0\]\.label: required/],
     ['unknown subtype', node({ subtype: 'blob' }), /subtype: not a C4 subtype \(blob\)/],
     ['missing subtype', node({ subtype: undefined }), /subtype: not a C4 subtype \(missing\)/],
     ['non-string tech', node({ tech: 22 }), /nodes\[0\]\.tech: must be a string when present/],
+    ['non-string desc', node({ desc: 1 }), /nodes\[0\]\.desc: must be a string when present/],
+    ['non-string identity', node({ identity: [] }), /nodes\[0\]\.identity: must be a string when present/],
+    ['non-string group', node({ group: {} }), /nodes\[0\]\.group: must be a string when present/],
     ['edge not an object', withLevel({ edges: ['a→b'] }), /edges\[0\]: must be an object/],
     ['edge with an unknown from', withLevel({ edges: [{ from: 'ghost', to: 'a' }] }), /edges\[0\]\.from: unknown node "ghost"/],
     ['edge with an unknown to', withLevel({ edges: [{ from: 'a', to: 'ghost' }] }), /edges\[0\]\.to: unknown node "ghost"/],
@@ -127,9 +135,14 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['group with no label', withLevel({ groups: [{ id: 'g' }] }), /groups\[0\]\.label: required/],
     ['flow naming a missing edge', withLevel({ flow: ['a->b'] }), /flow\[0\]: "a->b" is not an edge of this level/],
     ['layout not an object', { ...base(), layout: 'wide' }, /layout: must be an object when present/],
+    ['node rank not a number', node({ rank: 'x' }), /nodes\[0\]\.rank: must be a non-negative integer/],
+    ['node rank NaN', node({ rank: Number.NaN }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['node rank not an integer', node({ rank: 1.5 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['node rank below zero', node({ rank: -1 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['no levels at all', { ...base(), levels: [] }, /at least one level/],
+    ['group with non-string members', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: [1, 2] }] }), /groups\[0\]/],
+    ['group naming a node that is not in the level', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: ['ghost'] }] }), /groups\[0\]/],
+    ['edge style that is not a string', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', style: 5 }] }), /style/],
   ]
   for (const [name, model, expected] of cases) {
     assert.throws(
@@ -157,6 +170,8 @@ test('an optional field is normalised, and a bare level gets a name', () => {
     'every present optional survives',
   )
   assert.equal(child.title, 'a', 'a blank title falls back to the path')
+  const numericTitle = parseModel({ ...base(), levels: [{ path: 'x', title: 7, nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  assert.equal(numericTitle.levels[0].title, 'x', 'a title that is not a string falls back too')
   assert.equal(child.edges[0].style, 'flow', 'an edge with no style is a flow')
   assert.equal(child.edges[0].label, undefined, 'and keeps no empty label')
 })
@@ -167,7 +182,38 @@ test('a layout knob that cannot work is refused, not silently ignored', () => {
   assert.throws(() => parseModel(withLayout({ direction: 'diagonal' })), /direction: "LR"/, 'and neither is anything else')
   assert.throws(() => parseModel(withLayout({ rankGap: 0 })), /layout\.rankGap: must be a positive number/)
   assert.throws(() => parseModel(withLayout({ rankGap: 'wide' })), /layout\.rankGap: must be a positive number/)
+  // JSON cannot carry these, but parseModel takes any object — so the guard is real, not decorative
+  assert.throws(() => parseModel(withLayout({ rankGap: Number.NaN })), /layout\.rankGap: must be a positive number/)
+  assert.throws(() => parseModel(withLayout({ rankGap: Number.POSITIVE_INFINITY })), /layout\.rankGap: must be a positive number/)
   assert.throws(() => parseModel(withLayout({ gap: 8 })), /layout\.gap: unknown setting/, 'a typo is named, not ignored')
   const kept = parseModel(withLayout({ direction: 'LR', rankGap: 96 }))
   assert.deepEqual({ ...layoutOf(kept) }, { ...DEFAULT_LAYOUT, direction: 'LR', rankGap: 96 }, 'known knobs are kept')
+})
+
+test('a fully specified model keeps every field it was given', () => {
+  const full = parseModel({
+    ...base(),
+    layout: { direction: 'LR', rankGap: 140, nodeGap: 40, lane: 14, portGap: 14, labelMaxChars: 40, fontSize: 14, nodePadX: 16, nodePadY: 12, minW: 130 },
+    levels: [
+      {
+        path: '',
+        title: 'Everything',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system', tech: 'Node', desc: 'd', identity: 'i', group: 'g', rank: 0 },
+          { id: 'b', label: 'B', subtype: 'microservice', tech: '', desc: '', identity: '', group: '' },
+        ],
+        edges: [{ from: 'a', to: 'b', label: 'calls', style: 'dep' }],
+        groups: [{ id: 'g', label: 'Group', members: ['a', 7, null, 'b'] }],
+        flow: ['a->b'],
+      },
+    ],
+  })
+  assert.deepEqual(full.layout, { direction: 'LR', rankGap: 140, nodeGap: 40, lane: 14, portGap: 14, labelMaxChars: 40, fontSize: 14, nodePadX: 16, nodePadY: 12, minW: 130 })
+  const level = full.levels[0]
+  assert.equal(level.title, 'Everything')
+  assert.equal(level.nodes[0].rank, 0, 'a direct rank is kept')
+  assert.equal(level.nodes[1].tech, '', 'an empty string is still a string')
+  assert.deepEqual(level.groups?.[0].members, ['a', 'b'], 'non-strings in members are dropped')
+  assert.deepEqual(level.flow, ['a->b'])
+  assert.equal(level.edges[0].style, 'dep')
 })

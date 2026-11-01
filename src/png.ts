@@ -35,11 +35,11 @@ const KNOWN = [
 const NAMES = ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable', 'chrome']
 
 /** First `name` found on PATH. */
-function onPath(name: string): string | null {
+function onPath(name: string, exists: (path: string) => boolean = existsSync): string | null {
   for (const dir of (process.env.PATH ?? '').split(delimiter)) {
     if (!dir) continue
     const full = join(dir, name)
-    if (existsSync(full)) return full
+    if (exists(full)) return full
   }
   return null
 }
@@ -48,13 +48,14 @@ function onPath(name: string): string | null {
  * The browser to screenshot with, or null. `$C4_CHROMIUM` wins even when it does
  * not exist, so the error can name the path the user got wrong.
  */
-export function findChromium(): string | null {
+/** `exists` is a seam: "this machine has no browser" is a state worth testing. */
+export function findChromium(exists: (path: string) => boolean = existsSync): string | null {
   const explicit = process.env[CHROMIUM_ENV]
   if (explicit) return explicit
-  const known = KNOWN.find((path) => existsSync(path))
+  const known = KNOWN.find((path) => exists(path))
   if (known) return known
   for (const name of NAMES) {
-    const found = onPath(name)
+    const found = onPath(name, exists)
     if (found) return found
   }
   return null
@@ -72,8 +73,8 @@ function sizeOf(svg: string): { w: number; h: number } {
  * Rasterise an SVG string to `out` (a .png path). Returns the absolute path.
  * Throws, with the fix inside the message, when no browser is installed.
  */
-export function svgToPng(svg: string, out: string, scale = 2): string {
-  const browser = findChromium()
+export function svgToPng(svg: string, out: string, scale = 2, find: () => string | null = findChromium): string {
+  const browser = find()
   if (!browser || !existsSync(browser)) {
     const where = browser ? `no file at ${browser} ($${CHROMIUM_ENV})` : `nothing on PATH or in ${KNOWN.length} known locations`
     throw new Error(
@@ -97,9 +98,12 @@ export function svgToPng(svg: string, out: string, scale = 2): string {
       [
         '--headless',
         '--disable-gpu',
+        /* node:coverage disable */
         // A container running as root cannot start Chromium with its sandbox; everywhere else the
         // sandbox stays ON. Unconditional --no-sandbox was a finding waiting to be written up.
+        // The root side cannot be exercised by a test that runs as the user running the suite.
         ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
+        /* node:coverage enable */
         '--hide-scrollbars',
         '--force-device-scale-factor=' + String(scale),
         `--window-size=${w},${h}`,

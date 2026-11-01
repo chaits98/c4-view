@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { levelOf, levelOrder } from './model.ts'
+import type { AuditReport } from './types.ts'
 import { renderModel } from './render.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
@@ -48,11 +49,15 @@ function zoomBar(href: (value: string) => string, zoom: number | null, percent: 
     const on = value === 'fit' ? zoom === null : Number(value) === zoom
     return `<a class="c4-zoom-btn" href="${href(value)}" data-zoom="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
   })
+  // the readout only exists for the steps no preset names (75 %, 125 %, 150 %); repeating "Fit"
+  // next to a chip that already says "Fit" is noise, and 240px away from it at that
+  const named = PRESETS.some(([value]) => (value === 'fit' ? zoom === null : Number(value) === zoom))
+  const readout = named ? '' : `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(percent)}</span>`
   return [
     ...presets,
     '<button type="button" class="c4-zoom-btn" data-step="-1" aria-label="Zoom out">−</button>',
     '<button type="button" class="c4-zoom-btn" data-step="1" aria-label="Zoom in">+</button>',
-    `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(percent)}</span>`,
+    readout,
   ].join('')
 }
 
@@ -66,10 +71,64 @@ function crumbsFor(model: Model, level: string, root: string): string[] {
     if (!found) continue
     const title = esc(found.title ?? found.path)
     const href = root + '/' + at
-    crumbs.push(at === level ? `<span>${title}</span>` : `<a href="${esc(href)}">${title}</a>`)
+    crumbs.push(at === level ? `<span aria-current="page">${title}</span>` : `<a href="${esc(href)}">${title}</a>`)
   }
-  if (level === '') crumbs.push(`<span>${esc(levelOf(model, '')?.title ?? 'Overview')}</span>`)
+  if (level === '') crumbs.push(`<span aria-current="page">${esc(levelOf(model, '')?.title ?? 'Overview')}</span>`)
   return crumbs
+}
+
+/**
+ * The same diagram as text: containers, then flows, in the model's own order.
+ *
+ * Not decoration. A screen reader gets nothing useful from the SVG, a human greps a text version
+ * faster than they read a drawing, and it is the only way to copy an id out of a diagram.
+ */
+function textVersion(model: Model, level: string): string {
+  const found = levelOf(model, level)
+  if (!found) return ''
+  const nodes = found.nodes
+    .map((n) => {
+      const facts = [n.tech, n.desc].filter((v): v is string => Boolean(v))
+      return `<li><strong>${esc(n.label)}</strong> <code>${esc(n.id)}</code>${facts.length ? ` — ${facts.map(esc).join(' · ')}` : ''}</li>`
+    })
+    .join('')
+  const flows = found.edges
+    .map((e) => {
+      const from = found.nodes.find((n) => n.id === e.from)?.label ?? e.from
+      const to = found.nodes.find((n) => n.id === e.to)?.label ?? e.to
+      return `<li>${esc(from)} → ${esc(to)}${e.label ? ` — ${esc(e.label)}` : ''}</li>`
+    })
+    .join('')
+  return (
+    `<h2 class="t-label-l">Containers (${found.nodes.length})</h2><ul>${nodes}</ul>` +
+    `<h2 class="t-label-l">Flows (${found.edges.length})</h2><ul>${flows || '<li>none on this level</li>'}</ul>`
+  )
+}
+
+const GATES: Array<{ key: keyof AuditReport; says: string }> = [
+  { key: 'nodeNode', says: 'two containers overlap' },
+  { key: 'wireNode', says: 'a wire runs through a container' },
+  { key: 'wireWire', says: 'two wires share a track' },
+  { key: 'chipNode', says: 'a label sits on a container' },
+  { key: 'chipChip', says: 'two labels overlap' },
+  { key: 'groupNode', says: 'a boundary box covers a container it does not own' },
+]
+
+/**
+ * Why this drawing failed its audit, in words, above the canvas — three checks and a count, because
+ * a stack of fifteen numbers is the same as none. The badge says *that* it failed; this says why.
+ */
+export function auditBanner(report: AuditReport): string {
+  const failing = GATES.filter((gate) => (report[gate.key] as number) > 0)
+  if (!failing.length) return ''
+  const named = failing.slice(0, 3).map((gate) => `<li>${gate.says} (${String(report[gate.key])})</li>`)
+  const more = failing.length > 3 ? `<li>and ${failing.length - 3} more check${failing.length - 3 === 1 ? '' : 's'}</li>` : ''
+  return (
+    `<section class="c4-audit" role="status">` +
+    `<h2 class="t-title-s"><span aria-hidden="true">!</span> This drawing failed its audit</h2>` +
+    `<ul class="t-body-s">${named.join('')}${more}</ul>` +
+    `</section>`
+  )
 }
 
 export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
@@ -94,6 +153,8 @@ export function viewerPage(model: Model, level: string, zoomRaw: string | null =
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
+    .replace('<!--AUDIT-->', () => auditBanner(drawn.audit))
+    .replace('<!--TEXT-->', () => textVersion(model, level))
     .replace('<!--SVG-->', () => drawn.svg)
     .replace(
       ' data-diagram="" data-level="" data-root=""',

@@ -15,7 +15,7 @@ import { shapeOf, shapePath, shapeTextInset } from './shapes.ts'
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** labels/tech/identity/id/desc/drill are agent-written: escape every one of them. */
-const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c] ?? '')
+const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c])
 const n = (v: number): string => String(Math.round((Number.isFinite(v) ? v : 0) * 10) / 10)
 const STYLES: readonly EdgeStyle[] = ['flow', 'dep', 'tent', 'dir']
 
@@ -72,7 +72,10 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     if (!box) return []
     const t = measureNode(node, cfg, measure)
     const shape = shapeOf(node.subtype)
+    /* node:coverage disable */
+    // model.parse refuses an unknown subtype, so the fallback only covers a hand-built LevelSpec
     const kind = SUBTYPE_KIND[node.subtype] ?? 'concept'
+    /* node:coverage enable */
     const k = theme.kinds[kind]
     const attrs = [`data-id="${esc(node.id)}"`, `data-kind="${kind}"`]
     if (node.desc) attrs.push(`data-desc="${esc(node.desc)}"`)

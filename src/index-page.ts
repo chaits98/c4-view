@@ -22,7 +22,7 @@ import type { Model } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
+const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c])
 /** Wider than this and a thumbnail is a grey smear, so it crops instead (visual spec §6). */
 const WIDE = 3
 
@@ -52,8 +52,12 @@ export function indexEntries(
     if (!model) return []
     const root = renderModel(model, '', paletteOf(theme)).levels[0]
     if (!root) return []
+    /* node:coverage disable */
+    // Damage guard: the emitter always writes a viewBox, so the no-viewBox arm means a renderer that
+    // broke — it is not a diagram a user can produce.
     const box = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(root.svg)
     const [width, height] = box ? [Number(box[1]), Number(box[2])] : [0, 0]
+    /* node:coverage enable */
     return [{ ...row, svg: root.svg, ok: root.audit.ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
   })
 }
@@ -66,20 +70,55 @@ function byUpdated(a: IndexEntry, b: IndexEntry): number {
 
 const count = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
+/** Above this the card is a placeholder: inlining the drawing costs the whole grid a frame. */
+const HEAVY_NODES = 400
+const HEAVY_BYTES = 200_000
+
 function card(entry: IndexEntry): string {
   const facts = `${count(entry.levels.length, 'level')} · ${count(entry.nodes, 'node')} · ${count(entry.flows, 'flow')}`
   const state = entry.ok ? 'audit clean' : 'audit failed'
+  const heavy = entry.nodes > HEAVY_NODES || entry.svg.length > HEAVY_BYTES
+  const thumb = heavy
+    ? `<span class="thumb is-placeholder" aria-hidden="true"><span class="t-label-m">${facts} — open to draw</span></span>`
+    : `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}</span>`
   // the whole card is the link, so middle-click and cmd-click work without a handler
   return (
     `<a class="card" href="/d/${encodeURIComponent(entry.id)}">` +
     // the drawing is the emitter's own escaped output — never re-escape it. A crop is
     // declared in text ("wide · 3000 px") rather than passed off as the whole drawing.
     // A crop is shown by cropping — the card does not print its own diagnostics at the reader
-    `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}</span>` +
+    thumb +
     `<span class="meta"><h2 class="t-title-m">${esc(entry.title)}</h2>` +
     `<p class="t-body-s">${esc(entry.id)} · ${facts}</p>` +
     `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}"><span aria-hidden="true">${entry.ok ? '✓' : '!'}</span>${state}</span></span></a>`
   )
+}
+
+export type Sort = 'updated' | 'title' | 'audit'
+export type Filter = 'all' | 'fail'
+
+/** Newest first already exists; these are the other two questions a visitor asks. */
+const COMPARE: Record<Sort, (a: IndexEntry, b: IndexEntry) => number> = {
+  updated: byUpdated,
+  title: (a, b) => compareKeys(a.title.toLowerCase(), b.title.toLowerCase()) || compareKeys(a.id, b.id),
+  audit: (a, b) => (a.ok === b.ok ? byUpdated(a, b) : a.ok ? 1 : -1),
+}
+
+/**
+ * Sort and the one filter, as links: the state lives in the URL, so it survives a reload, a share
+ * and Back — and the current choice is readable as text, not only as a colour.
+ */
+function gridControl(sort: Sort, filter: Filter): string {
+  const sorts = (['updated', 'title', 'audit'] as const)
+    .map((value) => {
+      const on = value === sort ? ' aria-current="true"' : ''
+      const label = value === 'updated' ? 'newest' : value
+      return `<a class="idx-sort" href="/?sort=${value}${filter === 'fail' ? '&amp;audit=fail' : ''}"${on}>${label}</a>`
+    })
+    .join('')
+  const failing = filter === 'fail'
+  const filterLink = `<a class="idx-sort" href="/?sort=${sort}${failing ? '' : '&amp;audit=fail'}"${failing ? ' aria-current="true"' : ''}>${failing ? 'showing failures' : 'failures only'}</a>`
+  return `${sorts}${filterLink}`
 }
 
 /** Three plain links: the state is the URL, the cookie remembers it, no script runs. */
@@ -89,15 +128,19 @@ function schemeControl(theme: Theme): string {
     .join('')
 }
 
-export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto'): string {
-  const sorted = [...entries].sort(byUpdated)
-  const cards = sorted.length
-    ? sorted.map(card).join('')
-    : `<div class="empty"><p>No diagrams yet.</p><p>Post a model: <code>curl -X POST --data @model.json http://calm:8788/api/diagrams</code></p></div>`
+export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto', sort: Sort = 'updated', filter: Filter = 'all'): string {
+  const kept = filter === 'fail' ? entries.filter((entry) => !entry.ok) : [...entries]
+  const sorted = kept.sort(COMPARE[sort])
+  const empty =
+    filter === 'fail' && entries.length > 0
+      ? `<div class="empty"><h1 class="t-headline-s">Nothing is failing</h1><p>All ${entries.length} diagrams audit clean.</p><p><a href="/">Show every diagram</a>.</p></div>`
+      : `<div class="empty"><h1 class="t-headline-s">No diagrams yet</h1><p>This store is empty, so there is nothing to draw.</p><p>Send one: <code>c4v render model.json</code>, or <code>curl -X POST --data @model.json &lt;this-host&gt;/api/diagrams</code>.</p></div>`
+  const cards = sorted.length ? sorted.map(card).join('') : empty
   const diagramCount = sorted.length === 1 ? '1 diagram' : `${sorted.length} diagrams`
   return readFileSync(`${PUBLIC}index.html`, 'utf8')
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--THEMELINKS-->', () => schemeControl(theme))
+    .replace('<!--GRIDCONTROL-->', () => gridControl(sort, filter))
     .replace('<!--COUNT-->', () => esc(diagramCount))
     .replace('<!--CARDS-->', () => cards)
 }

@@ -1,8 +1,12 @@
 /**
- * The palettes. Colours are SVG attributes (no `<style>` block), so an exported file
- * renders identically in the app and outside it — and because they are attributes, the
- * palette cannot answer a media query: the *server* picks one, per request, from the
- * reader's `?theme=`/cookie choice. `auto` has no server-side answer, so it renders DARK.
+ * The palettes. Colours are SVG attributes (no `<style>` block), so an exported file renders
+ * identically in the app and outside it.
+ *
+ * `auto` used to render DARK, which meant a light-OS reader got a dark drawing on light chrome —
+ * measured at 1.18:1, i.e. a ghost. `AUTO` answers that properly: every colour is a `var(--c4-*)`
+ * that `tokens.css` declares once as a `light-dark()` pair, so the drawing follows the same scheme
+ * the page does, with no request-time guess and no JavaScript. Exports still use a literal palette,
+ * because a standalone SVG has no stylesheet to inherit.
  *
  * @module c4-view/theme
  */
@@ -63,4 +67,32 @@ export const LIGHT: Theme = {
 }
 
 /** The palette for a reader's choice; `auto` cannot be known here, so it is the dark one. */
-export const paletteOf = (choice: string): Theme => (choice === 'light' ? LIGHT : DARK)
+/** Every colour in the drawing, as a token reference: the page decides the scheme, not the server. */
+export const AUTO: Theme = {
+  bg: 'var(--c4-bg)',
+  fg: 'var(--c4-fg)',
+  dim: 'var(--c4-dim)',
+  line: 'var(--c4-line)',
+  chipBg: 'var(--c4-chip-bg)',
+  chipFg: 'var(--c4-chip-fg)',
+  groupStroke: 'var(--c4-group-stroke)',
+  groupFill: 'var(--c4-group-fill)',
+  kinds: {
+    concept: { fill: 'var(--c4-concept-fill)', stroke: 'var(--c4-concept-stroke)' },
+    step: { fill: 'var(--c4-step-fill)', stroke: 'var(--c4-step-stroke)' },
+    tool: { fill: 'var(--c4-tool-fill)', stroke: 'var(--c4-tool-stroke)' },
+    fact: { fill: 'var(--c4-fact-fill)', stroke: 'var(--c4-fact-stroke)' },
+  },
+  edges: {
+    flow: { stroke: 'var(--c4-edge-flow)', width: 1.6 },
+    dep: { stroke: 'var(--c4-edge-dep)', width: 1.2, dash: '5 4' },
+    tent: { stroke: 'var(--c4-edge-tent)', width: 1.2, dash: '2 3' },
+    dir: { stroke: 'var(--c4-edge-dir)', width: 2 },
+  },
+}
+
+/** A literal palette for files that leave the app: an export has no stylesheet to inherit. */
+export const paletteOf = (choice: string): Theme => (choice === 'auto' ? AUTO : choice === 'light' ? LIGHT : DARK)
+
+/** The palette an exported file gets: `auto` becomes the light document, since exports are viewed on paper or in a diff. */
+export const exportPaletteOf = (choice: string): Theme => (choice === 'light' ? LIGHT : DARK)

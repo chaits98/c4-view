@@ -6,20 +6,27 @@
 <title>C4 viewer</title>
 <link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/viewer.css">
+<link rel="stylesheet" href="/viewer-states.css">
 </head>
 <!-- The server fills data-diagram / data-level / data-root, the three blocks marked
      SVG, CRUMBS, LEVELS, and the ZOOM group + ZOOMCLASS on #c4-stage, then serves
      /viewer.js, /viewer.css and /flow.js from public/.
      Contract: body data-* attrs, #c4-crumbs, #c4-levels, #c4-zoom,
-     #c4-stage (inline svg, scroll container), #c4-hover, #c4-legend.
+     #c4-stage (inline svg, scroll container), #c4-text, #c4-hover, #c4-legend.
      flow.js owns #c4-flow-caption, which it creates. -->
 <body class="t-body-m" data-diagram="" data-level="" data-root="">
+<a class="c4-skip" href="#c4-stage">Skip to the diagram</a>
 <header class="c4-bar">
   <nav id="c4-crumbs" aria-label="Breadcrumb"><!--CRUMBS--></nav>
   <select id="c4-levels" class="t-label-l" aria-label="Level"><!--LEVELS--></select>
   <div id="c4-zoom" role="group" aria-label="Zoom"><!--ZOOM--></div>
 </header>
 <main id="c4-stage" class="<!--ZOOMCLASS-->" tabindex="0" role="region" aria-label="Diagram canvas. Scroll with the arrow keys, + and - to zoom, 0 to fit."><!--SVG--></main>
+<!--AUDIT-->
+<details id="c4-text" class="c4-text">
+<summary class="t-label-l">Text version</summary>
+<!--TEXT-->
+</details>
 <aside id="c4-hover" hidden></aside>
 <div id="c4-legend" role="group" aria-label="Legend"></div>
 <div id="c4-mini"></div>
