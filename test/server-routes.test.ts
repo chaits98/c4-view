@@ -5,8 +5,9 @@
  */
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { request as httpRequest, type Server } from 'node:http'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
@@ -220,4 +221,38 @@ test('every route shape answers in its own content type', async () => {
 
   const all = await fetch(`${base}/api/diagrams/nested/audit`)
   assert.ok(Array.isArray(await all.json()), 'and every level is a list')
+})
+
+test('a client that hangs up mid-upload gets no answer and takes nothing down', async () => {
+  const url = new URL(base)
+  // a POST that promises a body, sends half of it, then drops the socket
+  await new Promise<void>((done) => {
+    const socket = connect(Number(url.port), url.hostname, () => {
+      socket.write(
+        `POST /api/diagrams HTTP/1.1\r\nHost: ${url.host}\r\nContent-Type: application/json\r\nContent-Length: 500\r\n\r\n{"id": "half`,
+      )
+      setTimeout(() => { socket.destroy(); done() }, 60)
+    })
+    socket.on('error', () => done())
+  })
+  // the server is still answering: the aborted read closed one request, not the process
+  assert.equal((await fetch(`${base}/health`)).status, 200)
+  assert.equal((await fetch(`${base}/api/diagrams/${ID}`)).status, 200)
+})
+
+test('a store the process cannot read is a 500, and the server keeps serving', async () => {
+  const lockedRoot = mkdtempSync(join(tmpdir(), 'c4-view-locked-'))
+  const locked = await serve({ port: 0, root: join(lockedRoot, 'store') })
+  mkdirSync(join(lockedRoot, 'store'), { recursive: true })
+  const lbase = `http://127.0.0.1:${(locked.address() as AddressInfo).port}`
+  try {
+    chmodSync(join(lockedRoot, 'store'), 0o000)
+    const refused = await fetch(`${lbase}/`)
+    assert.equal(refused.status, 500, 'an unreadable store is the server\'s fault, not a 404')
+    assert.match(await refused.text(), /"error"/, 'and it says so in JSON, because no diagram was named')
+  } finally {
+    chmodSync(join(lockedRoot, 'store'), 0o755)
+    await new Promise<void>((done) => locked.close(() => done()))
+    rmSync(lockedRoot, { recursive: true, force: true })
+  }
 })

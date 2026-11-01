@@ -77,3 +77,42 @@ test('a store path that does not exist is a failed requirement, not a crash', as
   assert.ok(store, 'the store check always reports')
   assert.equal(store.required, true, 'and it is a requirement, not a note')
 })
+
+test('every edge style draws its own stroke, and a model with no flow carries no step', () => {
+  const styled = parseModel({
+    id: 'styles',
+    title: 'Styles',
+    levels: [{
+      path: '',
+      nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }],
+      edges: [
+        { from: 'a', to: 'b', style: 'flow' },
+        { from: 'b', to: 'a', style: 'dep' },
+      ],
+    }],
+  })
+  const svg = renderModel(styled).levels[0].svg
+  assert.match(svg, /stroke-dasharray/, 'a dependency is dashed, a flow is not')
+  // a level with no edges at all has nothing to number
+  const bare = parseModel({ id: 'bare', title: 'Bare', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  assert.ok(!renderModel(bare).levels[0].svg.includes('data-flow='), 'no edges, no step attribute')
+})
+
+test('a level with no title still gets one in the svg', () => {
+  const untitled = parseModel({ id: 'untitled', title: 'Untitled', levels: [{ path: 'x', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  assert.match(renderModel(untitled, 'x').levels[0].svg, /<title>x<\/title>/, 'the path names it when the title is blank')
+})
+
+test('the grid shows a failing card, a wide card and a single card correctly', () => {
+  const entry = (over: Record<string, unknown>) => ({ id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false, ...over })
+  const one = indexPage([entry({})])
+  assert.match(one, /1 diagram</, 'singular')
+  const bad = indexPage([entry({ id: 'bad', ok: false })])
+  assert.match(bad, /audit failed/, 'a failing diagram says failed, not clean')
+  assert.match(bad, /class="badge t-label-m bad"/, 'and the badge carries the state as a class')
+  const wide = indexPage([entry({ wide: true })])
+  assert.match(wide, /class="thumb is-wide"/, 'a cropped card is marked')
+  for (const theme of ['auto', 'light', 'dark'] as const) {
+    assert.match(indexPage([entry({})], theme), new RegExp(`href="/\\?theme=${theme}"[^>]*aria-current`), `${theme} is marked current`)
+  }
+})
