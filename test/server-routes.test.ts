@@ -183,3 +183,41 @@ test('a card that had to crop says so with a class, not a badge', async () => {
   assert.match(page, /class="thumb is-wide"/, 'the crop is declared in the markup')
   assert.ok(!/wide · \d+ px/.test(page), 'and not repeated as a debug badge on the card')
 })
+
+test('every route shape answers in its own content type', async () => {
+  const nested = {
+    id: 'nested',
+    title: 'Nested',
+    levels: [
+      { path: '', title: 'Overview', nodes: [{ id: 'app', label: 'App', subtype: 'system' }], edges: [] },
+      { path: 'app', title: 'App', nodes: [{ id: 'svc', label: 'Svc', subtype: 'system' }], edges: [] },
+      { path: 'app/db', title: 'Db', nodes: [{ id: 'tbl', label: 'Tbl', subtype: 'database' }], edges: [] },
+    ],
+  }
+  assert.equal((await fetch(`${base}/api/diagrams`, { method: 'POST', body: JSON.stringify(nested) })).status, 201)
+
+  const css = await fetch(`${base}/tokens.css`)
+  assert.equal(css.status, 200)
+  assert.match(css.headers.get('content-type') ?? '', /^text\/css/, 'a stylesheet is text/css')
+
+  const js = await fetch(`${base}/viewer.js`)
+  assert.equal(js.status, 200)
+  assert.match(js.headers.get('content-type') ?? '', /^text\/javascript/, 'a script is javascript')
+
+  const svg = await fetch(`${base}/d/nested.svg`)
+  assert.equal(svg.status, 200)
+  assert.match(svg.headers.get('content-type') ?? '', /^image\/svg/, 'the export is image/svg+xml')
+  assert.match(await svg.text(), /^<svg/, 'and it is an svg')
+
+  const deep = await fetch(`${base}/d/nested/app/db`)
+  assert.equal(deep.status, 200, 'a multi-segment level is one page')
+  assert.match(await deep.text(), /<option value="app\/db" selected>/, 'and the level control knows it')
+
+  const audit = await fetch(`${base}/api/diagrams/nested/audit?level=app`)
+  assert.equal(audit.status, 200)
+  const one = (await audit.json()) as { ok: boolean }
+  assert.equal(one.ok, true, 'the audit of one level is an object, not a list')
+
+  const all = await fetch(`${base}/api/diagrams/nested/audit`)
+  assert.ok(Array.isArray(await all.json()), 'and every level is a list')
+})

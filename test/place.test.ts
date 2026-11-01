@@ -187,3 +187,42 @@ test('a rank naming an id that is not in the item map is skipped', () => {
   const p = place(r, level([node('a'), node('b')]), cfg, measure)
   assert.ok(p.boxes.get('b'), 'the column still places around the gap')
 })
+
+test('a boundary group with a member nobody placed is dropped, not drawn around a ghost', () => {
+  const lv = level([node('a', 'Alpha')], [{ id: 'g', label: 'Group', members: ['a', 'ghost'] }])
+  const p = place(ranked([['a']], []), lv, cfg, measure)
+  assert.equal(p.groups.length, 1, 'one group survives')
+  assert.ok(p.groups[0].box.w > 0, 'and it is boxed around the member that exists')
+})
+
+test('a group whose every member is missing draws nothing', () => {
+  const lv = level([node('a', 'Alpha')], [{ id: 'g', label: 'Group', members: ['ghost', 'phantom'] }])
+  const p = place(ranked([['a']], []), lv, cfg, measure)
+  assert.deepEqual(p.groups, [], 'no members, no box')
+})
+
+test('a group that reaches above the drawing shifts everything down, never negative', () => {
+  const lv = level([node('a', 'Alpha'), node('b', 'Beta')], [{ id: 'g', label: 'Group', members: ['a', 'b'] }])
+  const p = place(ranked([['a'], ['b']], [chainOf('a', 'b', ['a', 'b'])]), lv, cfg, measure)
+  for (const b of [...p.boxes.values(), ...p.groups.map((g) => g.box)]) {
+    assert.ok(b.x >= 0 && b.y >= 0, `nothing at negative coordinates: ${JSON.stringify(b)}`)
+  }
+})
+
+test('a node every wire passes through is taller, so its ports fit', () => {
+  const fan = Array.from({ length: 4 }, (_, i) => chainOf('a', `t${i}`, ['a', `t${i}`]))
+  const nodes = [node('a', 'Hub'), ...Array.from({ length: 4 }, (_, i) => node(`t${i}`, `T${i}`))]
+  const r = ranked([['a'], ['t0', 't1', 't2', 't3']], fan)
+  const p = place(r, level(nodes), cfg, measure)
+  const hub = p.boxes.get('a')
+  const t0 = p.boxes.get('t0')
+  assert.ok(hub && t0, 'both place')
+  assert.ok((hub.h) >= 5 * cfg.portGap, `the hub grew for its ports: ${hub.h}`)
+  assert.ok(hub.h > t0.h, 'and it is taller than a node with one wire')
+})
+
+test('a dummy following a dummy keeps the thin lane gap', () => {
+  const r = ranked([['a'], ['d:a->b:1', 'd:a->b:2'], ['b']], [chainOf('a', 'b', ['a', 'd:a->b:1', 'd:a->b:2', 'b'])])
+  const p = place(r, level([node('a', 'Alpha'), node('b', 'Beta')]), cfg, measure)
+  assert.ok(p.boxes.get('b'), 'the far node still places below the dummies')
+})

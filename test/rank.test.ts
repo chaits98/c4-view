@@ -150,3 +150,11 @@ test('two wires leaving one node both survive', () => {
   assert.deepEqual(r.chains.map((c) => c.key), ['a->b', 'a->c'])
   assert.equal(r.ranks[1].length, 2, 'b and c share the column')
 })
+
+test('an edge between two nodes on the same rank is drawn backwards', () => {
+  // both pinned to column 0: there is no forward direction to draw it in
+  const r = rank(lvl([node('a', { rank: 0 }), node('b', { rank: 0 })], [['a', 'b']]), cfg)
+  assert.equal(r.chains.length, 1)
+  assert.equal(r.chains[0].backward, true)
+  assert.equal(r.ranks.length, 1, 'one column, no dummy invented')
+})
