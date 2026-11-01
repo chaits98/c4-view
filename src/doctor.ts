@@ -66,10 +66,10 @@ function fontCheck(): Check {
 function storeCheck(root: string): Check {
   const probe = join(root, '.doctor-probe')
   try {
-    mkdirSync(root, { recursive: true })
+    mkdirSync(join(root, 'scratch'), { recursive: true }) // scratch lives beside the preferences, not in the user's repo
     writeFileSync(probe, 'ok')
     rmSync(probe, { force: true })
-    return { name: 'store', ok: true, required: true, detail: `${root} is writable` }
+    return { name: 'store', ok: true, required: true, detail: `${root} is writable (scratch: ${join(root, 'scratch')})` }
   } catch (error) {
     return { name: 'store', ok: false, required: true, detail: `${root} — ${error instanceof Error ? error.message : String(error)}` }
   }

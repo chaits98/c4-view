@@ -1,0 +1,14 @@
+{"id":"agents","label":"Shared agent skills directory (Codex, Cursor, Copilot, Gemini CLI, OpenCode, Droid, Amp, Warp, Zed, Kilo, Cline)","scope":"global","dir":"~/.agents/skills/c4-diagram","kind":"dir","note":"the interoperable agentskills.io location — one write serves every harness that reads it","detect":"~/.agents"}
+{"id":"claude-code","label":"Claude Code","scope":"global","dir":"~/.claude/skills/c4-diagram","kind":"dir","note":"Claude Code also reads ~/.agents/skills; install here when you want it visible only to Claude","detect":"~/.claude"}
+{"id":"hermes","label":"Hermes Agent","scope":"global","dir":"~/.hermes/skills/software-development/c4-diagram","kind":"dir","note":"category directory is part of the path Hermes indexes","detect":"~/.hermes"}
+{"id":"copilot","label":"GitHub Copilot CLI","scope":"global","dir":"~/.copilot/skills/c4-diagram","kind":"dir","detect":"~/.copilot"}
+{"id":"gemini","label":"Gemini CLI","scope":"global","dir":"~/.gemini/skills/c4-diagram","kind":"dir","note":"Gemini prefers .agents/skills when both exist","detect":"~/.gemini"}
+{"id":"opencode","label":"OpenCode","scope":"global","dir":"~/.config/opencode/skills/c4-diagram","kind":"dir","detect":"~/.config/opencode"}
+{"id":"crush","label":"Crush","scope":"global","dir":"~/.config/crush/skills/c4-diagram","kind":"dir","detect":"~/.config/crush"}
+{"id":"goose","label":"Goose","scope":"global","dir":"~/.config/goose/skills/c4-diagram","kind":"dir","detect":"~/.config/goose"}
+{"id":"droid","label":"Droid (Factory)","scope":"global","dir":"~/.factory/skills/c4-diagram","kind":"dir","detect":"~/.factory"}
+{"id":"junie","label":"Junie","scope":"global","dir":"~/.junie/skills/c4-diagram","kind":"dir","detect":"~/.junie"}
+{"id":"openclaw","label":"OpenClaw","scope":"global","dir":"~/.openclaw/skills/c4-diagram","kind":"dir","detect":"~/.openclaw"}
+{"id":"amp","label":"Amp","scope":"global","dir":"~/.config/agents/skills/c4-diagram","kind":"dir","detect":"~/.config/agents"}
+{"id":"kilo","label":"Kilo Code","scope":"global","dir":"~/.kilo/skills/c4-diagram","kind":"dir","detect":"~/.kilo"}
+{"id":"project","label":"This project only (checked into the repo)","scope":"project","dir":".agents/skills/c4-diagram","kind":"dir","note":"committed with the code, so every contributor and agent gets it","detect":".git"}

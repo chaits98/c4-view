@@ -8,6 +8,10 @@
   c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
   c4v service install|uninstall|status [--port 8788] [--host 127.0.0.1] [--root ~/.c4-view]
                                      host the viewer as a systemd USER unit
+  c4v skill list | install [--global] [--harness id,id]
+                                     copy this skill into the AI harnesses on this machine
+  c4v prefs pending | show | set <id>=<answer> | greeting
+                                     the answers the user gave once (and the ones still missing)
  *
  * `--strict` exits 1 when any geometry gate fails, so a skill can make "deliver
  * only a clean diagram" mechanical instead of a promise.
@@ -35,6 +39,10 @@ const USAGE = `c4v — agent-driven C4 renderer
   c4v doctor [--root ~/.c4-view]     what this machine is missing, if anything
   c4v service install|uninstall|status [--port 8788] [--host 127.0.0.1] [--root ~/.c4-view]
                                      host the viewer as a systemd USER unit
+  c4v skill list | install [--global] [--harness id,id]
+                                     copy this skill into the AI harnesses on this machine
+  c4v prefs pending | show | set <id>=<answer> | greeting
+                                     the answers the user gave once (and the ones still missing)
 
   --level   render one level by path (root is "")           [default: every level]
   --out     a directory, or a .svg file when one level is rendered [default: ./out/<id>]
@@ -180,6 +188,7 @@ function argumentError(args: Args): number | null {
     return 0
   }
   if (args.command === 'serve' || args.command === 'doctor') return null
+  if (args.command === 'skill' || args.command === 'prefs') return null
   if (args.command === 'service') {
     const action = argvSecond(args)
     if (action !== 'install' && action !== 'uninstall' && action !== 'status') {
@@ -223,6 +232,14 @@ async function dispatch(argv: string[]): Promise<number> {
   const early = argumentError(args)
   if (early !== null) return early
   if (args.command === 'serve') return serveCommand(args)
+  if (args.command === 'skill') {
+    const { skillCommand } = await import('./cli-skill.ts')
+    return skillCommand(argv)
+  }
+  if (args.command === 'prefs') {
+    const { prefsCommand } = await import('./cli-skill.ts')
+    return prefsCommand(argv)
+  }
   if (args.command === 'service') return await serviceCommand(args)
   if (args.command === 'doctor') {
     const { doctor } = await import('./doctor.ts')
