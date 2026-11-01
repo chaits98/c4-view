@@ -39,3 +39,31 @@ test('a named host keeps its own name in the remembered link', async () => {
   rememberOpenUrl({ token: 't2', host: '10.0.0.5', generated: false } as never, '8788', home)
   assert.equal(readFileSync(openUrlPath(home), 'utf8').trim(), 'http://10.0.0.5:8788/?t=t2')
 })
+
+test('a cookie left over from a rotated token is replaced, not kept forever', async () => {
+  const { remember } = await import('../src/security.ts')
+  const reply = (): { headers: Record<string, string>; setHeader: (k: string, v: string) => void } => {
+    const headers: Record<string, string> = {}
+    return { headers, setHeader: (k, v) => { headers[k.toLowerCase()] = v } }
+  }
+  const guard = { token: 'new-token', host: '0.0.0.0', generated: false }
+  const req = (cookie?: string) => ({ headers: cookie ? { cookie } : {} }) as never
+  const url = (t?: string) => new URL(`http://h:8788/${t ? `?t=${t}` : ''}`)
+
+  const stale = reply()
+  remember(guard as never, req('c4token=old-token'), url('new-token'), stale as never)
+  assert.match(stale.headers['set-cookie'] ?? '', /c4token=new-token/, 'the old cookie is replaced on the first good visit')
+
+  const same = reply()
+  remember(guard as never, req('c4token=new-token'), url('new-token'), same as never)
+  assert.equal(same.headers['set-cookie'], undefined, 'nothing to rewrite')
+
+  const bearer = reply()
+  const withAuth = (auth: string) => ({ headers: { authorization: auth } }) as never
+  remember(guard as never, withAuth('Bearer new-token'), url(), bearer as never)
+  assert.match(bearer.headers['set-cookie'] ?? '', /c4token=new-token/, 'an agent that sends the header is remembered too')
+
+  const wrong = reply()
+  remember(guard as never, req(), url('not-the-token'), wrong as never)
+  assert.equal(wrong.headers['set-cookie'], undefined, 'a token that does not check out is never remembered')
+})

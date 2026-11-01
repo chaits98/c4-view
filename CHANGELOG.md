@@ -3,6 +3,16 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.9.1] — a rotated token no longer locks a browser out
+
+`remember()` refused to rewrite a cookie that already existed, so a browser holding the token from before a
+rotation stayed locked out: every page sent the old cookie, and the `?t=` link could not repair it because the
+cookie was never refreshed. A valid `?t=` or `Authorization: Bearer` now replaces a stale cookie on the first
+visit, and a token that does not check out is never stored.
+
+Verified against a running server: stale cookie + fresh `?t=` → `302` with `Set-Cookie: c4token=<new>`;
+stale cookie alone → `401`.
+
 ## [0.9.0] — a strip too wide to read folds into rows
 
 ### Added

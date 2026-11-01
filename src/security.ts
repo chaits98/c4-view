@@ -50,15 +50,19 @@ function same(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right)
 }
 
+/** The cookie's value, if the request carries one. */
+function cookieToken(req: IncomingMessage): string | null {
+  const hit = (req.headers.cookie ?? '').split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))
+  return hit ? decodeURIComponent(hit.slice(COOKIE.length + 1)) : null
+}
+
 /** The token presented by this request: bearer header, `?t=`, or the cookie the page sets. */
 export function presented(req: IncomingMessage, url: URL): string | null {
   const auth = req.headers.authorization
   if (auth?.startsWith('Bearer ')) return auth.slice(7).trim()
   const query = url.searchParams.get('t')
   if (query) return query
-  const cookie = req.headers.cookie ?? ''
-  const hit = cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))
-  return hit ? decodeURIComponent(hit.slice(COOKIE.length + 1)) : null
+  return cookieToken(req)
 }
 
 /** True when the request may proceed. A guard with no token allows everything. */
@@ -87,9 +91,13 @@ export function applyHeaders(res: ServerResponse): void {
  */
 export function remember(guard: Guard, req: IncomingMessage, url: URL, res: ServerResponse): void {
   if (!guard.token) return
-  if (req.headers.cookie?.includes(`${COOKIE}=`)) return
-  const fresh = url.searchParams.get('t') ?? (req.headers.authorization?.startsWith('Bearer ') ? 'bearer' : null)
-  if (fresh === 'bearer') return
+  const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7).trim() : null
+  const fresh = url.searchParams.get('t') ?? bearer
+  // only a token that checks out is worth remembering, and only when the browser does not already hold it: a
+  // cookie left over from a rotated token shadowed every page after the rotation, and `?t=` could not fix it
+  // because this function refused to rewrite a cookie that already existed.
+  if (!fresh || !same(fresh, guard.token)) return
+  if (cookieToken(req) === guard.token) return
   res.setHeader('Set-Cookie', `${COOKIE}=${encodeURIComponent(guard.token)}; HttpOnly; SameSite=Strict; Path=/`)
 }
 
