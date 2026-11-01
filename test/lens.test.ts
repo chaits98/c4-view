@@ -19,10 +19,9 @@ const base = (): Model => {
 
 const level = (model: Model, path: string) => model.levels.find((l) => l.path === path)!
 
-test('the shipped lens example is clean: no problems, no warnings', () => {
+test('the shipped lens example is clean', () => {
   const report = lensReport(base())
   assert.deepEqual(report.problems, [])
-  assert.deepEqual(report.warnings, [])
   assert.equal(lensLine(report), 'LENS ok')
 })
 
@@ -87,20 +86,19 @@ test('a sibling of the host may not be re-drawn inside it', () => {
   assert.ok(lensReport(model).problems.some((p) => /re-draws context2 from the level above/.test(p)))
 })
 
-test('a drill level without ports warns instead of failing (models that predate ports)', () => {
+test('a drill level whose box has crossing edges and no ports is a failure', () => {
   const model = base()
   delete level(model, 'context1').ports
   const report = lensReport(model)
-  assert.deepEqual(report.problems, [], 'no ports is legal, not broken')
-  assert.equal(report.warnings.length, 1)
-  assert.match(report.warnings[0], /renders standalone and loses the outside edges/)
-  assert.equal(lensLine(report), 'LENS warn 1 level(s) without ports')
+  assert.equal(report.problems.length, 1)
+  assert.match(report.problems[0], /3 edge\(s\) cross into "context1" but no ports say where they land/)
+  assert.equal(lensLine(report), 'LENS FAIL 1 problem(s)')
 })
 
 test('the root level never warns — there is nothing above it', () => {
   const model = base()
   model.levels = model.levels.filter((l) => l.path === '')
-  assert.deepEqual(lensReport(model), { problems: [], warnings: [] })
+  assert.deepEqual(lensReport(model), { problems: [] })
 })
 
 test('edgeKey and hostOf agree with the path convention', () => {

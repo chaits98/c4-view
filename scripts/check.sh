@@ -50,6 +50,7 @@ step "tests: node --test"                              node --test
 step "goldens: every corpus level byte-identical"      node tools/golden.mjs --check
 step "audit: every fixture and example is green"       bash -c '
   for f in fixtures/*.json examples/*.json docs/c4/*.json skill/assets/*.json; do
+    [ -f "$f" ] || continue   # an empty doc dir must not fail the glob itself
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }
   done'
 step "tokens: every measured contrast pair clears its WCAG threshold" node tools/contrast.mjs

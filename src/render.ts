@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs'
 import { parseModel, layoutOf, drillTargets, levelOrder } from './model.ts'
 import { lensReport, type LensReport } from './lens.ts'
+import { expandLevel } from './expand.ts'
 import { rank } from './layout/rank.ts'
 import { order } from './layout/order.ts'
 import { place } from './layout/place.ts'
@@ -36,12 +37,13 @@ export interface Rendered {
 }
 
 /** Render one level: the whole pipeline, in order, with no hidden state. */
-export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK): RenderedLevel {
+export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>): RenderedLevel {
   const cfg = layoutOf(model)
   const ranked = order(rank(level, cfg), cfg)
   const placed = place(ranked, level, cfg, measure)
   const routed = route(placed, cfg, measure)
-  const svg = emit(placed, routed, level, cfg, palette, drillTargets(model, level), flowIndex(level))
+  // a composed (expanded) level is not in the model, so its drill map is supplied by the caller
+  const svg = emit(placed, routed, level, cfg, palette, drill ?? drillTargets(model, level), flowIndex(level))
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: audit(placed, routed, level) }
 }
 
@@ -56,8 +58,23 @@ export function renderModel(model: Model, only?: string, palette: Theme = DARK):
   return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette)), lens }
 }
 
-/** Read + validate + render a model file. */
-export function renderFile(file: string, only?: string): Rendered {
+/**
+ * Render one box expanded in place: the parent level with its host replaced by a dashed frame around
+ * the child's interior. One frame at a time, by design.
+ */
+export function renderExpanded(model: Model, path: string, palette: Theme = DARK): Rendered {
+  const { level } = expandLevel(model, path)
+  const drill = new Map<string, string>()
+  for (const node of level.nodes) {
+    const innerId = node.id.startsWith(`${path}/`) ? node.id.slice(path.length + 1) : undefined
+    const target = innerId ? `${path}/${innerId}` : null
+    if (target && model.levels.some((l) => l.path === target)) drill.set(node.id, target)
+  }
+  return { id: model.id, title: model.title, levels: [renderLevel(model, level, palette, drill)], lens: lensReport(model) }
+}
+
+/** Read + validate + render a model file, optionally with one box expanded in place. */
+export function renderFile(file: string, only?: string, expand?: string): Rendered {
   let raw: unknown
   try {
     raw = JSON.parse(readFileSync(file, 'utf8'))
@@ -68,7 +85,8 @@ export function renderFile(file: string, only?: string): Rendered {
     throw new Error(`${file}: ${error instanceof Error ? error.message : String(error)}`)
     /* node:coverage enable */
   }
-  return renderModel(parseModel(raw), only)
+  const model = parseModel(raw)
+  return expand ? renderExpanded(model, expand) : renderModel(model, only)
 }
 
 /** Every level failed a geometry gate. */

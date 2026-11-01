@@ -109,9 +109,9 @@ async function serveCommand(args: Args): Promise<number> {
 }
 
 /** Render the model, or print why it could not be read. */
-function loadReport(file: string, level: string | undefined): Rendered | null {
+function loadReport(file: string, level: string | undefined, expand?: string): Rendered | null {
   try {
-    return renderFile(file, level)
+    return renderFile(file, level, expand)
   } catch (error) {
     if (error instanceof ModelError) console.error(error.message)
     else console.error(error instanceof Error ? error.message : String(error))
@@ -233,7 +233,7 @@ async function dispatch(argv: string[]): Promise<number> {
     return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1
   }
 
-  const report = args.file ? loadReport(args.file, args.opt('level')) : null
+  const report = args.file ? loadReport(args.file, args.opt('level'), args.opt('expand')) : null
   if (!report) return 2
 
   const failed = report.levels.filter((l) => !l.audit.ok)

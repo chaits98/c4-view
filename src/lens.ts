@@ -9,18 +9,16 @@
  *   layer redraw  the level contains boxes that live *outside* the host (its siblings), or the host
  *                 itself — so drilling in shows the same ring again instead of the interior
  *
- * `ports` are opt-in: a level without them renders standalone exactly as it always has, and the
- * report says so once as a warning rather than failing a model that predates the idea.
+ * `ports` are required of every non-root level: a drill that cannot say where its outside edges land
+ * is a layer redraw by another name, and the expanded view would lose those edges silently.
  *
  * @module c4-view/lens
  */
 import type { EdgeSpec, LevelSpec, Model } from './types.ts'
 
 export interface LensReport {
-  /** gating: the level claims to be a lens and is not shaped like one */
+  /** gating: every drill level must be a lens — the inside of exactly one box */
   problems: string[]
-  /** advisory: a drill level that loses its outside context when opened */
-  warnings: string[]
 }
 
 export const edgeKey = (edge: EdgeSpec): string => `${edge.from}->${edge.to}`
@@ -35,7 +33,6 @@ export function hostOf(level: LevelSpec, model: Model): { parent?: LevelSpec; ho
 
 export function lensReport(model: Model): LensReport {
   const problems: string[] = []
-  const warnings: string[] = []
   for (const level of model.levels) {
     if (!level.path) {
       if (level.ports) problems.push('level "": ports on the root level — there is nothing above it to come from')
@@ -52,14 +49,18 @@ export function lensReport(model: Model): LensReport {
       )
       continue
     }
+    const crossing = parent.edges.filter((e) => e.from === hostId || e.to === hostId)
     const ports = level.ports
-    if (!ports || Object.keys(ports).length === 0) {
-      warnings.push(`level "${level.path}": no ports — it renders standalone and loses the outside edges when drilled`)
+    if (crossing.length > 0 && (!ports || Object.keys(ports).length === 0)) {
+      problems.push(
+        `level "${level.path}": ${crossing.length} edge(s) cross into "${hostId}" but no ports say where they land — the expanded view would lose them`,
+      )
       continue
     }
+    if (!ports) continue   // a box nothing connects to needs no ports
     checkPorts(level, parent, hostId, ports, problems)
   }
-  return { problems, warnings }
+  return { problems }
 }
 
 /** Every edge that crosses the lens boundary needs a port, and every port needs a real edge and node. */
@@ -88,7 +89,5 @@ function checkPorts(level: LevelSpec, parent: LevelSpec, hostId: string, ports: 
 
 /** One line for the CLI, or an empty string when the model has nothing to say. */
 export function lensLine(report: LensReport): string {
-  if (report.problems.length) return `LENS FAIL ${report.problems.length} problem(s)`
-  if (report.warnings.length) return `LENS warn ${report.warnings.length} level(s) without ports`
-  return 'LENS ok'
+  return report.problems.length ? `LENS FAIL ${report.problems.length} problem(s)` : 'LENS ok'
 }

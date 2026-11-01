@@ -76,8 +76,9 @@ npm run install-skill                       # copy the skill into ~/.hermes/skil
 
 ## This repo's own C4
 
-`docs/c4/c4-view.json` — the agent-written model of this tool (context, containers, and the pipeline), kept
-next to the code it describes. Rendered and gated like any other: `c4v render docs/c4/c4-view.json --strict`.
+The diagram of this tool is written by the skill at release time and lives at `docs/c4/c4-view.json`, next to
+the code it describes — rendered and gated like any other (`c4v render docs/c4/c4-view.json --strict`). It is
+regenerated rather than hand-maintained, which is why the repo does not carry a stale copy.
 
 ## Cost and footprint
 

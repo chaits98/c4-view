@@ -49,13 +49,10 @@ export function printAudit(levels: RenderedLevel[], asJson: boolean): void {
 }
 
 /**
- * Lens problems fail the audit; warnings (a drill level that predates ports) only say so. `--json`
- * keeps its array of per-level reports, so a consumer that parsed it yesterday still parses it now;
- * the exit code is the verdict either way.
+ * Lens problems fail the audit. `--json` keeps its array of per-level reports, so a consumer that
+ * parsed it yesterday still parses it now; the exit code is the verdict either way.
  */
 export function printLens(lens: LensReport, asJson: boolean): void {
-  if (!asJson) {
-    for (const warning of lens.warnings) console.log(`LENS warn ${warning}`)
-  }
+  if (asJson) return
   for (const problem of lens.problems) console.error(`LENS FAIL ${problem}`)
 }
