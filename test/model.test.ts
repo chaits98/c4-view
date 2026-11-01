@@ -130,6 +130,8 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['group with no label', withLevel({ groups: [{ id: 'g' }] }), /groups\[0\]\.label: required/],
     ['flow naming a missing edge', withLevel({ flow: ['a->b'] }), /flow\[0\]: "a->b" is not an edge of this level/],
     ['layout not an object', { ...base(), layout: 'wide' }, /layout: must be an object when present/],
+    ['node rank not a number', node({ rank: 'x' }), /nodes\[0\]\.rank: must be a non-negative integer/],
+    ['node rank NaN', node({ rank: Number.NaN }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['node rank not an integer', node({ rank: 1.5 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['node rank below zero', node({ rank: -1 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['no levels at all', { ...base(), levels: [] }, /at least one level/],
@@ -175,6 +177,9 @@ test('a layout knob that cannot work is refused, not silently ignored', () => {
   assert.throws(() => parseModel(withLayout({ direction: 'diagonal' })), /direction: "LR"/, 'and neither is anything else')
   assert.throws(() => parseModel(withLayout({ rankGap: 0 })), /layout\.rankGap: must be a positive number/)
   assert.throws(() => parseModel(withLayout({ rankGap: 'wide' })), /layout\.rankGap: must be a positive number/)
+  // JSON cannot carry these, but parseModel takes any object — so the guard is real, not decorative
+  assert.throws(() => parseModel(withLayout({ rankGap: Number.NaN })), /layout\.rankGap: must be a positive number/)
+  assert.throws(() => parseModel(withLayout({ rankGap: Number.POSITIVE_INFINITY })), /layout\.rankGap: must be a positive number/)
   assert.throws(() => parseModel(withLayout({ gap: 8 })), /layout\.gap: unknown setting/, 'a typo is named, not ignored')
   const kept = parseModel(withLayout({ direction: 'LR', rankGap: 96 }))
   assert.deepEqual({ ...layoutOf(kept) }, { ...DEFAULT_LAYOUT, direction: 'LR', rankGap: 96 }, 'known knobs are kept')
