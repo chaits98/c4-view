@@ -24,9 +24,6 @@ import { zoomBar, zoomClass, zoomOf } from './viewer-zoom.ts'
 import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
-/** The laptop stage the design is measured against; a drawing that does not fit opens at 100%. */
-const STAGE_W = 1280
-const STAGE_H = 800
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** Every untrusted string in the page goes through this; the svg is already escaped. */
 function esc(text: string): string {
@@ -234,13 +231,11 @@ export function viewerPage(
       return `<option value="${esc(l.path)}" title="${esc(l.path || 'context')}"${l.path === level ? ' selected' : ''}>${indent}${esc(label)}</option>`
     })
     .join('')
-  // A drawing more than ~1.6x the design stage renders ~5px labels at Fit; opening it at 100% is the
-  // difference between "complete but unreadable" and "readable but partial". Explicit ?zoom= wins.
-  // a picture can now be too tall as well as too wide: both are opened at 100% rather than squeezed
+  // The opening view is the COMPLETE drawing: the fit that shows all of it, which is fit-v for a column and
+  // fit-h for a strip. A reader who wants detail picks 100% and scrolls; the reverse — opening at 100% on a
+  // drawing four screens wide — showed a corner and called it the diagram. Explicit `?zoom=` always wins.
   const drawnSize = svgSize(drawn.level.svg)
-  const wide = zoomRaw === null && (drawnSize.w > STAGE_W * 1.6 || drawnSize.h > STAGE_H * 1.6)
-  const zoom = zoomOf(zoomRaw) ?? (wide ? 1 : null)
-  const wideNote = wide ? '<p class="c4-note t-body-s">Too large to fit — opened at 100%. Scroll to pan, or pick Fit for the overview.</p>' : ''
+  const zoom = zoomOf(zoomRaw)
   const levelRoot = level ? root + '/' + level : root
   const zoomHref = (value: string): string => esc(levelRoot + '?zoom=' + value)
 
@@ -253,8 +248,8 @@ export function viewerPage(
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
-    .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom)}"`)
-    .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note) + wideNote)
+    .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom, drawnSize)}"`)
+    .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note))
     .replace('<!--TEXT-->', () => textVersion(drawn.spec))
     .replace('<!--SVG-->', () => drawn.level.svg)
     // the authored docs for this level, as data: viewer.js renders them in the hover panel

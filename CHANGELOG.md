@@ -3,6 +3,25 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.9.5] — two fits, one meaning each
+
+The three fit buttons are two, and they mean the same thing whatever the drawing's shape:
+
+| | what fits | what scrolls |
+|---|---|---|
+| **Fit V** | the height | across, when it is wide |
+| **Fit H** | the width | down, when it is tall |
+
+So a column shows whole at Fit V and scrolls down at Fit H; a strip shows whole at Fit H and scrolls across at
+Fit V. `100%` stays as the third chip, because it is a zoom, not a fit.
+
+**The opening view is the whole drawing** — whichever of the two fits shows all of it — instead of the old
+"too big, open at 100%", which showed a corner and called it the picture. Explicit `?zoom=` still wins, and the
+note that apologised for the old behaviour is gone with it.
+
+Measured in a browser: column `fit-v 91×468` (whole, no scrollbars) vs `fit-h 1241×6362` (fits the width,
+vertical scrollbar); strip `fit-v 2043×453` (fits the height, horizontal scrollbar) vs `fit-h 1256×278` (whole).
+
 ## [0.9.4] — a centred drawing, and Fit in both directions
 
 - **The canvas centres its drawing.** A tall column no longer hugs the left edge with dead space beside it;
