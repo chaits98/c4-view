@@ -13,9 +13,11 @@ import { levelSlug } from './slug.ts'
 import { auditLine } from './audit.ts'
 import { svgToPng } from './png.ts'
 import type { LensReport } from './lens.ts'
-import type { Rendered, RenderedLevel } from './render.ts'
+import type { Rendered } from './render.ts'
 import type { Model } from './types.ts'
 import { docsDir, docsProblems } from './docs.ts'
+import { pictureAudits } from './render.ts'
+import type { AuditReport } from './types.ts'
 
 /** Where one level's file goes: the named .svg, or `<dir>/<level-slug>.svg`. */
 export function outputPath(out: string | undefined, id: string, level: string): string {
@@ -42,12 +44,12 @@ export function writeOutputs(scale: number, out: string | undefined, png: boolea
   return written
 }
 
-export function printAudit(levels: RenderedLevel[], asJson: boolean): void {
+export function printAudit(audits: AuditReport[], asJson: boolean): void {
   if (asJson) {
-    console.log(JSON.stringify(levels.map((l) => l.audit), null, 2))
+    console.log(JSON.stringify(audits, null, 2))
     return
   }
-  for (const level of levels) console.log(auditLine(level.audit))
+  for (const audit of audits) console.log(auditLine(audit))
 }
 
 /**
@@ -79,6 +81,8 @@ export interface ReportArgs {
   json: boolean
   strict: boolean
   requireDocs: boolean
+  /** audit the authored levels instead of the composed pictures a reader opens */
+  flat: boolean
   render: boolean
   out?: string
   png: boolean
@@ -87,14 +91,16 @@ export interface ReportArgs {
 
 /** Print the report, write files on `render`, and decide the exit code. */
 export function reportCommand(args: ReportArgs, report: Rendered, model: Model): number {
-  const failed = report.levels.filter((l) => !l.audit.ok)
-  printAudit(report.levels, args.json)
+  const audits = args.flat ? report.levels.map((l) => l.audit) : pictureAudits(model)
+  const failed = audits.filter((a) => !a.ok)
+  printAudit(audits, args.json)
   printLens(report.lens, args.json)
   if (args.render) writeOutputs(args.scale, args.out, args.png, report)
   const docsMissing = docsVerdict(args, model)
   if (!args.strict) return 0
   if (failed.length) {
-    console.error(`\n${failed.length}/${report.levels.length} level(s) failed the geometry gate — fix the model, not the picture`)
+    const where = args.flat ? 'level(s)' : 'picture(s)'
+    console.error(`\n${failed.length}/${audits.length} ${where} failed the geometry gate — fix the model, not the picture`)
   }
   if (report.lens.problems.length) {
     console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)

@@ -123,6 +123,32 @@ each SVG (`--scale 1` for a small one). `serve` stores models under `~/.c4-view/
 `POST /api/diagrams` with the model body returns `{ id, url, audit }`. Pages are server-rendered, so a link
 works before any JS runs.
 
+## C4, in four levels — get these names right or the picture lies
+
+| level | a box is | how many | drill? |
+|---|---|---|---|
+| **C1 context** | a person, your system, or an external system it talks to | 4–7 | yes: your system |
+| **C2 container** | something that runs or stores: a process, a service, a CLI, a queue, a database, a hook | 5–12 | yes: **every** container you have something to say about |
+| **C3 component** | a module, controller, service, repository **inside one container** | 6–12 | only if a component earns a C4 code level |
+| **C4 code** | class, interface, table | ≤12 | no |
+
+**The three mistakes that make a diagram worthless, in the order they get made:**
+
+1. **Skipping C2.** Source files on the second level is not a container diagram — it is a component diagram
+   wearing the wrong label. If a box would not appear in a deployment diagram (a process, a port, a store),
+   it does not belong on C2.
+2. **One lens per layer.** A layer where a single box opens and the rest are dead says the system has depth in
+   exactly one place. That is almost never true: each container on C2 gets its own child level, and each of
+   those opens in place, one at a time. Boxes that are genuinely leaves (a browser, an external API) stay leaves —
+   that is a decision you can defend, not a default you were too lazy to check.
+3. **Trusting a green audit that judged the wrong picture.** `c4v audit` judges **what a page draws**: a level
+   with a parent is composed (parent, with that box expanded), because that is the picture a reader opens.
+   `--flat` audits the authored level alone and is for corpus checks only — never for a claim that a drill looks
+   right.
+
+A child level is **the inside of one box**, nothing else: no sibling boxes from above, no second box expanded,
+ports for every parent edge that crosses in. That is why it reads as a lens and not as a second diagram.
+
 ## The model
 
 **`assets/example.json`** ships beside this file: a complete two-level model — read it for the shape, the field
@@ -131,7 +157,7 @@ an installed package.
 
 | Field | Rule |
 |---|---|
-| `levels[].path` | `""` at the root; a child is the parent path + node id (`api`, `api/db`). A node with a matching child level becomes clickable. |
+| `levels[].path` | `""` at the root; a child is the parent path + node id (`api`, `api/db`). A node with a matching child level becomes clickable — expect several clickable boxes per layer, each with its own level. |
 | `subtype` | exactly one of these 49 — it decides shape and colour: `system, person, role, external-system, boundary, web-application, microservice, database, cache, message-queue, file-storage, search-engine, load-balancer, cdn, serverless-function, batch-job, container-registry, dns, api-gateway, ui-component, api-controller, service-logic, repository, middleware, plugin, module, event-handler, job, adapter, saga, workflow, library, config, migration, test-suite, class, interface, abstract-class, function, enum, type-alias, c4-module, schema, dto, constant, test-file, migration-file, config-file, script`. |
 | `tech` | second line: technology only, ≤5 words. |
 | `identity` | stable human id (`SHP-3`), kept across edits — it is what the user refers to. |
@@ -141,7 +167,9 @@ an installed package.
 
 ## Authoring rules
 
-1. **One idea per level.** C1 4–7, C2 6–12, C3 8–16, C4 ≤12 nodes. Above 20 is a modelling mistake — split.
+1. **One idea per level, and the level must be the level it claims.** C1 4–7, C2 5–12, C3 6–12, C4 ≤12 nodes;
+   a C2 box is something that runs or stores, a C3 box is a module inside one container. Above 20 is a modelling
+   mistake — split.
 2. **Every node needs an edge.** An orphan box means the level mixes two stories.
 3. **Labels 1–3 words.** The explanation belongs in `desc` or in a child level.
 4. **Edge labels are the cargo or the verb** (`Ranked`, `AuditReport`, `writes`, `polls`), ≤3 words — they are

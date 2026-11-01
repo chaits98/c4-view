@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { ModelError, levelOf, levelOrder, parseModel } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { docsDir, levelDocs } from './docs.ts'
-import { renderModel } from './render.ts'
+import { pictureAudits, renderExpanded, renderModel } from './render.ts'
 import { viewerPage } from './viewer-page.ts'
 import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
@@ -72,9 +72,10 @@ function sendModel(root: string, req: IncomingMessage, res: ServerResponse, id: 
 function sendAudit(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string | null, theme: Theme): void {
   const model = loadModel(root, id)
   if (!model) return missing(req, res, id, theme)
-  if (level === null) return json(res, 200, renderModel(model).levels.map((l) => l.audit))
+  if (level === null) return json(res, 200, pictureAudits(model))
   if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
-  json(res, 200, renderModel(model, level).levels[0].audit)
+  // the audit of a level is the audit of the picture that level's page draws, composed and all
+  json(res, 200, level ? renderExpanded(model, level).levels[0].audit : renderModel(model, level).levels[0].audit)
 }
 
 function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
@@ -152,7 +153,7 @@ function methodAllowed(route: Route, method: string, res: ServerResponse): boole
 async function handle(root: string, guard: Guard, req: IncomingMessage, res: ServerResponse, pathname: string | null): Promise<void> {
   applyHeaders(res)
   if (pathname === null) return json(res, 404, { error: 'malformed path' })
-  const url = new URL(req.url ?? '/', 'http://localhost')
+  const url = new URL(req.url ?? '/', 'http://localhost') // coverage:invariant — node always sets req.url
   if (!admitted(guard, req, res, url, pathname)) return
   const route = routeOf(pathname)
   if (!route) return json(res, 404, { error: `no route for ${pathname}` })
@@ -254,8 +255,7 @@ async function create(root: string, req: IncomingMessage, res: ServerResponse): 
     throw error
   }
   save(root, model.id, raw)
-  const rendered = renderModel(model)
-  return json(res, 201, { id: model.id, url: `/d/${model.id}`, audit: rendered.levels.map((l) => l.audit) })
+  return json(res, 201, { id: model.id, url: `/d/${model.id}`, audit: pictureAudits(model) })
 }
 
 /** The body as text, or null once a 413 has been answered and the socket closed. */

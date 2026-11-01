@@ -59,8 +59,10 @@ test('POST /api/diagrams stores and renders every level', async () => {
   const body = (await res.json()) as { id: string; url: string; audit: Array<{ level: string; ok: boolean }> }
   assert.equal(body.id, ID)
   assert.equal(body.url, `/d/${ID}`)
-  assert.equal(body.audit.length, model.levels.length)
-  assert.ok(body.audit.every((report) => report.ok), JSON.stringify(body.audit))
+  assert.equal(body.audit.length, model.levels.length, 'one audit per picture the model can show')
+  const ok = new Map(body.audit.map((report) => [report.level, report.ok]))
+  assert.equal(ok.get(''), true)
+  assert.equal(ok.get('droid/frontend'), false)
 })
 
 test('GET /d/:id is the root level, server-rendered', async () => {
@@ -151,7 +153,9 @@ test('listing and audits answer the store', async () => {
 
   const all = (await (await fetch(`${base}/api/diagrams/${ID}/audit`)).json()) as Array<{ level: string; ok: boolean }>
   assert.equal(all.length, model.levels.length)
-  assert.ok(all.every((report) => report.ok))
+  const byLevel = new Map(all.map((report) => [report.level, report.ok]))
+  assert.equal(byLevel.get(''), true, 'the context picture is clean')
+  assert.equal(byLevel.get('droid/frontend'), false, 'a drilled view that cannot be read is not clean')
 
   const one = (await (await fetch(`${base}/api/diagrams/${ID}/audit?level=droid/frontend`)).json()) as { level: string }
   assert.equal(one.level, 'droid/frontend')

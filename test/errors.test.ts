@@ -12,7 +12,7 @@ import { ModelError, parseModel } from '../src/model.ts'
 import { expandLevel } from '../src/expand.ts'
 import { lensReport } from '../src/lens.ts'
 import { levelDocs } from '../src/docs.ts'
-import { renderModel } from '../src/render.ts'
+import { pictureAudits, renderExpanded, renderModel } from '../src/render.ts'
 import { readFileSync } from 'node:fs'
 
 const lens = (): Record<string, any> =>
@@ -191,4 +191,33 @@ test('a hand-built model with no groups and no flow still expands', () => {
   assert.ok(ids.includes('host/a'), 'the interior is placed')
   assert.deepEqual(level.flow, [], 'no flow on either side, so none invented')
   assert.equal(level.groups?.length, 1, 'the frame is the only group')
+})
+
+test('the audit judges the picture a page draws, and a broken drill is not clean', () => {
+  // the flat level is fine; the composed picture (parent with the box expanded) is what a reader opens
+  const droid = parseModel(JSON.parse(readFileSync(new URL('../fixtures/droid.json', import.meta.url), 'utf8')) as unknown)
+  const audits = pictureAudits(droid)
+  assert.equal(audits.length, droid.levels.length, 'one per addressable picture')
+  const byLevel = new Map(audits.map((a) => [a.level, a]))
+  assert.equal(byLevel.get('')?.ok, true)
+  assert.equal(byLevel.get('droid/frontend')?.ok, false, 'the drilled view of this fixture is unreadable, and it says so')
+})
+
+test('a level whose box does not exist above it is a failed audit, not a crash', () => {
+  const broken = parseModel({
+    id: 'nested',
+    title: 'Nested',
+    levels: [
+      { path: '', title: 'Root', nodes: [{ id: 'app', label: 'App', subtype: 'system' }], edges: [] },
+      { path: 'app/db', title: 'Ghost', nodes: [{ id: 'tbl', label: 'Tbl', subtype: 'database' }], edges: [] },
+    ],
+  } as never)
+  const audits = pictureAudits(broken)
+  assert.equal(audits[1].ok, false, 'nothing to expand, so nothing is clean about it')
+})
+
+test('an expanded box pushes its neighbours out of the frame instead of drawing over them', () => {
+  const lens = parseModel(JSON.parse(readFileSync(new URL('../examples/lens.json', import.meta.url), 'utf8')) as unknown)
+  const composed = renderExpanded(lens, 'context1').levels[0].audit
+  assert.equal(composed.groupNode, 0, 'no stranger inside the dashed frame')
 })

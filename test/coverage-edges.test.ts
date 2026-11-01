@@ -35,7 +35,7 @@ test('twenty-one missing docs say "and N more" instead of listing the lot', () =
   console.error = (...args: unknown[]) => lines.push(args.join(' '))
   try {
     const code = reportCommand(
-      { file, json: false, strict: true, requireDocs: true, render: false, png: false, scale: 2 },
+      { file, json: false, strict: true, requireDocs: true, render: false, png: false, scale: 2, flat: false },
       renderModel(parsed),
       parsed,
     )
@@ -57,7 +57,7 @@ test('a fully documented model passes --require-docs with nothing printed', () =
   writeFileSync(join(dir, 'ok', 'nodes', 'a.md'), '# A\n\nIt is A.')
   const parsed = parseModel(JSON.parse(readFileSync(file, 'utf8')) as unknown)
   assert.equal(
-    reportCommand({ file, json: false, strict: true, requireDocs: true, render: false, png: false, scale: 2 }, renderModel(parsed), parsed),
+    reportCommand({ file, json: false, strict: true, requireDocs: true, render: false, png: false, scale: 2, flat: false }, renderModel(parsed), parsed),
     0,
   )
 })

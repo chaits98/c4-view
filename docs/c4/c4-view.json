@@ -7,37 +7,42 @@
   "levels": [
     {
       "path": "",
-      "title": "L1 — who uses c4-view, and what it talks to",
+      "title": "L1 — c4-view and what it talks to",
       "nodes": [
         {
           "id": "who",
           "label": "Agent or owner",
           "subtype": "person",
-          "tech": "any harness"
+          "tech": "any harness",
+          "desc": "Says what it wants; never edits a drawing."
         },
         {
           "id": "c4v",
           "label": "c4-view",
           "subtype": "system",
-          "tech": "one npm package"
+          "tech": "one npm package",
+          "desc": "Renders, audits and serves C4 diagrams from a JSON model."
         },
         {
           "id": "git",
           "label": "git",
           "subtype": "external-system",
-          "tech": "pre-commit hook"
+          "tech": "pre-commit hook",
+          "desc": "Stops a commit that changes code without the picture."
         },
         {
           "id": "files",
           "label": "repo files",
           "subtype": "file-storage",
-          "tech": "model + docs"
+          "tech": "model + docs",
+          "desc": "Model and one doc per node and edge, both in the user's repo."
         },
         {
           "id": "browser",
           "label": "browser",
           "subtype": "web-application",
-          "tech": "reads only"
+          "tech": "reads only",
+          "desc": "The reader of the served pages."
         }
       ],
       "edges": [
@@ -83,35 +88,38 @@
       },
       "nodes": [
         {
+          "id": "hook",
+          "label": "git hook",
+          "subtype": "batch-job",
+          "tech": ".githooks/pre-commit",
+          "desc": "Three lines of shell in the user's repo; it owns no judgement."
+        },
+        {
           "id": "cli",
           "label": "c4v CLI",
           "subtype": "container-registry",
-          "tech": "node src/cli.ts"
+          "tech": "node, no deps",
+          "desc": "render, audit, gate, skill, prefs — and the command that starts the viewer."
         },
         {
           "id": "server",
           "label": "viewer server",
           "subtype": "microservice",
-          "tech": "c4v serve :8788"
-        },
-        {
-          "id": "hook",
-          "label": "git hook",
-          "subtype": "batch-job",
-          "tech": ".githooks/pre-commit"
+          "tech": "node http, :8788",
+          "desc": "Read-only pages behind a token. It never writes a diagram."
         }
       ],
       "edges": [
         {
-          "from": "cli",
-          "to": "server",
-          "label": "serves",
-          "style": "flow"
-        },
-        {
           "from": "hook",
           "to": "cli",
           "label": "check",
+          "style": "flow"
+        },
+        {
+          "from": "cli",
+          "to": "server",
+          "label": "starts",
           "style": "flow"
         }
       ],
@@ -122,89 +130,77 @@
     },
     {
       "path": "c4v/cli",
-      "title": "L3 — the components inside the CLI",
+      "title": "L3 — components inside the CLI",
       "ports": {
-        "cli->server": "serve",
-        "hook->cli": "gate"
+        "hook->cli": "gate",
+        "cli->server": "argv"
       },
       "nodes": [
         {
           "id": "argv",
           "label": "argv",
           "subtype": "api-controller",
-          "tech": "src/cli.ts"
+          "tech": "src/cli.ts",
+          "desc": "One action per invocation; exit codes are the contract."
         },
         {
-          "id": "parse",
+          "id": "model",
           "label": "model",
           "subtype": "module",
-          "tech": "src/model.ts"
+          "tech": "src/model.ts",
+          "desc": "Validates and refuses, naming the file and the key."
         },
         {
           "id": "layout",
           "label": "layout",
           "subtype": "module",
-          "tech": "src/layout/*"
+          "tech": "src/layout/*",
+          "desc": "Ranks, orders and places boxes. Geometry only."
         },
         {
-          "id": "route",
-          "label": "routes",
-          "subtype": "module",
-          "tech": "src/layout/route.ts"
-        },
-        {
-          "id": "emit",
+          "id": "svg",
           "label": "svg",
           "subtype": "module",
-          "tech": "src/svg/emit.ts"
+          "tech": "src/svg/emit.ts",
+          "desc": "Serialises the drawing; escaping happens once, here."
         },
         {
-          "id": "write",
+          "id": "writer",
           "label": "writer",
           "subtype": "repository",
-          "tech": "src/cli-output.ts"
+          "tech": "src/cli-output.ts",
+          "desc": "Writes the files and turns gates into an exit code."
         },
         {
           "id": "gate",
           "label": "gate",
           "subtype": "service-logic",
-          "tech": "src/gate.ts"
-        },
-        {
-          "id": "serve",
-          "label": "serve",
-          "subtype": "service-logic",
-          "tech": "src/server.ts"
+          "tech": "src/gate.ts",
+          "desc": "Staged diff plus model hash, or one recorded reason."
         }
       ],
       "edges": [
         {
           "from": "argv",
-          "to": "parse",
+          "to": "model",
           "label": "loads",
           "style": "flow"
         },
         {
-          "from": "parse",
+          "from": "model",
           "to": "layout",
           "label": "levels",
           "style": "flow"
         },
         {
           "from": "layout",
-          "to": "route",
+          "to": "svg",
           "label": "boxes",
           "style": "flow"
         },
         {
-          "from": "route",
-          "to": "emit",
-          "label": "paths",
-          "style": "flow"
-        },
-        {
-          "from": "emit",
-          "to": "write",
+          "from": "svg",
+          "to": "writer",
           "label": "svg",
           "style": "flow"
         },
@@ -213,20 +209,137 @@
           "to": "gate",
           "label": "gate",
           "style": "flow"
+        }
+      ],
+      "flow": [
+        "argv->model",
+        "model->layout",
+        "layout->svg",
+        "svg->writer"
+      ]
+    },
+    {
+      "path": "c4v/server",
+      "title": "L3 — components inside the viewer server",
+      "ports": {
+        "cli->server": "http"
+      },
+      "nodes": [
+        {
+          "id": "http",
+          "label": "http",
+          "subtype": "adapter",
+          "tech": "src/server.ts",
+          "desc": "One request in, one page or one refusal out."
         },
         {
-          "from": "argv",
-          "to": "serve",
-          "label": "serve",
+          "id": "router",
+          "label": "routes",
+          "subtype": "module",
+          "tech": "src/routes.ts",
+          "desc": "Path to meaning; the tree is small and explicit."
+        },
+        {
+          "id": "pages",
+          "label": "pages",
+          "subtype": "module",
+          "tech": "src/viewer-page.ts",
+          "desc": "Grid, level and drill pages, rendered server-side."
+        },
+        {
+          "id": "token",
+          "label": "token",
+          "subtype": "middleware",
+          "tech": "src/security.ts",
+          "desc": "Bearer or cookie, never in the address bar."
+        },
+        {
+          "id": "store",
+          "label": "store",
+          "subtype": "repository",
+          "tech": "~/.c4-view",
+          "desc": "The diagrams the viewer can show; written only by the CLI."
+        }
+      ],
+      "edges": [
+        {
+          "from": "http",
+          "to": "router",
+          "label": "request",
+          "style": "flow"
+        },
+        {
+          "from": "router",
+          "to": "token",
+          "label": "guards",
+          "style": "flow"
+        },
+        {
+          "from": "router",
+          "to": "pages",
+          "label": "renders",
+          "style": "flow"
+        },
+        {
+          "from": "pages",
+          "to": "store",
+          "label": "reads",
+          "style": "dep"
+        }
+      ],
+      "flow": [
+        "http->router",
+        "router->token",
+        "router->pages",
+        "pages->store"
+      ]
+    },
+    {
+      "path": "c4v/hook",
+      "title": "L3 — what the hook does, in three steps",
+      "ports": {
+        "hook->cli": "run"
+      },
+      "nodes": [
+        {
+          "id": "staged",
+          "label": "staged",
+          "subtype": "config",
+          "tech": "git diff --cached",
+          "desc": "What this commit actually changes, plus a hash of it."
+        },
+        {
+          "id": "run",
+          "label": "run",
+          "subtype": "job",
+          "tech": "c4v gate check",
+          "desc": "One call into the CLI; the hook adds no logic of its own."
+        },
+        {
+          "id": "exit",
+          "label": "exit",
+          "subtype": "function",
+          "tech": "0 | 1",
+          "desc": "The CLI's verdict, inherited verbatim: commit or stop."
+        }
+      ],
+      "edges": [
+        {
+          "from": "staged",
+          "to": "run",
+          "label": "passes",
+          "style": "flow"
+        },
+        {
+          "from": "run",
+          "to": "exit",
+          "label": "verdict",
           "style": "flow"
         }
       ],
       "flow": [
-        "argv->parse",
-        "parse->layout",
-        "layout->route",
-        "route->emit",
-        "emit->write"
+        "staged->run",
+        "run->exit"
       ]
     }
   ]

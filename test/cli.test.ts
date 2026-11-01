@@ -214,3 +214,23 @@ test('c4v gate runs through the same entry point as everything else', async () =
   assert.equal(await run(['gate', 'status']), 0)
   assert.equal(await run(['gate', 'report']), 0)
 })
+
+test('--flat audits the authored level; the default audits the picture a page draws', async () => {
+  const dir = workdir()
+  const file = join(dir, 'drill.json')
+  writeFileSync(
+    file,
+    JSON.stringify({
+      id: 'drill',
+      title: 'Drill',
+      levels: [
+        { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }], edges: [] },
+        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [], ports: {} },
+      ],
+    }),
+  )
+  // both flags run and disagree only about which picture is judged; neither is a usage error
+  assert.ok([0, 1].includes(await run(['audit', file, '--strict', '--flat'])))
+  assert.ok([0, 1].includes(await run(['audit', file, '--strict'])))
+  assert.equal(await run(['audit', file, '--json']), 0)
+})

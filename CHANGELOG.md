@@ -3,6 +3,27 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.2] — the audit now judges the picture you actually open
+
+### Fixed
+- **`c4v audit` judged the wrong picture.** It audited each level as authored, while every page with a parent
+  serves that level **composed** (parent, with that box expanded). A drill could be unreadable — 36 crossings,
+  11 wire∧wire on our own fixture — and the audit still said clean, the dashboard said "audit clean", and a
+  release went out. The audit, the `POST /api/diagrams` response and `/api/diagrams/<id>/audit` now report the
+  composed picture. `--flat` audits the authored level and exists for corpus checks only.
+- **A frame now owns its columns.** When a box is expanded in place, any node outside the frame whose column
+  fell inside it was drawn underneath the dashed boundary (`group∧node` 2–3 on every drilled page). Those
+  neighbours are pushed a column clear on the side their edges point to.
+- **A drill that cannot be drawn is a failed audit, not a 500**: a level whose box is missing from the level
+  above reports `ok: false` instead of taking the request down.
+
+### Changed
+- `docs/c4/c4-view.json` — five levels, and **three drillable containers** on L2 (hook, CLI, server), each with
+  its own component level. One clickable box per layer was a lie about the system's depth.
+- `skill/SKILL.md` gains **C4, in four levels**: what a box is at each level, the three mistakes that make a
+  diagram worthless (skipping C2, one lens per layer, trusting an audit that judged the wrong picture).
+- `check.sh` audits corpus fixtures flat and everything a reader opens composed — stated in the step name.
+
 ## [0.6.1] — the model in this package describes the package
 
 ### Fixed

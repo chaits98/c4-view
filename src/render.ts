@@ -103,6 +103,23 @@ export function renderFile(file: string, only?: string, expand?: string): Render
   return expand ? renderExpanded(model, expand) : renderModel(model, only)
 }
 
+/**
+ * The audit of every picture this model can actually show. A level with a parent is served COMPOSED — that
+ * is what `/d/<id>/<path>` draws — so auditing the flat level alone reports on a picture nobody opens.
+ * Composed and flat can differ by tens of crossings; the drilled view is the one with the reader.
+ */
+export function pictureAudits(model: Model): AuditReport[] {
+  return model.levels.map((level) => {
+    if (!level.path) return renderModel(model, level.path).levels[0].audit
+    try {
+      return renderExpanded(model, level.path).levels[0].audit
+    } catch {
+      // a level whose box does not exist above it cannot be drawn at all: report that as a failure, not a 500
+      return { ...renderModel(model, level.path).levels[0].audit, ok: false }
+    }
+  })
+}
+
 /** Every level failed a geometry gate. */
 export function failed(report: Rendered): RenderedLevel[] {
   return report.levels.filter((l) => !l.audit.ok)

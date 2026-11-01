@@ -263,6 +263,7 @@ async function dispatch(argv: string[]): Promise<number> {
       json: args.has('json'),
       strict: args.has('strict'),
       requireDocs: args.has('require-docs'),
+      flat: args.has('flat'),
       render: args.command === 'render',
       out: args.opt('out'),
       png: args.has('png'),
