@@ -5,6 +5,7 @@
  * contract: 0 clean, 1 strict gate failure, 2 unusable invocation.
  */
 import { test } from 'node:test'
+import { existsSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -154,4 +155,19 @@ test('the skill and prefs verbs are reachable from the one dispatch', async () =
   assert.equal(await run(['skill', 'list']), 0)
   assert.equal(await run(['prefs', 'pending']), 0)
   assert.equal(await run(['prefs', 'nonsense']), 2)
+})
+
+test('help answers without doing anything, and doctor is reachable through run', async () => {
+  assert.equal(await run(['help']), 0)
+  assert.equal(await run(['--help']), 0)
+  assert.equal(await run(['render', '--help']), 0)
+  assert.equal(await run(['doctor']), 0, 'this machine passes its own doctor')
+})
+
+test('render writes one svg per level, and audit reads what it wrote', async () => {
+  const out = join(workdir(), 'out-one.svg')
+  assert.equal(await run(['render', SHOP, '--level', 'api', '--out', out]), 0, 'a named level renders on request')
+  assert.ok(existsSync(out), 'and lands where it was asked to')
+  assert.equal(await run(['audit', SHOP]), 0, 'every level audits clean')
+  assert.equal(await run(['audit', SHOP, '--json']), 0, 'and the json form exits the same way')
 })

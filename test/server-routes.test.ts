@@ -252,3 +252,35 @@ test('a post with no body at all is a 400, not a hang', async () => {
   assert.equal(res.status, 400)
   assert.match(await res.text(), /not valid JSON|problems/, 'and it says why')
 })
+
+test('a token in the environment guards the server even when none is passed', async () => {
+  const saved = process.env.C4_VIEW_TOKEN
+  process.env.C4_VIEW_TOKEN = 'from-env'
+  const envRoot = mkdtempSync(join(tmpdir(), 'c4-view-env-'))
+  const envServer = await serve({ port: 0, root: envRoot, host: '0.0.0.0' })
+  const ebase = `http://127.0.0.1:${(envServer.address() as AddressInfo).port}`
+  try {
+    assert.equal((await fetch(`${ebase}/`)).status, 401, 'the environment token is the guard')
+    assert.equal((await fetch(`${ebase}/?t=from-env`, { redirect: 'manual' })).status, 302, 'and it works like any other')
+  } finally {
+    if (saved === undefined) delete process.env.C4_VIEW_TOKEN
+    else process.env.C4_VIEW_TOKEN = saved
+    await new Promise<void>((done) => envServer.close(() => done()))
+    rmSync(envRoot, { recursive: true, force: true })
+  }
+})
+
+test('a chunked body with no content-length is still measured', async () => {
+  // a stream body has no Content-Length, so the ceiling has to be enforced while reading
+  const chunk = new Uint8Array(64 * 1024).fill(121)
+  let sent = 0
+  const body = new ReadableStream({
+    pull(controller) {
+      if (sent >= 4 * 1024 * 1024) return controller.close()
+      sent += chunk.length
+      controller.enqueue(chunk)
+    },
+  })
+  const res = await fetch(`${base}/api/diagrams`, { method: 'POST', body, duplex: 'half' } as RequestInit)
+  assert.equal(res.status, 413, 'the size ceiling does not depend on a declared length')
+})

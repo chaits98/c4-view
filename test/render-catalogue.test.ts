@@ -116,3 +116,19 @@ test('the grid shows a failing card, a wide card and a single card correctly', (
     assert.match(indexPage([entry({})], theme), new RegExp(`href="/\\?theme=${theme}"[^>]*aria-current`), `${theme} is marked current`)
   }
 })
+
+test('a breadcrumb skips a level segment the model does not have', () => {
+  // a deep level whose parent was never authored: the trail must not invent a link for it
+  const deep = parseModel({ id: 'deep', title: 'Deep', levels: [
+    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] },
+    { path: 'x/y', title: 'Inner', nodes: [{ id: 'b', label: 'B', subtype: 'system' }], edges: [] },
+  ] })
+  const html = viewerPage(deep, 'x/y')
+  assert.ok(html.includes('>Inner<'), 'the current level is named')
+  assert.ok(!html.includes('/d/deep/x"'), 'the missing parent is not a link')
+})
+
+test('a card whose svg has no viewBox is not called wide', () => {
+  const flat = indexPage([{ id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }])
+  assert.ok(!flat.includes('is-wide'), 'no width, no ratio, no crop')
+})
