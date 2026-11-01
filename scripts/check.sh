@@ -106,6 +106,9 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
               exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info
     }
     step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
+# New code gets no allowance: every line and branch this branch added, exercised or explained (a
+# `coverage:invariant` marker that the tool prints).
+step "coverage: 100% on lines this branch adds" node tools/coverage-new.mjs
   else
     skip "sonar" "scanner binary not installed"
   fi

@@ -10,6 +10,8 @@
                                      host the viewer as a systemd USER unit
   c4v skill list | install [--global] [--harness id,id]
                                      copy this skill into the AI harnesses on this machine
+  c4v gate install | check --staged | defer --reason "..." | status | report | uninstall
+                                     keep docs/c4 in step with the code, in YOUR repo (optional)
   c4v prefs pending | show | set <id>=<answer> | greeting
                                      the answers the user gave once (and the ones still missing)
  *
@@ -21,15 +23,14 @@
  *
  * @module c4-view/cli
  */
-import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { renderFile, type Rendered } from './render.ts'
+import { readModel, renderExpanded, renderModel, type Rendered } from './render.ts'
 import { reportCommand } from './cli-output.ts'
 import type { Systemctl } from './service.ts'
 import type { Model } from './types.ts'
-import { ModelError, parseModel } from './model.ts'
+import { ModelError } from './model.ts'
 
 const USAGE = `c4v — agent-driven C4 renderer
 
@@ -41,6 +42,8 @@ const USAGE = `c4v — agent-driven C4 renderer
                                      host the viewer as a systemd USER unit
   c4v skill list | install [--global] [--harness id,id]
                                      copy this skill into the AI harnesses on this machine
+  c4v gate install | check --staged | defer --reason "..." | status | report | uninstall
+                                     keep docs/c4 in step with the code, in YOUR repo (optional)
   c4v prefs pending | show | set <id>=<answer> | greeting
                                      the answers the user gave once (and the ones still missing)
 
@@ -111,18 +114,12 @@ async function serveCommand(args: Args): Promise<number> {
 }
 
 /** Render the model, or print why it could not be read. */
-/** The parsed model, for the checks that are about the file rather than the picture. */
-function loadModel(file: string): Model | null {
+/** Read, validate and render once; both the picture and the model come back from the same parse. */
+function loadReport(file: string, level: string | undefined, expand?: string): { report: Rendered; model: Model } | null {
   try {
-    return parseModel(JSON.parse(readFileSync(file, 'utf8')))
-  } catch {
-    return null
-  }
-}
-
-function loadReport(file: string, level: string | undefined, expand?: string): Rendered | null {
-  try {
-    return renderFile(file, level, expand)
+    const model = readModel(file)
+    const report = expand ? renderExpanded(model, expand) : renderModel(model, level)
+    return { report, model }
   } catch (error) {
     if (error instanceof ModelError) console.error(error.message)
     else console.error(error instanceof Error ? error.message : String(error))
@@ -186,7 +183,7 @@ function argumentError(args: Args): number | null {
     return 0
   }
   if (args.command === 'serve' || args.command === 'doctor') return null
-  if (args.command === 'skill' || args.command === 'prefs') return null
+  if (args.command === 'skill' || args.command === 'prefs' || args.command === 'gate') return null
   if (args.command === 'service') {
     const action = argvSecond(args)
     if (action !== 'install' && action !== 'uninstall' && action !== 'status') {
@@ -237,6 +234,10 @@ async function otherCommand(args: Args, argv: string[]): Promise<number | null> 
       const { prefsCommand } = await import('./cli-skill.ts')
       return prefsCommand(argv)
     }
+    case 'gate': {
+      const { gateCommand } = await import('./cli-gate.ts')
+      return gateCommand(argv)
+    }
     case 'service': return serviceCommand(args)
     case 'doctor': {
       const { doctor } = await import('./doctor.ts')
@@ -253,14 +254,13 @@ async function dispatch(argv: string[]): Promise<number> {
   if (early !== null) return early
   const other = await otherCommand(args, argv)
   if (other !== null) return other
-  if (!args.file) return 2
-  const report = loadReport(args.file, args.opt('level'), args.opt('expand'))
-  if (!report) return 2
-  const model = loadModel(args.file)
-  if (!model) return 2
+  const file = args.file
+  if (!file) return 2
+  const loaded = loadReport(file, args.opt('level'), args.opt('expand'))
+  if (!loaded) return 2
   return reportCommand(
     {
-      file: args.file,
+      file,
       json: args.has('json'),
       strict: args.has('strict'),
       requireDocs: args.has('require-docs'),
@@ -269,8 +269,8 @@ async function dispatch(argv: string[]): Promise<number> {
       png: args.has('png'),
       scale: Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2)),
     },
-    report,
-    model,
+    loaded.report,
+    loaded.model,
   )
 }
 

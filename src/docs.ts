@@ -11,7 +11,7 @@
  *
  * @module c4-view/docs
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { markdown } from './markdown.ts'
 import type { LevelSpec, Model } from './types.ts'
@@ -90,16 +90,10 @@ export function docsProblems(dir: string, model: Model): DocsProblem[] {
   return problems
 }
 
-function hasText(path: string): boolean {
+/** True when a doc has nothing a reader could use (absent, blank, or only HTML comments). */
+export function hasText(path: string): boolean {
   const source = readDoc(path)
   return source !== undefined && source.replace(/<!--[\s\S]*?-->/g, '').trim().length > 0
 }
 
-/** Counts, for the doctor and for a "docs: 41 node, 38 edge" line. */
-export function docsCounts(dir: string): { nodes: number; edges: number } {
-  const count = (sub: string): number => {
-    const at = join(dir, sub)
-    return existsSync(at) ? readdirSync(at).filter((file) => file.endsWith('.md')).length : 0
-  }
-  return { nodes: count('nodes'), edges: count('edges') }
-}
+

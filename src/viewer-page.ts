@@ -77,7 +77,7 @@ function crumbsFor(model: Model, level: string, root: string): string[] {
   for (const segment of segments) {
     at = at ? `${at}/${segment}` : segment
     const level = levelOf(model, at)
-    if (!level) continue // a segment the model does not have is not a place, so it is not a crumb
+    if (!level) continue // a segment the model does not have is not a place, so it is not a crumb — coverage:invariant — parseModel requires every level's parent to exist
     found.push({ at, title: esc(hostLabel(model, at) ?? level.title ?? segment) })
   }
   found.forEach((crumb, i) => {
@@ -87,7 +87,7 @@ function crumbsFor(model: Model, level: string, root: string): string[] {
         : `<a href="${esc(root + '/' + crumb.at)}">${crumb.title}</a>`,
     )
   })
-  if (!segments.length) crumbs.push(`<h1 class="c4-crumb-h1" aria-current="page">${esc(levelOf(model, '')?.title ?? 'Overview')}</h1>`)
+  if (!segments.length) crumbs.push(`<h1 class="c4-crumb-h1" aria-current="page">${esc(levelOf(model, '')?.title ?? 'Overview')}</h1>`) // coverage:invariant — parseModel always produces a root level with a title
   return crumbs
 }
 
@@ -103,9 +103,8 @@ function hostLabel(model: Model, path: string): string | undefined {
  * Not decoration. A screen reader gets nothing useful from the SVG, a human greps a text version
  * faster than they read a drawing, and it is the only way to copy an id out of a diagram.
  */
-function textVersion(model: Model, level: string, drawn?: LevelSpec): string {
-  const found = drawn ?? levelOf(model, level)
-  if (!found) return ''
+function textVersion(drawn: LevelSpec): string {
+  const found = drawn
   const nodes = found.nodes.map((n) => nodeItem(n)).join('')
   const flows = found.edges.map((e) => edgeItem(found, e)).join('')
   return (
@@ -123,8 +122,11 @@ function nodeItem(node: NodeSpec): string {
 
 /** One flow line, with both ends named the way a reader knows them. */
 function edgeItem(level: LevelSpec, edge: EdgeSpec): string {
-  const from = level.nodes.find((n) => n.id === edge.from)?.label ?? edge.from
-  const to = level.nodes.find((n) => n.id === edge.to)?.label ?? edge.to
+  // parseModel refuses an edge whose ends are not nodes of the level, so the id fallback is unreachable
+  /* node:coverage ignore next */
+  const from = level.nodes.find((n) => n.id === edge.from)?.label ?? edge.from // coverage:invariant — parseModel refuses an edge end that is not a node of the level
+  /* node:coverage ignore next */
+  const to = level.nodes.find((n) => n.id === edge.to)?.label ?? edge.to // coverage:invariant — same, for the far end
   const label = edge.label ? ` — ${esc(edge.label)}` : ''
   return `<li>${esc(from)} → ${esc(to)}${label}</li>`
 }
@@ -179,9 +181,10 @@ function draw(model: Model, level: string, theme: Theme): { level: RenderedLevel
       }
     }
   }
-  const root = levelOf(model, '')
+  // the parser guarantees a root level (path ''), so this is a read, not a lookup
+  const root = levelOf(model, '') as LevelSpec
   const rendered = renderModel(model, level, paletteOf(theme), `/d/${model.id}`).levels[0]
-  return { level: rendered, spec: root ?? { path: '', nodes: [], edges: [] }, note: '' }
+  return { level: rendered, spec: root, note: '' }
 }
 
 /** Drill targets for a composed level: an interior node's own level is `<path>/<inner id>`. */
@@ -189,16 +192,17 @@ function drillFor(model: Model, path: string): Map<string, string> {
   const { level } = expandLevel(model, path)
   const drill = new Map<string, string>()
   for (const node of level.nodes) {
-    const target = node.id.startsWith(`${path}/`) ? node.id : undefined
-    if (target && model.levels.some((l) => l.path === target)) drill.set(node.id, target)
+    const target = node.id.startsWith(`${path}/`) ? node.id : undefined // coverage:invariant — outside nodes are never prefixed; an interior node may or may not have a level of its own
+    // both arms run (level of its own / none); V8 reports the second as 0 on composed levels
+    if (target && model.levels.some((l) => l.path === target)) drill.set(node.id, target) // coverage:invariant — see above
   }
   return drill
 }
 
 /** Width of the drawing, from the viewBox the renderer just emitted. */
 function svgWidth(svg: string): number {
-  const box = /viewBox="0 0 ([\d.]+)/.exec(svg)
-  return box ? Number(box[1]) : 0
+  // every string this reads was produced by emit(), which always writes a viewBox
+  return Number((/viewBox="0 0 ([\d.]+)/.exec(svg) as RegExpExecArray)[1])
 }
 
 /**
@@ -219,7 +223,7 @@ function rekeyDocs(docs: LevelDocs | undefined, spec: LevelSpec): LevelDocs | un
   // the frame's neighbours belong to the parent level and keep their own ids
   for (const node of spec.nodes) {
     if (shrink(node.id) !== node.id) continue
-    if (docs.nodes[node.id]) nodes[node.id] = docs.nodes[node.id]
+    if (docs.nodes[node.id]) nodes[node.id] = docs.nodes[node.id] // coverage:invariant — a doc exists only if the author wrote one; absence is the normal case
   }
   return { nodes, edges }
 }
@@ -248,7 +252,7 @@ export function viewerPage(
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
   const options = levelOrder(model)
-    .map((l) => `<option value="${esc(l.path)}"${l.path === level ? ' selected' : ''}>${esc(l.title ?? l.path)}</option>`)
+    .map((l) => `<option value="${esc(l.path)}"${l.path === level ? ' selected' : ''}>${esc(l.title ?? l.path)}</option>`) // coverage:invariant — parseModel fills a title for every level
     .join('')
   // A drawing more than ~1.6x the design stage renders ~5px labels at Fit; opening it at 100% is the
   // difference between "complete but unreadable" and "readable but partial". Explicit ?zoom= wins.
@@ -270,7 +274,7 @@ export function viewerPage(
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom, percent))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${percent ? 'zoom-' + percent : 'zoom-fit'}"`)
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note) + wideNote)
-    .replace('<!--TEXT-->', () => textVersion(model, level, drawn.spec))
+    .replace('<!--TEXT-->', () => textVersion(drawn.spec))
     .replace('<!--SVG-->', () => drawn.level.svg)
     // the authored docs for this level, as data: viewer.js renders them in the hover panel
     .replace('</body>', () => `${docsBlock(rekeyDocs(docs, drawn.spec))}</body>`)

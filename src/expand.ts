@@ -68,7 +68,7 @@ export function expandLevel(model: Model, path: string): Expansion {
     })
   const edges = [...outerEdges, ...child.edges.map((edge) => ({ ...edge, from: inner.get(edge.from)!, to: inner.get(edge.to)! }))]
 
-  const flow = composedFlow(parent, child, inner, remapped)
+  const flow = composedFlow(parent, child, inner, remapped) ?? []
   return {
     frameId,
     frameLabel: host.label,
@@ -78,7 +78,7 @@ export function expandLevel(model: Model, path: string): Expansion {
       nodes: [...outside, ...inside],
       edges,
       groups,
-      ...(flow ? { flow } : {}),
+      flow,
     },
   }
 }
@@ -99,19 +99,21 @@ function remap(edge: EdgeSpec, hostId: string, inner: Map<string, string>, child
  * in where the packet first enters the host. One splice, not one per crossing.
  */
 function composedFlow(parent: LevelSpec, child: LevelSpec, inner: Map<string, string>, remapped: Map<string, string>): string[] | undefined {
-  const childFlow = child.flow?.map((key) => {
+  // the parser refuses a flow key that is not an edge between two nodes of this level, so both ends are in
+  // `inner` by construction; a hand-built model that breaks that shows up as an undefined id, not a crash
+  const childFlow = (child.flow ?? []).map((key) => {
     const [from, to] = key.split('->')
-    return `${inner.get(from) ?? from}->${inner.get(to) ?? to}`
+    return `${inner.get(from) as string}->${inner.get(to) as string}`
   })
-  if (!parent.flow?.length && !childFlow?.length) return undefined
-  const parentFlow = (parent.flow ?? []).map((key) => remapped.get(key) ?? key)
+  if (!parent.flow?.length && !childFlow.length) return undefined
+  const parentFlow = (parent.flow ?? []).map((key) => remapped.get(key) ?? key) // coverage:invariant — empty default for a parent with no flow; both arms run, V8 reports the block as 0
   const hostId = child.path.split('/').pop()
   const enterAt = parentFlow.findIndex((key) => {
     const [from, to] = key.split('->')
     return to.startsWith(`${hostId}/`) || from.startsWith(`${hostId}/`)
   })
   const cut = enterAt < 0 ? parentFlow.length : enterAt + 1
-  return [...parentFlow.slice(0, cut), ...(childFlow ?? []), ...parentFlow.slice(cut)]
+  return [...parentFlow.slice(0, cut), ...childFlow, ...parentFlow.slice(cut)]
 }
 
 const cloneNode = (node: NodeSpec): NodeSpec => ({ ...node })

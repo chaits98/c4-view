@@ -74,6 +74,35 @@ npm run install-skill                       # copy the skill into ~/.hermes/skil
 ```
 
 
+## Keeping the diagram honest is a choice you make once
+
+`c4-view` can install a pre-commit gate in your repo:
+
+```bash
+c4v gate install      # writes .githooks/pre-commit, points core.hooksPath at it
+c4v gate status       # what is installed here
+c4v gate uninstall    # removes the hook, keeps the log
+```
+
+With it, any commit that touches code outside `docs/c4/` must also update the model and its docs — or record
+**one line** saying why no diagram change was warranted:
+
+```bash
+c4v gate defer --reason "rename only, no topology change"
+```
+
+That line is tied to the exact staged diff, so it cannot cover a later edit, and `c4v gate report` lists every
+one of them for review. A hook that blocks a commit prints the command above, so nobody has to consult a wiki
+in the middle of a rebase.
+
+**Skip it and the tool still works exactly the same** — nothing is installed, nothing blocks you, and the
+diagram simply goes stale without telling anyone. That is the trade: the gate costs one line per commit; no
+gate costs a diagram you cannot trust. Install it if the diagram is meant to be read by someone else.
+
+The agent asks you once, on first use, and does nothing until you answer. Saying "no" is recorded (so it is
+never asked again), and `c4v gate install` is always there if you change your mind.
+
+
 ## This repo's own C4
 
 The diagram of this tool is written by the skill at release time and lives at `docs/c4/c4-view.json`, next to

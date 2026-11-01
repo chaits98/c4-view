@@ -21,7 +21,10 @@ export interface Question {
   since: string
   question: string
   options: string[]
-  default: string
+  /** What the agent may SUGGEST. Never applied on the user's behalf: absent answer stays absent. */
+  default?: string
+  /** true when the answer gates an action (writing a hook into someone's repo) — no default is used. */
+  required?: boolean
   why: string
   /** dotted path in the saved answer object, e.g. `viewer.mode` */
   store: string

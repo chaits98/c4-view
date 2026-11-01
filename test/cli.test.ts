@@ -171,3 +171,46 @@ test('render writes one svg per level, and audit reads what it wrote', async () 
   assert.equal(await run(['audit', SHOP]), 0, 'every level audits clean')
   assert.equal(await run(['audit', SHOP, '--json']), 0, 'and the json form exits the same way')
 })
+
+test('--require-docs exits 1 and names every missing doc, which is the gate an agent reads', async () => {
+  const dir = workdir()
+  const file = join(dir, 'nodocs.json')
+  writeFileSync(
+    file,
+    JSON.stringify({
+      id: 'nodocs',
+      title: 'No docs',
+      levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }],
+    }),
+  )
+  assert.equal(await run(['audit', file, '--strict', '--require-docs']), 1)
+  // and the same model passes when the question is not asked
+  assert.equal(await run(['audit', file, '--strict']), 0)
+})
+
+test('--json keeps the audit quiet: the caller parses, the human does not read', async () => {
+  assert.equal(await run(['audit', SHOP, '--json']), 0)
+})
+
+test('a lens problem is a strict failure with its own line', async () => {
+  const dir = workdir()
+  const file = join(dir, 'flat-lens.json')
+  writeFileSync(
+    file,
+    JSON.stringify({
+      id: 'flat',
+      title: 'Flat',
+      levels: [
+        { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ from: 'user', to: 'host' }] },
+        // a drill level that declares no ports, while the parent has an edge that needs one
+        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [] },
+      ],
+    }),
+  )
+  assert.equal(await run(['audit', file, '--strict']), 1)
+})
+
+test('c4v gate runs through the same entry point as everything else', async () => {
+  assert.equal(await run(['gate', 'status']), 0)
+  assert.equal(await run(['gate', 'report']), 0)
+})

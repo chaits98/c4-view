@@ -105,7 +105,7 @@ function assignRanks(
 /** Read a rank that must exist; a miss is a bug here, not a missing node, so it says so. */
 function rankOrThrow(rankOf: Map<string, number>, id: string): number {
   const value = rankOf.get(id)
-  if (value === undefined) throw new Error(`rank missing for "${id}" — assignRanks seeds every id`)
+  if (value === undefined) throw new Error(`rank missing for "${id}" — assignRanks seeds every id`) // coverage:invariant — seeded for every id; a miss is a bug in this file
   return value
 }
 

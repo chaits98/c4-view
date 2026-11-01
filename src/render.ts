@@ -82,8 +82,8 @@ export function renderExpanded(model: Model, path: string, palette: Theme = DARK
   }
 }
 
-/** Read + validate + render a model file, optionally with one box expanded in place. */
-export function renderFile(file: string, only?: string, expand?: string): Rendered {
+/** Read and validate a model file. One parse, so a caller that needs the model does not parse twice. */
+export function readModel(file: string): Model {
   let raw: unknown
   try {
     raw = JSON.parse(readFileSync(file, 'utf8'))
@@ -94,7 +94,12 @@ export function renderFile(file: string, only?: string, expand?: string): Render
     throw new Error(`${file}: ${error instanceof Error ? error.message : String(error)}`)
     /* node:coverage enable */
   }
-  const model = parseModel(raw)
+  return parseModel(raw)
+}
+
+/** Read + validate + render a model file, optionally with one box expanded in place. */
+export function renderFile(file: string, only?: string, expand?: string): Rendered {
+  const model = readModel(file)
   return expand ? renderExpanded(model, expand) : renderModel(model, only)
 }
 

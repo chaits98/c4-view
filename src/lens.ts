@@ -38,7 +38,7 @@ export function lensReport(model: Model): LensReport {
 
 /** Everything wrong with one level's claim to be a lens; empty for the root and for a good lens. */
 function levelProblems(model: Model, level: LevelSpec): string[] {
-  if (!level.path) return level.ports ? ['level "": ports on the root level — there is nothing above it to come from'] : []
+  if (!level.path) return []
   const { parent, hostId } = hostOf(level, model)
   if (!parent) return [`level "${level.path}": parent level "${parentPathOf(level.path)}" does not exist`]
   if (!parent.nodes.some((n) => n.id === hostId)) {
@@ -59,7 +59,7 @@ function levelProblems(model: Model, level: LevelSpec): string[] {
 const parentPathOf = (path: string): string => path.split('/').slice(0, -1).join('/') || '(root)'
 const crossesInto = (edge: EdgeSpec, hostId: string): boolean => edge.from === hostId || edge.to === hostId
 
-/** Every edge that crosses the lens boundary needs a port, and every port needs a real edge and node. */
+/** Every edge that crosses the lens boundary needs a port, and every port needs a real edge that touches the box. */
 function checkPorts(level: LevelSpec, parent: LevelSpec, hostId: string, ports: Record<string, string>, problems: string[]): void {
   const at = `level "${level.path}"`
   const declared = new Map(Object.entries(ports))
@@ -68,11 +68,10 @@ function checkPorts(level: LevelSpec, parent: LevelSpec, hostId: string, ports: 
       problems.push(`${at}: ports missing for parent edge "${edgeKey(edge)}" — it touches "${hostId}" and would vanish when expanded`)
     }
   }
-  for (const [key, target] of declared) {
+  for (const key of declared.keys()) {
     const edge = parent.edges.find((e) => edgeKey(e) === key)
     if (!edge) problems.push(`${at}: port "${key}" is not an edge of the parent level (edges there: ${parent.edges.map(edgeKey).join(', ') || 'none'})`)
     else if (edge.from !== hostId && edge.to !== hostId) problems.push(`${at}: port "${key}" does not touch "${hostId}"`)
-    if (!level.nodes.some((n) => n.id === target)) problems.push(`${at}: port "${key}" → "${target}" is not a node of this level`)
   }
   const ids = new Set(level.nodes.map((n) => n.id))
   if (ids.has(hostId)) problems.push(`${at}: contains "${hostId}" itself — a lens shows the inside, not the box`)

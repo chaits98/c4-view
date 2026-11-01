@@ -27,6 +27,11 @@ c4v prefs pending                          # JSON: the questions still unanswere
 
 - If the harness refuses these commands (they read `~/.c4-view`), **move on silently**: the preferences are
   optional, the diagram is not. Never let a rejected `prefs` call end the run.
+- One of the questions asks whether to install a pre-commit gate **in the user's repo**. Stay on the
+  no-answer state until they answer: no hook is written without an explicit yes. On `gate.install = auto`,
+  run `c4v gate install` in the repo you are working in, once — after showing the one-line trade-off — and
+  say in your hand-back that the hook is installed and where. On `manual`, say it is not installed, once,
+  and never nag.
 - Empty `pending` → say nothing about setup.
 - Otherwise ask **all of them in one short message**, each with its options and one clause on what the choice
   does, then record each with `c4v prefs set <id>=<answer>`. Never invent an answer, never ask twice, never
@@ -150,6 +155,19 @@ an installed package.
    rarely that order, and the flow is what the viewer animates — a level without it is not delivered. Every
    edge key appears exactly once.
 8. **Never encode state** (counts, statuses, dates) — it rots. Architecture only.
+
+## The repo gate (only when the repo has one)
+
+If the repo you are working in has `.githooks/pre-commit`, a commit that changes code outside `docs/c4/`
+must also update the model and its docs, or you record why not — **before** you commit:
+
+```bash
+c4v gate check --staged                       # the hook runs this; read it, do not guess
+c4v gate defer --reason "why the picture is still true"
+```
+
+A deferral is a claim a reviewer will read. Write what changed and why the diagram does not move; "no change
+needed" alone is not a reason. It covers exactly the staged diff — one more edit and it is stale again.
 
 ## The loop
 

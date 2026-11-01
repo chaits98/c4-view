@@ -89,8 +89,7 @@ function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: s
  * Docs for the page: the level's own docs, plus — when the level is a lens — the parent's docs, because an
  * expanded page still draws the neighbours that live outside the frame and a reader can hover those too.
  */
-function docsFor(root: string, model: Model, id: string, level: string, found: LevelSpec | undefined): ReturnType<typeof levelDocs> | undefined {
-  if (!found) return undefined
+function docsFor(root: string, model: Model, id: string, level: string, found: LevelSpec): ReturnType<typeof levelDocs> {
   const dir = docsDir(modelFile(root, id), model)
   const own = levelDocs(dir, found)
   const cut = level.lastIndexOf('/')

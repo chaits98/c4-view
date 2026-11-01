@@ -14,7 +14,8 @@
  */
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 
-const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
+// the regex only matches keys of ENTITIES, so there is no fallback to write (or to test)
+const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] as string)
 
 /**
  * Inline spans as ONE left-to-right scan: code, links, bold, italic.
@@ -24,58 +25,53 @@ const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c
  * about. Everything that is not markup is escaped as it is copied, so a doc cannot inject a tag.
  */
 function inline(raw: string): string {
+  const marks = { bold: false, italic: false }
   let out = ''
   let plain = ''
-  let bold = false
-  let italic = false
   let at = 0
   const flush = (): void => {
     out += esc(plain)
     plain = ''
   }
-  const toggle = (marker: string, open: string, close: string, on: boolean): void => {
-    flush()
-    out += on ? open : close
-    void marker
-  }
   while (at < raw.length) {
-    const ch = raw[at]
-    if (ch === '`') {
-      const close = raw.indexOf('`', at + 1)
-      if (close > at) {
-        flush()
-        out += `<code>${esc(raw.slice(at + 1, close))}</code>`
-        at = close + 1
-        continue
-      }
-    }
-    if (ch === '[') {
-      const mid = raw.indexOf('](', at + 1)
-      const end = mid > 0 ? raw.indexOf(')', mid + 2) : -1
-      if (mid > 0 && end > 0) {
-        flush()
-        out += link(raw.slice(at + 1, mid), raw.slice(mid + 2, end))
-        at = end + 1
-        continue
-      }
-    }
-    if (raw.startsWith('**', at)) {
-      toggle('**', '<strong>', '</strong>', !bold)
-      bold = !bold
-      at += 2
+    const span = spanAt(raw, at) ?? markerAt(raw, at, marks)
+    if (span) {
+      flush()
+      out += span.html
+      at = span.next
       continue
     }
-    if (ch === '*') {
-      toggle('*', '<em>', '</em>', !italic)
-      italic = !italic
-      at += 1
-      continue
-    }
-    plain += ch
+    plain += raw[at]
     at += 1
   }
   flush()
   return out
+}
+
+/** `**bold**` or `*italic*` starting at `at`, with the open/close state carried in `marks`. */
+function markerAt(raw: string, at: number, marks: { bold: boolean; italic: boolean }): { html: string; next: number } | null {
+  const bold = raw.startsWith('**', at)
+  if (!bold && raw[at] !== '*') return null
+  const on = bold ? !marks.bold : !marks.italic
+  if (bold) marks.bold = on
+  else marks.italic = on
+  const tag = bold ? 'strong' : 'em'
+  return { html: on ? `<${tag}>` : `</${tag}>`, next: at + (bold ? 2 : 1) }
+}
+
+/** A code span or a link starting exactly at `at`, or null. Kept out of the scanner's loop on purpose. */
+function spanAt(raw: string, at: number): { html: string; next: number } | null {
+  const ch = raw[at]
+  if (ch === '`') {
+    const close = raw.indexOf('`', at + 1)
+    return close > at ? { html: `<code>${esc(raw.slice(at + 1, close))}</code>`, next: close + 1 } : null
+  }
+  if (ch !== '[') return null
+  const mid = raw.indexOf('](', at + 1)
+  if (mid < 0) return null
+  const end = raw.indexOf(')', mid + 2)
+  if (end < 0) return null
+  return { html: link(raw.slice(at + 1, mid), raw.slice(mid + 2, end)), next: end + 1 }
 }
 
 /** A link: http(s), site-relative, anchor, or a bare slug. Anything else keeps its words, drops the target. */
@@ -150,5 +146,4 @@ export function markdown(source: string): string {
   return out.join('')
 }
 
-/** True when a document has nothing a reader could use (blank, or only HTML comments). */
-export const isEmptyDoc = (source: string): boolean => source.replace(/<!--[\s\S]*?-->/g, '').trim().length === 0
+

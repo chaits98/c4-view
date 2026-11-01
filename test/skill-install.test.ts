@@ -92,7 +92,11 @@ test('a new question in the set is pending for an existing user (the update path
   const file = join(home(), 'preferences.jsonl')
   const all = questions()
   writeFileSync(file, all.map((q) => JSON.stringify(q)).join('\n') + '\n')
-  const answered = { seen: { version: '0.2.2', at: 'then' }, answers: { 'viewer.mode': 'local', 'skill.scope': 'all' } }
+  // answer every question the set currently has, then add one more below
+  const answered = {
+    seen: { version: '0.2.2', at: 'then' },
+    answers: Object.fromEntries(questions(file).map((q) => [q.store, 'answered'])),
+  }
   assert.equal(pending(questions(file), answered).length, 0, 'nothing pending when all are answered')
 
   const nextQuestion = {
