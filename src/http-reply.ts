@@ -1,0 +1,53 @@
+/**
+ * The reply shapes every route ends with: one place decides the content type, the caching rule and
+ * the wording of a 404, so two routes cannot answer the same question differently.
+ *
+ * @module c4-view/http-reply
+ */
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { Model } from './types.ts'
+import { levelOrder } from './model.ts'
+import { deniedPage } from './denied-page.ts'
+
+export function send(res: ServerResponse, status: number, type: string, body: string | Buffer): void {
+  // a page built from the token-bearing request must not be cached by anything on the way back
+  if (type.startsWith('text/html')) res.setHeader('Cache-Control', 'no-store')
+  res.writeHead(status, { 'Content-Type': type, 'Content-Length': Buffer.byteLength(body) })
+  res.end(body)
+}
+
+/** A browser gets a page it can read; an agent gets JSON. */
+export const acceptsHtml = (req: IncomingMessage): boolean => (req.headers.accept ?? '').includes('text/html')
+
+/**
+ * Same URL, without `t` — everything else (`zoom`, `theme`, the level in the path) is kept, so the
+ * reader lands on exactly the drawing they asked for.
+ */
+export function redirectClean(res: ServerResponse, url: URL): void {
+  const clean = new URLSearchParams(url.searchParams)
+  clean.delete('t')
+  const query = clean.toString()
+  res.writeHead(302, {
+    Location: url.pathname + (query ? `?${query}` : ''),
+    // a 302 carrying a credential's successor must never be cached
+    'Cache-Control': 'no-store',
+  })
+  res.end()
+}
+
+export function json(res: ServerResponse, status: number, value: unknown): void {
+  send(res, status, 'application/json; charset=utf-8', JSON.stringify(value))
+}
+export function missing(res: ServerResponse, id: string): void {
+  json(res, 404, { error: `no diagram "${id}"` })
+}
+export function noLevel(res: ServerResponse, level: string, model: Model): void {
+  json(res, 404, { error: `no level "${level}"`, levels: levelOrder(model).map((l) => l.path) })
+}
+
+/** The 401: a browser gets a page that states one cause, an agent gets JSON. */
+export function denied(req: IncomingMessage, res: ServerResponse): void {
+  res.setHeader('WWW-Authenticate', 'Bearer realm="c4-view"')
+  if (acceptsHtml(req)) return send(res, 401, 'text/html; charset=utf-8', deniedPage())
+  json(res, 401, { error: 'token required', hint: 'append ?t=<token> or send Authorization: Bearer ***' })
+}

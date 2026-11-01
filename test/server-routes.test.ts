@@ -52,19 +52,35 @@ after(async () => {
   rmSync(root, { recursive: true, force: true })
 })
 
-test('with a token, every route but /health needs it — and the cookie carries it after one visit', async () => {
+test('the token leaves the address bar on the first hop, and the cookie carries it after', async () => {
   const guardedRoot = mkdtempSync(join(tmpdir(), 'c4-view-guarded-'))
   const guarded = await serve({ port: 0, root: guardedRoot, token: 'secret-token' })
   const gbase = `http://127.0.0.1:${(guarded.address() as AddressInfo).port}`
   try {
     assert.equal((await fetch(`${gbase}/health`)).status, 200, 'health is open: it is what a supervisor probes')
-    const denied = await fetch(`${gbase}/`)
-    assert.equal(denied.status, 401, 'no token, no page')
-    assert.match(denied.headers.get('www-authenticate') ?? '', /Bearer realm="c4-view"/, 'and it says how to authenticate')
-    assert.ok(!(await denied.text()).includes('<svg'), 'nothing of the drawing leaks in the refusal')
-    const withToken = await fetch(`${gbase}/?t=secret-token`)
-    assert.equal(withToken.status, 200)
-    assert.match(withToken.headers.get('set-cookie') ?? '', /token=/, 'the page remembers the token for its assets')
+
+    const first = await fetch(`${gbase}/?t=secret-token&theme=dark`, { redirect: 'manual' })
+    assert.equal(first.status, 302, 'the first hop is a redirect, not a page')
+    assert.equal(first.headers.get('location'), '/?theme=dark', 'every other query is kept, the token is not')
+    assert.equal(first.headers.get('cache-control'), 'no-store', 'a redirect carrying a credential is never cached')
+    const cookie = first.headers.get('set-cookie') ?? ''
+    assert.match(cookie, /c4token=secret-token/, 'the cookie is set on the same response')
+    assert.match(cookie, /HttpOnly/, 'and no script can read it')
+
+    const settled = await fetch(`${gbase}/?theme=dark`, { headers: { cookie: cookie.split(';')[0] } })
+    assert.equal(settled.status, 200, 'the address bar now carries no token')
+    assert.equal(settled.headers.get('cache-control'), 'no-store', 'and the page is not cached either')
+
+    const denied = await fetch(`${gbase}/`, { headers: { accept: 'text/html' } })
+    assert.equal(denied.status, 401)
+    assert.match(denied.headers.get('www-authenticate') ?? '', /Bearer realm="c4-view"/, 'it says how to authenticate')
+    const body = await denied.text()
+    assert.match(body, /<h1[^>]*>This viewer needs its token<\/h1>/, 'a person gets a page that states the cause')
+    assert.ok(!body.includes('<svg'), 'and nothing of the drawing')
+
+    const agent = await fetch(`${gbase}/api/diagrams`)
+    assert.equal(agent.status, 401)
+    assert.match(await agent.text(), /token required/, 'an agent gets JSON, not markup')
     assert.equal((await fetch(`${gbase}/?t=wrong`)).status, 401, 'a wrong token is refused the same way')
   } finally {
     await new Promise<void>((done) => guarded.close(() => done()))

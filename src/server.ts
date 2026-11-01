@@ -12,6 +12,7 @@ import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
 import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
+import { denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
 import type { Model } from './types.ts'
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -144,11 +145,11 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
   const url = new URL(req.url ?? '/', 'http://localhost')
   if (guard.token && pathname !== '/health') {
-    if (!allowed(guard, req, url)) {
-      res.setHeader('WWW-Authenticate', 'Bearer realm="c4-view"')
-      return json(res, 401, { error: 'token required', hint: 'append ?t=<token>, send Authorization: Bearer <token>, or use the link the server printed' })
-    }
+    if (!allowed(guard, req, url)) return denied(req, res)
     remember(guard, req, url, res)
+    // the token leaves the address bar on the first hop: the cookie has it now, and a token left in
+    // the URL ends up in a screenshot, in history, and in any Referer that slips out
+    if (url.searchParams.has('t')) return redirectClean(res, url)
   }
   const route = routeOf(pathname)
   if (!route) return json(res, 404, { error: `no route for ${pathname}` })
@@ -282,19 +283,4 @@ function readBody(req: IncomingMessage, res: ServerResponse): Promise<string | n
       done(null)
     })
   })
-}
-
-function send(res: ServerResponse, status: number, type: string, body: string | Buffer): void {
-  res.writeHead(status, { 'Content-Type': type, 'Content-Length': Buffer.byteLength(body) })
-  res.end(body)
-}
-
-function json(res: ServerResponse, status: number, value: unknown): void {
-  send(res, status, 'application/json; charset=utf-8', JSON.stringify(value))
-}
-function missing(res: ServerResponse, id: string): void {
-  json(res, 404, { error: `no diagram "${id}"` })
-}
-function noLevel(res: ServerResponse, level: string, model: Model): void {
-  json(res, 404, { error: `no level "${level}"`, levels: levelOrder(model).map((l) => l.path) })
 }

@@ -263,3 +263,25 @@ body {
   stroke-width: 2;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--d-edge-active) 80%, transparent));
 }
+
+/* The 401 page: one column at a readable measure, nothing to click, same surface as the viewer. */
+.c4-denied {
+  max-width: 62ch;
+  margin: 12vh auto 0;
+  padding: 0 var(--space-6) var(--space-6);
+  color: var(--on-surface);
+}
+
+.c4-denied h1 {
+  margin-block: 0 var(--space-4);
+}
+
+.c4-denied p {
+  margin-block: 0 var(--space-3);
+  color: var(--on-surface-variant);
+}
+
+.c4-denied code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
