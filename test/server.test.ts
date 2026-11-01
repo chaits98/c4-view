@@ -202,9 +202,9 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.equal(page.body.match(/class="card"/g)?.length, 1, 'one card per diagram')
   assert.match(page.body, new RegExp(`href="/d/${ID}"`))
   assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
-  // the badge is the verdict now, and this fixture has drilled levels that are dead ends: the card says so
-  // instead of advertising "clean" while `c4v audit --strict` fails the same model
-  assert.match(page.body, /audit failed/)
+  // the badge is the verdict: this fixture is clean under the modelling rules, so the card says clean — and
+  // the same model passes `c4v audit --strict`, which is the property the badge now promises
+  assert.match(page.body, /audit clean/)
   assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
   assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)

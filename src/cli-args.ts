@@ -8,13 +8,13 @@ import { extname } from 'node:path'
 export interface Argv {
   argv: string[]
   command: string | undefined
-  file: string | undefined
+  file: string
   has: (name: string) => boolean
   opt: (name: string) => string | undefined
 }
 
 /** Commands that answer without a model file. */
-const NO_FILE = new Set(['serve', 'doctor', 'skill', 'prefs', 'gate', 'publish'])
+const NO_FILE: ReadonlySet<string | undefined> = new Set(['serve', 'doctor', 'skill', 'prefs', 'gate', 'publish'])
 
 /** Argument errors are answered before any work is done. */
 export function argumentError(args: Argv, usage: string): number | null {
@@ -22,7 +22,7 @@ export function argumentError(args: Argv, usage: string): number | null {
     console.log(usage)
     return 0
   }
-  if (NO_FILE.has(args.command ?? '')) return null
+  if (NO_FILE.has(args.command)) return null
   if (args.command === 'service') {
     const action = args.argv[1]?.startsWith('--') ? undefined : args.argv[1]
     if (action !== 'install' && action !== 'uninstall' && action !== 'status') {

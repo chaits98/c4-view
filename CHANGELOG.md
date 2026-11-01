@@ -3,6 +3,20 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.7.0] — the debt the gates were hiding
+
+### Fixed
+- **The new-code coverage gate measured `HEAD`, not the code being committed.** It diffed `base...HEAD`, so a
+  pre-commit run judged the *previous* commit: new lines could slip in with the check green. It now diffs the
+  working tree against the base, which is what a pre-commit hook has to judge.
+- **The corpus fixture is no longer exempt.** `fixtures/droid.json` had two drilled levels that were dead ends
+  and a 17-component level (the skill's own budget is 6–12); `git hook`-style gaps were being papered over with
+  `--no-lens`. The fixture now models the user opening the app and the bridge pushing to the org runtime, the
+  frontend level is 12 components, and `check.sh` audits it with the same rules as everything else.
+- Three unreachable-but-unexcused branches cleared by removing the cause: the parsed command line carries
+  `file: string` (`''` = none) instead of `string | undefined`, the no-file command set accepts `undefined`,
+  and the flow-id fallback is covered by a hand-built-model test.
+
 ## [0.6.9] — the hook checks the thing that was letting smells through
 
 ### Fixed

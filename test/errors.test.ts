@@ -238,3 +238,22 @@ test('a box that appears on two levels is drawn once: identity is the merge key'
   assert.ok(!ids.includes('context1/ext'), 'the child copy is not drawn inside the frame')
   assert.equal(level.edges.filter((e) => e.from === 'ext' && e.to === 'context1/a').length, 1, 'and its edge is not doubled')
 })
+
+test('a hand-built level whose flow names a missing node keeps the id instead of printing undefined', () => {
+  const hand = {
+    id: 'handflow',
+    title: 'Hand flow',
+    levels: [
+      { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }], edges: [] },
+      {
+        path: 'host',
+        ports: {},
+        nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }],
+        edges: [],
+        flow: ['ghost->a', 'a->ghost'], // both ends: a missing source and a missing target
+      },
+    ],
+  } as unknown as Parameters<typeof expandLevel>[0]
+  const { level } = expandLevel(hand, 'host')
+  assert.deepEqual(level.flow, ['ghost->host/a', 'host/a->ghost'])
+})

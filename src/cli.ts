@@ -65,7 +65,7 @@ interface Args {
   /** the raw argv, for the few commands whose second word is a verb rather than a file */
   argv: string[]
   command: string | undefined
-  file: string | undefined
+  file: string
   has: (name: string) => boolean
   opt: (name: string) => string | undefined
   optOr: (name: string, fallback: string) => string
@@ -79,7 +79,8 @@ export function parseArgs(argv: string[]): Args {
   return {
     argv,
     command: argv[0],
-    file: argv[1] && !argv[1].startsWith('--') ? argv[1] : undefined,
+    // '' means "no file": the parsed command line never has to say `undefined` and every reader can compare
+    file: argv[1] && !argv[1].startsWith('--') ? argv[1] : '',
     has: (name) => argv.includes(`--${name}`),
     opt,
     optOr: (name, fallback) => opt(name) ?? fallback,
@@ -181,9 +182,6 @@ export async function serviceCommand(
   }
 }
 
-/** argumentError refuses a missing file first, so this is a read, not a fallback. */
-const fileOf = (args: Args): string => args.file ?? ''
-
 
 /**
  * Run the command line and resolve its exit code. Never calls process.exit, and never lets an
@@ -235,7 +233,7 @@ async function dispatch(argv: string[]): Promise<number> {
   if (early !== null) return early
   const other = await otherCommand(args, argv)
   if (other !== null) return other
-  const file = fileOf(args)
+  const file = args.file
   const loaded = loadReport(file, args.opt('level'), args.opt('expand'))
   if (!loaded) return 2
   return reportCommand(

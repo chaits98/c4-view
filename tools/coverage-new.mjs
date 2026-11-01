@@ -44,9 +44,11 @@ const git = (args) => execFileSync(GIT, args, { cwd: ROOT, encoding: 'utf8', max
 
 /** Added line numbers per file, from a zero-context diff. Hunks are `@@ -old +new,count @@`. */
 function addedLines() {
+  // WORKING TREE vs base, deliberately not `base...HEAD`: a pre-commit run has to judge the lines being
+  // committed, and `...HEAD` is the previous commit — which is how a hook can pass while new code slips in.
   let diff
   try {
-    diff = git(['diff', '-U0', '--diff-filter=ACMR', `${base}...HEAD`, '--', 'src'])
+    diff = git(['diff', '-U0', '--diff-filter=ACMR', base, '--', 'src'])
   } catch {
     diff = git(['diff', '-U0', '--diff-filter=ACMR', 'HEAD', '--', 'src']) // no base branch available
   }
