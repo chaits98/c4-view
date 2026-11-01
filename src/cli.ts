@@ -21,16 +21,13 @@
  *
  * @module c4-view/cli
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, extname, isAbsolute, join, resolve } from 'node:path'
+import { extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { renderFile, type Rendered, type RenderedLevel } from './render.ts'
-import { svgToPng } from './png.ts'
-import { auditLine } from './audit.ts'
+import { renderFile, type Rendered } from './render.ts'
+import { printAudit, printLens, writeOutputs } from './cli-output.ts'
 import type { Systemctl } from './service.ts'
 import { ModelError } from './model.ts'
-import { levelSlug } from './slug.ts'
 
 const USAGE = `c4v — agent-driven C4 renderer
 
@@ -82,32 +79,6 @@ export function parseArgs(argv: string[]): Args {
 /** `'' -> root`, `a/b -> a~b`: a file-safe, injective stem for one level. */
 export { levelSlug as slugOf } from './slug.ts'
 
-/** Where one level's file goes: the named .svg, or `<dir>/<level-slug>.svg`. */
-function outputPath(out: string | undefined, id: string, level: string): string {
-  if (out !== undefined && extname(out) === '.svg') return isAbsolute(out) ? out : resolve(out)
-  return join(out ?? join('out', id), `${levelSlug(level)}.svg`)
-}
-
-function writeLevels(report: Rendered, out: string | undefined, png: boolean, scale: number): string[] {
-  const written: string[] = []
-  for (const level of report.levels) {
-    const target = outputPath(out, report.id, level.path)
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, level.svg)
-    written.push(target)
-    if (png) written.push(svgToPng(level.svg, target.replace(/\.svg$/, '.png'), scale))
-  }
-  return written
-}
-
-function printAudit(levels: RenderedLevel[], asJson: boolean): void {
-  if (asJson) {
-    console.log(JSON.stringify(levels.map((l) => l.audit), null, 2))
-    return
-  }
-  for (const level of levels) console.log(auditLine(level.audit))
-}
-
 /** The serve command owns the process: it resolves only when the server is asked to stop. */
 async function serveCommand(args: Args): Promise<number> {
   const { serve } = await import('./server.ts')
@@ -146,11 +117,6 @@ function loadReport(file: string, level: string | undefined): Rendered | null {
     else console.error(error instanceof Error ? error.message : String(error))
     return null
   }
-}
-
-function writeOutputs(args: Args, report: Rendered): void {
-  const scale = Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2))
-  for (const path of writeLevels(report, args.opt('out'), args.has('png'), scale)) console.log(`wrote ${path}`)
 }
 
 /** The sub-action of a two-word command (`service install`). */
@@ -272,12 +238,17 @@ async function dispatch(argv: string[]): Promise<number> {
 
   const failed = report.levels.filter((l) => !l.audit.ok)
   printAudit(report.levels, args.has('json'))
-  if (args.command === 'render') writeOutputs(args, report)
-  if (args.has('strict') && failed.length) {
+  printLens(report.lens, args.has('json'))
+  if (args.command === 'render') writeOutputs(Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2)), args.opt('out'), args.has('png'), report)
+  if (!args.has('strict')) return 0
+  const lensFailed = report.lens.problems.length > 0
+  if (failed.length) {
     console.error(`\n${failed.length}/${report.levels.length} level(s) failed the geometry gate — fix the model, not the picture`)
-    return 1
   }
-  return 0
+  if (lensFailed) {
+    console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
+  }
+  return failed.length || lensFailed ? 1 : 0
 }
 
 // Only the real binary exits the process; importing this module (the tests) must not.

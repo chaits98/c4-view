@@ -47,7 +47,7 @@ fi
 step "gate: 300-line cap, purity, no any/placeholders" node tools/gate.mjs
 step "types: tsc --noEmit"                             npx tsc --noEmit
 step "tests: node --test"                              node --test
-step "goldens: 11 levels byte-identical"               node tools/golden.mjs --check
+step "goldens: every corpus level byte-identical"      node tools/golden.mjs --check
 step "audit: every fixture and example is green"       bash -c '
   for f in fixtures/*.json examples/*.json docs/c4/*.json skill/assets/*.json; do
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }

@@ -8,6 +8,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { parseModel, layoutOf, drillTargets, levelOrder } from './model.ts'
+import { lensReport, type LensReport } from './lens.ts'
 import { rank } from './layout/rank.ts'
 import { order } from './layout/order.ts'
 import { place } from './layout/place.ts'
@@ -30,6 +31,8 @@ export interface Rendered {
   id: string
   title: string
   levels: RenderedLevel[]
+  /** model-level checks: is each drill a lens or a layer redraw */
+  lens: LensReport
 }
 
 /** Render one level: the whole pipeline, in order, with no hidden state. */
@@ -49,7 +52,8 @@ export function renderModel(model: Model, only?: string, palette: Theme = DARK):
     const known = levelOrder(model).map((l) => l.path || '(root)').join(', ')
     throw new Error(`no level "${only ?? ''}" — this model has: ${known}`)
   }
-  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette)) }
+  const lens = lensReport(model)
+  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette)), lens }
 }
 
 /** Read + validate + render a model file. */

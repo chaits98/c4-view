@@ -80,6 +80,17 @@ export interface LevelSpec {
    * first from the source nodes. Every edge animates exactly once, one at a time.
    */
   flow?: string[]
+  /**
+   * Ports make this level a LENS: the inside of one box, not another drawing.
+   *
+   * Key = an edge in the PARENT level that touches the host node (`"client->api"`);
+   * value = the node in THIS level that edge now lands on (`"router"`). The expanded
+   * view keeps the parent's other boxes and re-attaches its edges through these
+   * ports, so nothing outside the box disappears when you look inside it.
+   *
+   * Absent: the level renders standalone, and drilling into it loses the outside.
+   */
+  ports?: Record<string, string>
 }
 
 export interface LayoutConfig {

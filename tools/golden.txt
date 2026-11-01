@@ -6,6 +6,8 @@ fixtures/droid.json#droid/org_bridge 50f6021c9d061e02 ok
 fixtures/droid.json#droid/rust_core 3b9d44b2c0a4b241 ok
 fixtures/droid.json#droid/rust_core/cmd_map 9edb3b469bdbb7cf ok
 fixtures/not-magic.json# e58cc8f35e9105af ok
+examples/lens.json# 9e33740876ee7a53 ok
+examples/lens.json#context1 e1c8aaf9b142a4ad ok
 examples/shop.json# e1f8aa8ef503940d ok
 examples/shop.json#api fb626218dc9eab8c ok
 examples/two-groups.json# e8aa06ec7ec2337d ok

@@ -164,6 +164,26 @@ function parseFlow(raw: unknown, at: string, keys: Set<string>, bad: string[]): 
   return flow
 }
 
+
+/**
+ * `ports` — the lens mapping. Shape only: the keys are parent edge keys and the values are node ids
+ * of this level. Whether those edges exist and touch the host is `lensReport`'s job, because that
+ * check needs the parent level and belongs in the audit's output.
+ */
+function parsePorts(raw: unknown, at: string, levelPath: string, ids: Set<string>, bad: string[]): Record<string, string> | undefined {
+  if (raw === undefined) return undefined
+  if (!isObj(raw)) { bad.push(`${at}.ports: must be an object of "<from->to>": "<node id>"`); return undefined }
+  if (!levelPath) bad.push(`${at}.ports: the root level has no parent, so it cannot declare ports`)
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (!/^[^>\s]+->[^>\s]+$/.test(key)) { bad.push(`${at}.ports["${key}"]: key must look like "from->to"`); continue }
+    if (!str(value) || !value.trim()) { bad.push(`${at}.ports["${key}"]: target must be a node id`); continue }
+    if (!ids.has(value)) { bad.push(`${at}.ports["${key}"]: unknown node "${value}" in this level`); continue }
+    out[key] = value
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
 /** One level: its path, its nodes/edges/groups, and its declared flow order. */
 function parseLevel(entry: unknown, li: number, seen: Set<string>, bad: string[]): LevelSpec | null {
   const at = `levels[${li}]`
@@ -179,8 +199,9 @@ function parseLevel(entry: unknown, li: number, seen: Set<string>, bad: string[]
   const { edges, keys } = parseEdges(entry.edges, at, ids, bad)
   const groups = parseGroups(entry.groups, at, ids, bad)
   const flow = parseFlow(entry.flow, at, keys, bad)
+  const ports = parsePorts(entry.ports, at, path, ids, bad)
   const title = str(entry.title) && entry.title.trim() ? entry.title : path || 'Overview'
-  return { path, title, nodes, edges, groups, ...(flow.length ? { flow } : {}) }
+  return { path, title, nodes, edges, groups, ...(flow.length ? { flow } : {}), ...(ports ? { ports } : {}) }
 }
 
 /** Parse unknown JSON into a validated, normalised Model. Throws ModelError. */

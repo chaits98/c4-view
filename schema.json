@@ -90,6 +90,17 @@
             "type": "string",
             "pattern": "^[^\\s>]+->[^\\s>]+$"
           }
+        },
+        "ports": {
+          "type": "object",
+          "description": "Makes this level a LENS: the inside of the parent's host node. Key = an edge key of the PARENT level that touches the host; value = the node of THIS level that edge attaches to. Omit to render standalone.",
+          "propertyNames": {
+            "pattern": "^[^>\\s]+->[^>\\s]+$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
