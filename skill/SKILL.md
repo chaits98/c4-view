@@ -149,6 +149,16 @@ works before any JS runs.
 A child level is **the inside of one box**, nothing else: no sibling boxes from above, no second box expanded,
 ports for every parent edge that crosses in. That is why it reads as a lens and not as a second diagram.
 
+**A box shown on two levels is one box.** If an external system appears at C1 and again at C2 (normal: a
+container diagram does show what it talks to), give it the **same id and the same identity** on both levels.
+Composition merges them; different ids make the page draw the same element twice, which is how a reader ends
+up asking why there are two browsers.
+
+**Every lens needs an entry and an exit.** A drilled page shows only the boxes whose edges cross the frame —
+that is what makes it a lens. If the page has no inbound edge, the parent level is missing who calls this box;
+if it has no outbound edge, the box looks like a dead end. Both are model gaps, not rendering choices: add the
+edge (or say in the hand-back that the box is a genuine sink).
+
 ## The model
 
 **`assets/example.json`** ships beside this file: a complete two-level model — read it for the shape, the field
@@ -183,7 +193,9 @@ the user has to describe a box by position and you get to guess wrong. Never re-
    external API, rented database) earns a boundary; a level with no such seam needs none.
 7. **Every level declares `flow`, in the order a person would explain it.** The derived depth-first order is
    rarely that order, and the flow is what the viewer animates — a level without it is not delivered. Every
-   edge key appears exactly once.
+   edge key appears exactly once. **If the user tells you the order, that is the order**: write their sequence
+   verbatim into `flow`, one edge per step; do not re-derive it and do not "improve" it. Edges your list
+   misses are appended at the end, so an incomplete list animates wrongly rather than failing loudly.
 8. **Never encode state** (counts, statuses, dates) — it rots. Architecture only.
 
 ## The repo gate (only when the repo has one)

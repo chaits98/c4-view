@@ -117,15 +117,29 @@
           "desc": "Read-only pages behind a token. It never writes a diagram."
         },
         {
-          "id": "reader",
-          "identity": "C4V-13",
+          "id": "git",
+          "identity": "C4V-03",
+          "label": "git",
+          "subtype": "external-system",
+          "tech": "pre-commit",
+          "desc": "Runs the hook. Same box as on the context level, same identity."
+        },
+        {
+          "id": "browser",
+          "identity": "C4V-05",
           "label": "browser",
           "subtype": "external-system",
           "tech": "reads only",
-          "desc": "The reader. It only ever receives pages."
+          "desc": "The reader. Same box as on the context level, same identity."
         }
       ],
       "edges": [
+        {
+          "from": "git",
+          "to": "hook",
+          "label": "commit",
+          "style": "flow"
+        },
         {
           "from": "hook",
           "to": "cli",
@@ -140,15 +154,16 @@
         },
         {
           "from": "server",
-          "to": "reader",
+          "to": "browser",
           "label": "serves",
           "style": "flow"
         }
       ],
       "flow": [
+        "git->hook",
         "hook->cli",
         "cli->server",
-        "server->reader"
+        "server->browser"
       ]
     },
     {
@@ -252,7 +267,7 @@
       "title": "L3 — components inside the viewer server",
       "ports": {
         "cli->server": "http",
-        "server->reader": "pages"
+        "server->browser": "pages"
       },
       "nodes": [
         {
@@ -333,7 +348,8 @@
       "path": "c4v/hook",
       "title": "L3 — what the hook does, in three steps",
       "ports": {
-        "hook->cli": "run"
+        "git->hook": "staged",
+        "hook->cli": "exit"
       },
       "nodes": [
         {

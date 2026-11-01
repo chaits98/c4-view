@@ -75,7 +75,13 @@ function checkPorts(level: LevelSpec, parent: LevelSpec, hostId: string, ports: 
   }
   const ids = new Set(level.nodes.map((n) => n.id))
   if (ids.has(hostId)) problems.push(`${at}: contains "${hostId}" itself — a lens shows the inside, not the box`)
-  const leaked = parent.nodes.filter((n) => n.id !== hostId && ids.has(n.id)).map((n) => n.id)
+  // Same box on two levels only when BOTH say so with the same identity; a matching id with no identity is
+  // an unproven duplicate and stays a problem.
+  const sameBox = (n: { id: string; identity?: string }): boolean => {
+    const twin = level.nodes.find((c) => c.id === n.id)
+    return Boolean(n.identity) && n.identity === twin?.identity
+  }
+  const leaked = parent.nodes.filter((n) => n.id !== hostId && ids.has(n.id) && !sameBox(n)).map((n) => n.id)
   if (leaked.length) {
     problems.push(`${at}: re-draws ${leaked.join(', ')} from the level above — the expanded view supplies those; only the interior belongs here`)
   }

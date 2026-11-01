@@ -47,7 +47,17 @@ export function expandLevel(model: Model, path: string): Expansion {
     throw new Error(`level "${path}" declares no ports — without them its outside edges would vanish when expanded`)
   }
 
-  const inner = new Map(child.nodes.map((n) => [n.id, prefix(hostId, n.id)]))
+  // A box that exists on both levels is ONE box — identity says so, and that is what identity is for. The
+  // parent's copy wins and the child's edges are rewritten onto it, so a page never shows the same element
+  // twice under two ids.
+  const shared = new Map<string, string>()
+  for (const node of child.nodes) {
+    if (!node.identity) continue
+    const twin = parent.nodes.find((p) => p.id !== hostId && p.identity === node.identity)
+    if (twin) shared.set(node.id, twin.id)
+  }
+
+  const inner = new Map(child.nodes.filter((n) => !shared.has(n.id)).map((n) => [n.id, prefix(hostId, n.id)]))
   // The lens shows what goes in and what comes out, not every sibling of the parent: an unrelated box on
   // this page is noise that argues the drawer could not tell the two apart.
   const witness = new Set<string>()
@@ -56,8 +66,12 @@ export function expandLevel(model: Model, path: string): Expansion {
     witness.add(edge.to)
   }
   witness.delete(hostId)
+  // shared boxes are drawn as themselves, so they are outside the frame whether or not they touch the host
+  for (const twin of shared.values()) witness.add(twin)
   const outside = parent.nodes.filter((n) => witness.has(n.id)).map(cloneNode)
-  const inside = child.nodes.map((node) => ({ ...cloneNode(node), id: inner.get(node.id)!, group: undefined }))
+  const inside = child.nodes
+    .filter((node) => !shared.has(node.id))
+    .map((node) => ({ ...cloneNode(node), id: inner.get(node.id)!, group: undefined }))
 
   const frameId = `frame-${hostId}`
   const groups = (parent.groups ?? [])
@@ -74,7 +88,18 @@ export function expandLevel(model: Model, path: string): Expansion {
       remapped.set(edgeKey(edge), edgeKey(out))
       return out
     })
-  const edges = [...outerEdges, ...child.edges.map((edge) => ({ ...edge, from: inner.get(edge.from)!, to: inner.get(edge.to)! }))]
+  // a child edge whose end is neither a shared box nor an interior one would be a parser bug, so the last
+  // fallback keeps the id as written rather than inventing `undefined`
+  const idOf = (id: string): string => shared.get(id) ?? inner.get(id) ?? id // coverage:invariant — see above
+  const childEdges = child.edges.map((edge) => ({ ...edge, from: idOf(edge.from), to: idOf(edge.to) }))
+  // the parent edge that entered the host and the child's own edge to the same box are one edge
+  const seen = new Set<string>()
+  const edges = [...outerEdges, ...childEdges].filter((edge) => {
+    const key = edgeKey(edge)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 
   const flow = composedFlow(parent, child, inner, remapped) ?? []
   return {

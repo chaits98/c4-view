@@ -111,3 +111,27 @@ test('edgeKey and hostOf agree with the path convention', () => {
   assert.equal(shallow.hostId, 'context1')
   assert.equal(shallow.parent, model.levels[0])
 })
+
+test('a child level that repeats a parent box with the same identity is composing, not leaking', () => {
+  const raw = {
+    id: 'merge', title: 'Merge',
+    levels: [
+      { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }, { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' }], edges: [{ from: 'ext', to: 'host' }] },
+      {
+        path: 'host', ports: { 'ext->host': 'a' },
+        nodes: [
+          { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' },
+          { id: 'a', label: 'A', subtype: 'service-logic' },
+        ],
+        edges: [{ from: 'ext', to: 'a' }],
+      },
+    ],
+  }
+  const report = lensReport(parseModel(raw as never))
+  assert.deepEqual(report.problems, [], 'same id + same identity is the same box, not a re-draw')
+
+  // the same id with a DIFFERENT identity is a genuine duplicate and is still refused
+  const clash = JSON.parse(JSON.stringify(raw))
+  clash.levels[1].nodes[0].identity = 'E-2'
+  assert.ok(lensReport(parseModel(clash as never)).problems.some((p) => /re-draws ext/.test(p)))
+})

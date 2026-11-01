@@ -3,6 +3,23 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.4] — one box, one name, one door in and one out
+
+### Fixed
+- **The same element drawn twice.** A box that legitimately appears on two levels (an external system at C1
+  and C2) was composed into the page beside itself — `browser` and `reader`, two ids, one thing. Identity is
+  the merge key now: same id + same identity is the same box, drawn once, its edges not doubled. The lens gate
+  only forgives a repeated id when both sides carry the same identity; an unproven repeat is still refused.
+- **A lens with no entry.** The hook page showed the CLI but not what starts the hook. The fix is in the model
+  and the rule: a container level must show what feeds each box and what it feeds — `git → hook → cli →
+  server → browser` — so every drilled page has an entry and an exit.
+- `/health` reports the build stamp; the server is started with the token in its **environment**, not argv, so
+  it no longer appears in `ps`.
+
+### Documentation
+- `skill/SKILL.md`: identity is required and is the merge key; a lens needs an entry and an exit; and when the
+  user dictates a flow order, the agent writes **their** sequence verbatim into `flow` rather than re-deriving it.
+
 ## [0.6.3] — the lens shows the doors, and every box has a name
 
 ### Changed

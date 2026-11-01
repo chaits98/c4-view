@@ -1,3 +1,3 @@
 # browser
 
-The reader of the served pages.
+The reader. Same box as on the context level, same identity.

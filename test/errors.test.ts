@@ -221,3 +221,20 @@ test('an expanded box pushes its neighbours out of the frame instead of drawing 
   const composed = renderExpanded(lens, 'context1').levels[0].audit
   assert.equal(composed.groupNode, 0, 'no stranger inside the dashed frame')
 })
+
+test('a box that appears on two levels is drawn once: identity is the merge key', () => {
+  // the same element (same id, same identity) declared on the child level must not be drawn beside the
+  // parent's copy as if it were a second box
+  const raw = lens()
+  raw.levels[0].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system' })
+  raw.levels[0].edges.push({ from: 'ext', to: 'context1', label: 'calls' })
+  // the port lives on the child level: it names which interior node the parent edge lands on
+  raw.levels[1].ports = { ...(raw.levels[1].ports ?? {}), 'ext->context1': 'a' }
+  raw.levels[1].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system' })
+  raw.levels[1].edges.push({ from: 'ext', to: 'a', label: 'asks' })
+  const { level } = expandLevel(parseModel(raw), 'context1')
+  const ids = level.nodes.map((n) => n.id)
+  assert.equal(ids.filter((id) => id === 'ext').length, 1, 'one box, not two')
+  assert.ok(!ids.includes('context1/ext'), 'the child copy is not drawn inside the frame')
+  assert.equal(level.edges.filter((e) => e.from === 'ext' && e.to === 'context1/a').length, 1, 'and its edge is not doubled')
+})

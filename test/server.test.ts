@@ -158,8 +158,6 @@ test('listing and audits answer the store', async () => {
   const one = (await (await fetch(`${base}/api/diagrams/${ID}/audit?level=droid/frontend`)).json()) as { level: string }
   assert.equal(one.level, 'droid/frontend')
 
-  assert.equal((await fetch(`${base}/api/diagrams/nobody/audit`)).status, 404, 'no diagram, no audit')
-
   const nope = await fetch(`${base}/api/diagrams/${ID}/audit?level=nope`)
   assert.equal(nope.status, 404)
   const text = await nope.text()
@@ -218,7 +216,7 @@ test('a narrow drawing is letterboxed, not cropped and chipped', () => {
 })
 
 test('the error paths answer with a status, never a stack trace', async () => {
-  // a model file that is not JSON: the page must not 500 with a raw exception
+  // a model file that is not JSON: the page must not leak a raw exception
   const brokenDir = join(root, 'halfwritten')
   mkdirSync(brokenDir, { recursive: true })
   writeFileSync(join(brokenDir, 'model.json'), '{"id": "halfwritten", "levels": [')
@@ -298,3 +296,5 @@ test('a failing diagram says so on its card, and a single diagram is not "1 diag
   assert.match(page, /<title>/, 'the grid still renders')
   assert.match(page, /&amp;/, 'a title is escaped, never injected')
 })
+
+

@@ -1,3 +1,3 @@
 # git
 
-Stops a commit that changes code without the picture.
+Runs the hook. Same box as on the context level, same identity.
