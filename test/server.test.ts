@@ -201,13 +201,11 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
   assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)
-  assert.match(page.body, /<span class="chip t-label-m">wide · 1089 px<\/span>/)
   assert.match(page.body, /6 levels · 5 nodes · 8 flows/, 'the countable facts are text')
 })
 
 test('a narrow drawing is letterboxed, not cropped and chipped', () => {
-  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, width: 622, nodes: 1, flows: 0, wide: false }])
+  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, nodes: 1, flows: 0, wide: false }])
   assert.match(page, /class="thumb" aria-hidden="true"/)
-  assert.doesNotMatch(page, /class="chip"/)
   assert.match(page, /1 level · 1 node · 0 flows/, 'singulars stay singular')
 })

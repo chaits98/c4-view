@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { renderModel } from './render.ts'
+import { paletteOf } from './theme.ts'
 import { compareKeys } from './layout/geometry.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
 import type { Model } from './types.ts'
@@ -33,8 +34,6 @@ export interface IndexEntry {
   /** the root level's drawing, and whether every gate passed */
   svg: string
   ok: boolean
-  /** the drawing's own size, in SVG user units */
-  width: number
   nodes: number
   flows: number
   /** wider than 3:1 — the card crops it and says so */
@@ -45,16 +44,17 @@ export interface IndexEntry {
 export function indexEntries(
   rows: ReadonlyArray<{ id: string; title: string; levels: string[]; updated: string }>,
   load: (id: string) => Model | null,
+  theme: Theme = 'auto',
   limit = 60, // ponytail: the whole grid renders every root level per request; page it past a few dozen
 ): IndexEntry[] {
   return rows.slice(0, limit).flatMap((row) => {
     const model = load(row.id)
     if (!model) return []
-    const root = renderModel(model, '').levels[0]
+    const root = renderModel(model, '', paletteOf(theme)).levels[0]
     if (!root) return []
     const box = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(root.svg)
     const [width, height] = box ? [Number(box[1]), Number(box[2])] : [0, 0]
-    return [{ ...row, svg: root.svg, ok: root.audit.ok, width: Math.round(width), nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
+    return [{ ...row, svg: root.svg, ok: root.audit.ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
   })
 }
 
@@ -74,11 +74,11 @@ function card(entry: IndexEntry): string {
     `<a class="card" href="/d/${encodeURIComponent(entry.id)}">` +
     // the drawing is the emitter's own escaped output — never re-escape it. A crop is
     // declared in text ("wide · 3000 px") rather than passed off as the whole drawing.
-    `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}` +
-    `${entry.wide ? `<span class="chip t-label-m">wide · ${entry.width} px</span>` : ''}</span>` +
+    // A crop is shown by cropping — the card does not print its own diagnostics at the reader
+    `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}</span>` +
     `<span class="meta"><h2 class="t-title-m">${esc(entry.title)}</h2>` +
     `<p class="t-body-s">${esc(entry.id)} · ${facts}</p>` +
-    `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}"><span aria-hidden="true">${entry.ok ? '●' : '!'}</span>${state}</span></span></a>`
+    `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}"><span aria-hidden="true">${entry.ok ? '✓' : '!'}</span>${state}</span></span></a>`
   )
 }
 

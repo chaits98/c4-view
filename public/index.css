@@ -126,20 +126,6 @@ body {
   background: linear-gradient(to right, var(--canvas), transparent 12%, transparent 88%, var(--canvas));
 }
 
-.chip {
-  position: absolute;
-  right: var(--space-2);
-  bottom: var(--space-2);
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 var(--space-2);
-  color: var(--d-edge-label);
-  background: color-mix(in srgb, var(--canvas) 88%, transparent);
-  border: 1px solid var(--outline);
-  border-radius: var(--shape-sm);
-}
 
 .meta {
   display: flex;
@@ -170,9 +156,9 @@ body {
 }
 
 .badge.ok {
-  color: var(--on-secondary-container);
-  background: var(--secondary-container);
-  border-color: var(--secondary);
+  color: var(--on-success-container);
+  background: var(--success-container);
+  border-color: var(--success);
 }
 
 .badge.bad {

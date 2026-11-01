@@ -82,19 +82,14 @@
   --inverse-surface: light-dark(#322f35, #e6e0e9);
   --inverse-on-surface: light-dark(#f5eff7, #322f35);
 
-  /* the diagram document surface and its palette — the dark column, always (§8.1) */
-  --canvas: #0f0d13;
-  --d-node-fill: #36343b;
-  --d-node-text: #e6e0e9;
-  --d-node-internal: #d0bcff;
-  --d-node-person: #efb8c8;
-  --d-node-external: #cac4d0;
-  --d-node-store: #ccc2dc;
-  --d-node-fail: #f2b8b5;
-  --d-edge: #938f99;
-  --d-edge-active: #d0bcff;
-  --d-edge-label: #cac4d0;
-  --d-group: #938f99;
+  /* semantic green: M3 has no success role, so this pair is an extension, measured like the rest */
+  --success: light-dark(#2e7d4f, #9bf2b6);
+  --success-container: light-dark(#c8f2d4, #1e3d2b);
+  --on-success-container: light-dark(#0b3a1d, #9bf2b6);
+
+  /* the diagram document surface follows the scheme now — the server draws the matching palette */
+  --canvas: light-dark(#ffffff, #0a111b);
+  --d-edge-active: light-dark(#1d4ed8, #d0bcff);
 }
 
 

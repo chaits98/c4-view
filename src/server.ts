@@ -166,7 +166,7 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
 
   switch (route.kind) {
     case 'index':
-      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id)), theme))
+      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme))
     case 'health':
       return json(res, 200, { ok: true, diagrams: list(root).length })
     case 'diagrams':

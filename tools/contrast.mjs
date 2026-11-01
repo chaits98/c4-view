@@ -13,6 +13,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { DARK, LIGHT } from '../src/theme.ts'
 
 const CSS = readFileSync(fileURLToPath(new URL('../public/tokens.css', import.meta.url)), 'utf8')
 
@@ -52,17 +53,39 @@ const PAIRS = [
   ['breadcrumb link', 'primary', 'surface', 4.5, 'SC 1.4.3'],
   ['button label on the bar', 'primary', 'surface-container', 4.5, 'SC 1.4.3'],
   ['selected chip', 'on-secondary-container', 'secondary-container', 4.5, 'SC 1.4.3'],
-  ['audit pass badge', 'on-secondary-container', 'secondary-container', 4.5, 'SC 1.4.3'],
+  ['audit pass badge', 'on-success-container', 'success-container', 4.5, 'SC 1.4.3'],
   ['audit fail badge', 'on-error-container', 'error-container', 4.5, 'SC 1.4.3'],
   ['control border', 'outline', 'surface', 3, 'SC 1.4.11'],
   ['focus ring', 'primary', 'surface', 3, 'SC 2.4.13'],
-  ['node text in the diagram', 'd-node-text', 'd-node-fill', 4.5, 'SC 1.4.3'],
-  ['edge label on the canvas', 'd-edge-label', 'canvas', 4.5, 'SC 1.4.3'],
-  ['edge line', 'd-edge', 'canvas', 3, 'SC 1.4.11'],
-  ['active edge / flow dot', 'd-edge-active', 'canvas', 3, 'SC 1.4.11'],
 ]
 
-/** The canvas rows cannot flip: their tokens are declared once. */
+/** `rgba(r,g,b,a)` or `#hex` painted over an opaque colour: the drawing's let-through fills. */
+function over(paint, base) {
+  const rgba = /rgba?\(([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)[ ,/]+([\d.]+)?\)/i.exec(paint)
+  if (!rgba) return paint
+  const alpha = rgba[4] === undefined ? 1 : Number(rgba[4])
+  const behind = [1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16))
+  const mixed = [1, 2, 3].map((i) => Math.round(Number(rgba[i]) * alpha + behind[i - 1] * (1 - alpha)))
+  return `#${mixed.map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+/** The drawing is not CSS: its colours come from src/theme.ts, one palette per scheme. */
+const diagramPairs = (palette) => {
+  const rows = []
+  for (const [kind, spec] of Object.entries(palette.kinds)) {
+    const fill = over(spec.fill, palette.bg)
+    rows.push([`${kind} label on its fill`, palette.fg, fill, 4.5, 'SC 1.4.3'])
+    rows.push([`${kind} identity line`, palette.dim, fill, 4.5, 'SC 1.4.3'])
+    rows.push([`${kind} border on canvas`, spec.stroke, palette.bg, 3, 'SC 1.4.11'])
+  }
+  for (const [style, edge] of Object.entries(palette.edges)) {
+    rows.push([`${style} edge on canvas`, edge.stroke, palette.bg, 3, 'SC 1.4.11'])
+  }
+  rows.push(['edge label chip', palette.chipFg, palette.chipBg, 4.5, 'SC 1.4.3'])
+  rows.push(['group title on canvas', palette.dim, palette.bg, 4.5, 'SC 1.4.3'])
+  return rows
+}
+
 let failed = 0
 const rows = PAIRS.map(([label, fg, bg, need, criterion]) => {
   const measured = (scheme) => {
@@ -76,8 +99,18 @@ const rows = PAIRS.map(([label, fg, bg, need, criterion]) => {
   return `| ${label} | \`${fg}\` on \`${bg}\` | ${l.toFixed(2)} | ${d.toFixed(2)} | ${need.toFixed(1)} | ${ok ? 'pass' : 'FAIL'} | ${criterion} |`
 })
 
+const drawRows = []
+for (const [index, [label, fg, bg, need, criterion]] of diagramPairs(LIGHT).entries()) {
+  const darkRow = diagramPairs(DARK)[index]
+  const l = ratio(fg, bg)
+  const d = ratio(darkRow[1], darkRow[2])
+  const ok = l >= need && d >= need
+  if (!ok) failed++
+  drawRows.push(`| ${label} | theme.ts | ${l.toFixed(2)} | ${d.toFixed(2)} | ${need.toFixed(1)} | ${ok ? 'pass' : 'FAIL'} | ${criterion} |`)
+}
+
 console.log('| pair | tokens | light | dark | needs | result | criterion |')
 console.log('|---|---|---|---|---|---|---|')
-console.log(rows.join('\n'))
-console.log(`\n${PAIRS.length} pairs, ${failed} failing`)
+console.log([...rows, ...drawRows].join('\n'))
+console.log(`\n${PAIRS.length + drawRows.length} pairs, ${failed} failing`)
 process.exit(failed ? 1 : 0)

@@ -15,6 +15,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { levelOf, levelOrder } from './model.ts'
 import { renderModel } from './render.ts'
+import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
 import type { Model } from './types.ts'
 
@@ -52,7 +53,7 @@ function zoomBar(href: (value: string) => string, zoom: number | null): string {
 }
 
 export function viewerPage(model: Model, level: string, zoomRaw: string | null = null, theme: Theme = 'auto'): string {
-  const drawn = renderModel(model, level).levels[0]
+  const drawn = renderModel(model, level, paletteOf(theme)).levels[0]
   const levels = levelOrder(model)
   const root = `/d/${model.id}`
   const crumbs = [`<a href="/">all</a>`, `<a href="${esc(root)}">${esc(model.id)}</a>`]
