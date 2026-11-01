@@ -196,6 +196,8 @@ export interface Routed {
 export interface AuditReport {
   /** true when this report is of a drilled picture (parent level with one box expanded) */
   composed?: boolean
+  /** true when the picture is too tangled to follow: more than two wire crossings per edge */
+  dense?: boolean
   level: string
   nodes: number
   edges: number

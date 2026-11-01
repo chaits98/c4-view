@@ -79,6 +79,7 @@
       "flow": [
         "who->c4v",
         "files->c4v",
+        "git->c4v",
         "c4v->browser"
       ]
     },
@@ -291,7 +292,8 @@
         "argv->model",
         "model->layout",
         "layout->svg",
-        "svg->writer"
+        "svg->writer",
+        "argv->gate"
       ]
     },
     {

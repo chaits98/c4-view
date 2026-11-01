@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { run } from '../src/cli.ts'
+import { describeError, run } from '../src/cli.ts'
 
 const ROOT = new URL('..', import.meta.url).pathname
 const SHOP = join(ROOT, 'examples', 'shop.json')
@@ -247,4 +247,9 @@ test('c4v publish runs through the same entry point as everything else', async (
   writeFileSync(model, JSON.stringify({ id: 'solo', title: 'Solo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }))
   assert.equal(await run(['publish', model, '--root', join(dir, 'store')]), 0)
   assert.equal(await run(['publish']), 2, 'and a bare publish is a usage error')
+})
+
+test('a thrown value is described, not printed as [object Object]', () => {
+  assert.equal(describeError(new Error('bad model')), 'bad model')
+  assert.equal(describeError('plain string'), 'plain string')
 })

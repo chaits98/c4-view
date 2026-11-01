@@ -26,13 +26,14 @@
  * @module c4-view/cli
  */
 import { homedir } from 'node:os'
-import { extname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readModel, renderExpanded, renderModel, type Rendered } from './render.ts'
 import { reportCommand } from './cli-output.ts'
 import type { Systemctl } from './service.ts'
 import type { Model } from './types.ts'
 import { ModelError } from './model.ts'
+import { argumentError } from './cli-args.ts'
 
 const USAGE = `c4v — agent-driven C4 renderer
 
@@ -180,38 +181,9 @@ export async function serviceCommand(
   }
 }
 
-/** Argument errors are answered before any work is done. */
-function argumentError(args: Args): number | null {
-  if (!args.command || args.command === 'help' || args.has('help') || args.command === '--help') {
-    console.log(USAGE)
-    return 0
-  }
-  if (args.command === 'serve' || args.command === 'doctor') return null
-  if (args.command === 'skill' || args.command === 'prefs' || args.command === 'gate') return null
-  if (args.command === 'publish') return null
-  if (args.command === 'service') {
-    const action = argvSecond(args)
-    if (action !== 'install' && action !== 'uninstall' && action !== 'status') {
-      console.error(`c4v service <install|uninstall|status>\n`)
-      return 2
-    }
-    return null
-  }
-  if (!args.file) {
-    console.error(`missing <model.json>\n\n${USAGE}`)
-    return 2
-  }
-  if (args.command !== 'render' && args.command !== 'audit') {
-    console.error(`unknown command "${args.command}"\n\n${USAGE}`)
-    return 2
-  }
-  const out = args.opt('out')
-  if (out !== undefined && extname(out) === '.svg' && args.opt('level') === undefined) {
-    console.error('--out <file.svg> needs --level (one level per file)\n')
-    return 2
-  }
-  return null
-}
+/** argumentError refuses a missing file first, so this is a read, not a fallback. */
+const fileOf = (args: Args): string => args.file ?? ''
+
 
 /**
  * Run the command line and resolve its exit code. Never calls process.exit, and never lets an
@@ -259,11 +231,11 @@ async function otherCommand(args: Args, argv: string[]): Promise<number | null> 
 /** Render or audit: print the report, write files on `render`, and decide the exit code. */
 async function dispatch(argv: string[]): Promise<number> {
   const args = parseArgs(argv)
-  const early = argumentError(args)
+  const early = argumentError(args, USAGE)
   if (early !== null) return early
   const other = await otherCommand(args, argv)
   if (other !== null) return other
-  const file = args.file as string // argumentError has already refused a missing one
+  const file = fileOf(args)
   const loaded = loadReport(file, args.opt('level'), args.opt('expand'))
   if (!loaded) return 2
   return reportCommand(
@@ -284,16 +256,19 @@ async function dispatch(argv: string[]): Promise<number> {
   )
 }
 
+/** The message a thrown value deserves: an Error explains itself, a bare value is stringified. */
+export const describeError = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+
 // Only the real binary exits the process; importing this module (the tests) must not.
 /* node:coverage disable */
 // Damage-free guard: when this file is imported, argv[1] is the test runner, so it never runs there.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  /* node:coverage enable */
   run(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (error: unknown) => {
-      console.error(error instanceof Error ? error.message : String(error))
+      console.error(describeError(error))
       process.exit(1)
     },
   )
 }
+/* node:coverage enable */

@@ -32,8 +32,55 @@ export function hostOf(level: LevelSpec, model: Model): { parent?: LevelSpec; ho
 }
 
 export function lensReport(model: Model): LensReport {
-  const problems = model.levels.flatMap((level) => levelProblems(model, level))
+  const problems = [
+    ...model.levels.flatMap((level) => levelProblems(model, level)),
+    ...flowProblems(model),
+    ...identityProblems(model),
+  ]
   return { problems }
+}
+
+/**
+ * The narration is a promise about order: if a level declares `flow`, it must name every edge of that level
+ * once. A short list does not fail loudly — the viewer appends the rest — so the drawing animates in an order
+ * nobody chose and the reader never learns it.
+ */
+function flowProblems(model: Model): string[] {
+  const out: string[] = []
+  for (const level of model.levels) {
+    if (!level.flow?.length) continue
+    const keys = level.edges.map((e) => `${e.from}->${e.to}`)
+    const missing = keys.filter((key) => !level.flow?.includes(key))
+    if (missing.length) {
+      out.push(`level "${level.path || '(root)'}": flow names ${level.flow.length} of ${keys.length} edge(s) — missing ${missing.join(', ')}`)
+    }
+  }
+  return out
+}
+
+/**
+ * One id is one element: if two levels draw the same node id they must mean the same box, with the same
+ * identity. Without that, a doc is shared by two different things and hover lies.
+ */
+function identityProblems(model: Model): string[] {
+  const seen = new Map<string, { identity?: string; where: string }>()
+  const out: string[] = []
+  for (const level of model.levels) {
+    for (const node of level.nodes) {
+      const previous = seen.get(node.id)
+      if (!previous) {
+        seen.set(node.id, { identity: node.identity, where: level.path || '(root)' })
+        continue
+      }
+      if (previous.identity !== node.identity) {
+        out.push(
+          `node "${node.id}" is drawn on "${previous.where}" and "${level.path}" with different identities ` +
+          `(${previous.identity ?? 'none'} vs ${node.identity ?? 'none'}) — one id is one element`,
+        )
+      }
+    }
+  }
+  return out
 }
 
 /** Everything wrong with one level's claim to be a lens; empty for the root and for a good lens. */
@@ -46,7 +93,10 @@ function levelProblems(model: Model, level: LevelSpec): string[] {
     return [`level "${level.path}": "${hostId}" is not a node of the parent level — the drill has nothing to open (nodes there: ${known})`]
   }
   const crossing = parent.edges.filter((e) => crossesInto(e, hostId))
-  if (crossing.length === 0) return [] // a box nothing connects to needs no ports
+  // a page with no doors is not a lens: nothing enters, nothing leaves, and the frame is decoration
+  if (crossing.length === 0) {
+    return [`level "${level.path}": "${hostId}" has no edges on the level above — a box nothing connects to cannot be a lens`]
+  }
   const ports = level.ports
   if (!ports || Object.keys(ports).length === 0) {
     return [`level "${level.path}": ${crossing.length} edge(s) cross into "${hostId}" but no ports say where they land — the expanded view would lose them`]

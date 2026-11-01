@@ -32,13 +32,13 @@ function copyDocs(from: string, to: string): number {
   return n
 }
 
-export function publishCommand(argv: string[]): number {
+export function publishCommand(argv: string[], home: string = homedir()): number {
   const file = argv[1] && !argv[1].startsWith('--') ? argv[1] : undefined
   if (!file) {
     console.error('usage: c4v publish <model.json> [--root ~/.c4-view]')
     return 2
   }
-  const root = flag(argv, 'root') ?? join(homedir(), '.c4-view')
+  const root = flag(argv, 'root') ?? join(home, '.c4-view')
   let model
   try {
     model = readModel(file)

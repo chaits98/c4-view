@@ -14,10 +14,9 @@ import { auditLine } from './audit.ts'
 import { svgToPng } from './png.ts'
 import type { LensReport } from './lens.ts'
 import type { Rendered } from './render.ts'
-import type { Model } from './types.ts'
 import { docsDir, docsProblems } from './docs.ts'
 import { pictureAudits } from './render.ts'
-import type { AuditReport } from './types.ts'
+import type { AuditReport, Model } from './types.ts'
 
 /** Where one level's file goes: the named .svg, or `<dir>/<level-slug>.svg`. */
 export function outputPath(out: string | undefined, id: string, level: string): string {
@@ -107,5 +106,6 @@ export function reportCommand(args: ReportArgs, report: Rendered, model: Model):
   if (!args.noLens && report.lens.problems.length) {
     console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
   }
-  return failed.length || (args.noLens ? 0 : report.lens.problems.length) || docsMissing ? 1 : 0
+  const lensFails = args.noLens ? 0 : report.lens.problems.length
+  return failed.length > 0 || lensFails > 0 || docsMissing > 0 ? 1 : 0
 }

@@ -26,6 +26,8 @@ function repo(): { file: string; root: string } {
   return { file, root: join(dir, 'store') }
 }
 
+const run2 = (argv: string[], home: string): number => publishCommand(argv, home)
+
 const run = (argv: string[]): number => {
   const lines: string[] = []
   const { log, error } = console
@@ -68,4 +70,43 @@ test('publishing without a file, with a bad model, or with a bad --as is a usage
   assert.equal(run(['publish']), 2)
   assert.equal(run(['publish', join(root, 'nope.json'), '--root', root]), 2)
   assert.equal(run(['publish', file, '--root', root, '--as', 'Not An Id']), 2)
+})
+
+test('a flag whose value is another flag is ignored, not swallowed', () => {
+  const { file, root } = repo()
+  // `--as --please` names no id: the model keeps its own, and nothing is written outside --root
+  assert.equal(run(['publish', file, '--root', root, '--as', '--please']), 0)
+  assert.ok(existsSync(join(root, 'shop', 'model.json')))
+})
+
+test('only markdown is copied: stray files and subdirectories are left alone', () => {
+  const { file, root } = repo()
+  const nodes = join(file, '..', 'shop', 'nodes')
+  writeFileSync(join(nodes, 'notes.txt'), 'not a doc')
+  mkdirSync(join(nodes, 'nested'), { recursive: true })
+  assert.equal(run(['publish', file, '--root', root]), 0)
+  assert.ok(!existsSync(join(root, 'shop', 'shop', 'nodes', 'notes.txt')), 'a .txt is not a doc')
+  assert.ok(!existsSync(join(root, 'shop', 'shop', 'nodes', 'nested')), 'nor is a directory')
+})
+
+test('with no --root the store is ~/.c4-view, which publish can be given as a seam', () => {
+  const { file } = repo()
+  const home = mkdtempSync(join(tmpdir(), 'c4v-home-'))
+  assert.equal(run2(['publish', file], home), 0)
+  assert.ok(existsSync(join(home, '.c4-view', 'shop', 'model.json')))
+})
+
+test('one level prints "1 level", not "1 levels", and the root flag has a default', () => {
+  const { file, root } = repo()
+  assert.equal(run(['publish', file, '--root', root]), 0)
+  const bare = join(file, '..', 'one.json')
+  writeFileSync(bare, JSON.stringify({
+    id: 'one',
+    title: 'One',
+    levels: [
+      { path: '', nodes: [{ id: 'x', label: 'X', subtype: 'system' }], edges: [] },
+      { path: 'x', nodes: [{ id: 'y', label: 'Y', subtype: 'service-logic' }], edges: [] }, // two levels: "2 levels"
+    ],
+  }))
+  assert.equal(run(['publish', bare, '--root', root]), 0)
 })

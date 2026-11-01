@@ -3,6 +3,29 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.9] — the hook checks the thing that was letting smells through
+
+### Fixed
+- **The pre-commit gate could not see code smells.** It read Sonar's quality-gate status, whose conditions are
+  **new code only**: once a smell is older than the new-code period it stops counting, so a green gate sat
+  beside 11 open issues and every commit passed. The sonar step now also queries the issues API and fails on
+  **any** unresolved issue, printing the messages. Negative test: a planted nested ternary fails the hook with
+  "Extract this nested ternary operation…" and `sonar: 1 unresolved issue(s)`.
+- The eleven smells that had accumulated are gone: cognitive complexity split in `argumentError` (moved to
+  `src/cli-args.ts`) and `expandLevel` (split into `sharedWithParent`, `neighbours`, `composeEdges`), nested
+  ternaries in `cli-output` and `audit`, a nested template literal in the level picker, a duplicated type
+  import, and five unnecessary or unsafe assertions.
+
+### Added — four gates and the rules behind them
+| gate | fails when |
+|---|---|
+| narration | a declared `flow` does not name every edge of its level exactly once |
+| one id is one element | the same node id appears on two levels with different identities |
+| no doors | a drill level's box has no edges on the level above |
+| density | more than two wire crossings per edge, composed or not |
+
+Aspect stays reported, not gated: a wide picture opens at 100% instead of shrinking to 5px labels.
+
 ## [0.6.8] — the docs you write reach the viewer you wrote them for
 
 ### Fixed

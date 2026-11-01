@@ -158,6 +158,18 @@ function countGroupNode(placed: Placed, level: LevelSpec, boxes: Map<string, Box
   return count
 }
 
+/**
+ * Readability budget: past two wire crossings per edge the drawing stops being traceable by eye. Not taste —
+ * a number an agent can check before it argues that its picture is fine.
+ */
+export const isDense = (crossings: number, edges: number): boolean => crossings > Math.max(2, edges * 2)
+
+/** Which picture this line judges: the root, or a level as it is SERVED (composed). */
+function whereLabel(r: AuditReport): string {
+  if (!r.level) return 'level="(root)"'
+  return r.composed ? `level="${r.level}" (composed)` : `level="${r.level}"`
+}
+
 export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditReport {
   const boxes = [...placed.boxes.values()]
   const byId = placed.boxes
@@ -171,7 +183,8 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
   // a backward edge is legal (a real loop), but an UNINTENDED one means a rank hint fights an edge,
   // and the router will answer with a corridor under the whole drawing — so it is always reported
   const backward = placed.chains.filter((chain) => chain.backward).length
-  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0
+  const dense = isDense(crossings, level.edges.length)
+  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0 && !dense
   return {
     level: level.path,
     backward,
@@ -185,6 +198,7 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
     chipNode,
     groupNode,
     ok,
+    dense,
     aspect,
   }
 }
@@ -194,6 +208,6 @@ export function auditLine(r: AuditReport): string {
   const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode} group∧node=${r.groupNode}`
   // a level with a parent is only ever served composed; saying so stops a green line being read as the
   // authored level passing
-  const where = r.level ? `level="${r.level}"${r.composed ? ' (composed)' : ''}` : 'level="(root)"'
+  const where = whereLabel(r)
   return `${r.ok ? 'OK  ' : 'FAIL'} ${where} nodes=${r.nodes} edges=${r.edges} ${gates} crossings=${r.crossings} backward=${r.backward} aspect=${r.aspect}`
 }

@@ -15,7 +15,7 @@
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 
 // the regex only matches keys of ENTITIES, so there is no fallback to write (or to test)
-const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] as string)
+const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c])
 
 /**
  * Inline spans as ONE left-to-right scan: code, links, bold, italic.

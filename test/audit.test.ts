@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { audit, auditLine, overlapArea } from '../src/audit.ts'
+import { audit, auditLine, isDense, overlapArea } from '../src/audit.ts'
 import { parseModel } from '../src/model.ts'
 import { renderModel } from '../src/render.ts'
 import type { Box, LevelSpec, Placed, Route, Routed } from '../src/types.ts'
@@ -188,4 +188,11 @@ test('a plain chain has no backward edges', () => {
     ],
   })
   assert.equal(renderModel(model).levels[0].audit.backward, 0)
+})
+
+test('the density budget is two crossings per edge, and it is a gate', () => {
+  assert.equal(isDense(4, 2), false, 'exactly at the budget is still readable')
+  assert.equal(isDense(5, 2), true, 'past it is not')
+  assert.equal(isDense(3, 0), true, 'a level with no edges and three crossings is broken regardless')
+  assert.equal(isDense(20, 12), false, 'fresh2 measured 13/12 and passed')
 })

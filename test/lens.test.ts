@@ -139,3 +139,54 @@ test('a child level that repeats a parent box with the same identity is composin
   clash.levels[1].nodes[0].identity = 'E-2'
   assert.ok(lensReport(parseModel(clash as never)).problems.some((p) => /re-draws ext/.test(p)))
 })
+
+/** Two levels that are correct, so a test can break exactly one thing. */
+const pair = (): Record<string, any> => ({
+  id: 'pair',
+  title: 'Pair',
+  levels: [
+    {
+      path: '',
+      nodes: [{ id: 'a', identity: 'A-1', label: 'A', subtype: 'person' }, { id: 'host', identity: 'H-1', label: 'Host', subtype: 'system' }, { id: 'b', identity: 'B-1', label: 'B', subtype: 'external-system' }],
+      edges: [{ from: 'a', to: 'host' }, { from: 'host', to: 'b' }],
+      flow: ['a->host', 'host->b'],
+    },
+    {
+      path: 'host',
+      ports: { 'a->host': 'inner', 'host->b': 'inner' },
+      nodes: [{ id: 'inner', identity: 'I-1', label: 'Inner', subtype: 'service-logic' }],
+      edges: [],
+    },
+  ],
+})
+
+test('a declared flow that skips an edge is a problem: the viewer would append it silently', () => {
+  const raw = pair()
+  raw.levels[0].flow = ['a->host']
+  const report = lensReport(parseModel(raw as never))
+  assert.ok(report.problems.some((p) => /flow names 1 of 2 edge\(s\) — missing host->b/.test(p)), report.problems.join('\n'))
+})
+
+test('one id is one element: the same id with two identities is refused', () => {
+  const raw = pair()
+  raw.levels[1].nodes.push({ id: 'a', identity: 'A-2', label: 'A again', subtype: 'person' })
+  const report = lensReport(parseModel(raw as never))
+  assert.ok(report.problems.some((p) => /one id is one element/.test(p)), report.problems.join('\n'))
+})
+
+test('a box with no edges cannot be a lens: its page would have no doors', () => {
+  const raw = pair()
+  raw.levels[0].edges = []
+  raw.levels[0].flow = []
+  raw.levels[1].ports = {}
+  const report = lensReport(parseModel(raw as never))
+  assert.ok(report.problems.some((p) => /cannot be a lens/.test(p)), report.problems.join('\n'))
+})
+
+test('an id repeated with no identity on one side is still a clash', () => {
+  const raw = pair()
+  delete raw.levels[0].nodes[2].identity // the parent says nothing; the child still claims B-1
+  raw.levels[1].nodes.push({ id: 'b', identity: 'X-9', label: 'B again', subtype: 'external-system' })
+  const report = lensReport(parseModel(raw as never))
+  assert.ok(report.problems.some((p) => /different identities \(none vs X-9\)/.test(p)), report.problems.join('\n'))
+})

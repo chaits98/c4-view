@@ -199,10 +199,14 @@ function drillFor(model: Model, path: string): Map<string, string> {
   return drill
 }
 
+/** The C4 level a path depth belongs to: 0 → C1, 1 → C2, and never past C4. */
+const levelTag = (depth: number): string => `C${Math.min(4, depth + 1)}`
+
 /** Width of the drawing, from the viewBox the renderer just emitted. */
 function svgWidth(svg: string): number {
   // every string this reads was produced by emit(), which always writes a viewBox
-  return Number((/viewBox="0 0 ([\d.]+)/.exec(svg) as RegExpExecArray)[1])
+  const box = /viewBox="0 0 ([\d.]+)/.exec(svg)
+  return box ? Number(box[1]) : 0 // coverage:invariant — every string here came from emit(), which always writes a viewBox
 }
 
 /**
@@ -256,7 +260,7 @@ export function viewerPage(
     .map((l) => {
       const depth = l.path === '' ? 0 : l.path.split('/').length
       const indent = '&#160;&#160;&#160;'.repeat(depth)
-      const label = `${depth === 0 ? 'C1' : `C${Math.min(4, depth + 1)}`} · ${l.title ?? l.path}` // coverage:invariant — parseModel fills a title
+      const label = `${levelTag(depth)} · ${l.title ?? l.path}` // coverage:invariant — parseModel fills a title
       return `<option value="${esc(l.path)}" title="${esc(l.path || 'context')}"${l.path === level ? ' selected' : ''}>${indent}${esc(label)}</option>`
     })
     .join('')

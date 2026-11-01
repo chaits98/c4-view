@@ -207,10 +207,23 @@ and that is what tells composition to draw it once. Two different boxes never sh
 and it is how a person names a box to you ("C4V-11 does X") — without it the user describes a box by position
 and you get to guess wrong. |
 | `rank` | absolute column hint, only when computed order fights the truth (an external that must sit right of everything). A hint is a promise about columns: hint a node left of its predecessor and you have declared that edge backward, and the router answers with a corridor under the whole drawing. |
-| `flow` | the linear narration, every edge key once. Omit → derived depth-first from the source nodes. |
+| `flow` | the linear narration; **must** name every edge key of that level once (gated). Omit → derived depth-first from the source nodes. |
 | `groups` | C4 boundaries (e.g. "what we run" vs "what we rent"); members must be **adjacent in the drawing**.
 Do **not** wrap a drill level's interior in a group — composition already draws the dashed `frame-<host>` around
 it, and an authored one on top doubles the boundary. |
+
+## What the gates refuse (numbers, not taste)
+
+`audit --strict` fails a level for any overlap — and for these four, which are about honesty rather than geometry:
+
+| gate | fails when |
+|---|---|
+| **narration** | a declared `flow` does not name every edge of that level exactly once (the viewer appends the rest silently, so the animation runs in an order nobody chose) |
+| **one id is one element** | the same node id appears on two levels with different identities — a shared doc would describe two different boxes |
+| **no doors** | a drill level's box has no edges on the level above: the page would show a frame with nothing entering or leaving |
+| **density** | more than **two wire crossings per edge** on a picture, composed or not |
+
+Aspect is **reported, not gated**: a wide picture opens at 100% with a note instead of shrinking its labels to 5px.
 
 ## Authoring rules
 

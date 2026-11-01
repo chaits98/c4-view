@@ -95,6 +95,16 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
       # to secret scanners (gitleaks `curl-auth-user`) like a committed password
       auth="Basic $(printf '%s:' "${SONAR_READ_TOKEN:-$SONAR_TOKEN}" | base64 -w0)"
       gate=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/qualitygates/project_status?projectKey=c4-view") || return 1
+      # The gate's conditions are NEW code only: once a smell is older than the new-code period it stops
+      # counting, so a green gate sat next to 11 open issues. This repo's rule is zero, and it is checked
+      # here so a smell cannot age its way to green.
+      issues=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/issues/search?componentKeys=c4-view&resolved=false&ps=200") || return 1
+      total=$(printf '%s' "$issues" | sed -n 's/.*"total":\([0-9][0-9]*\).*/\1/p' | head -1)
+      if [ "${total:-0}" != "0" ]; then
+        printf '%s' "$issues" | tr ',' '\n' | grep '"message"' | head -10 >&2
+        echo "sonar: ${total} unresolved issue(s) — the gate counts new code only, this counts every open one" >&2
+        return 1
+      fi
       printf '%s' "$gate" | grep -q '"status":"OK"' && return 0
       printf '%s\n' "$gate" | sed 's/},{/}\n{/g' | grep 'ERROR' >&2
       return 1
