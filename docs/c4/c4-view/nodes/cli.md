@@ -1,5 +1,3 @@
-# c4v
+# c4v CLI
 
-One binary with no runtime dependencies. `render`, `audit`, `serve`, `skill`, `prefs`, `gate` — each answers a question someone actually asked.
-
-Everything it can do is reachable from `c4v --help`, because an agent that has to guess a flag will guess wrong and then trust the result.
+The container that does the work: render, audit, gate, and the `serve` command that starts the viewer. One process, no daemon of its own.
