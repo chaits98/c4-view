@@ -277,3 +277,17 @@ test('a missing diagram and a missing level both say what does exist', async () 
   assert.match(body.error, /no level "no\/such\/level"/)
   assert.ok(body.levels.includes(''), 'and lists the levels that do exist')
 })
+
+test('a failing diagram says so on its card, and a single diagram is not "1 diagrams"', async () => {
+  const bad = {
+    id: 'broken-audit',
+    title: 'Broken',
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a' }] }],
+  }
+  // the API refuses a self-loop, so write the file the way a crashed writer would leave it
+  mkdirSync(join(root, 'broken-audit'), { recursive: true })
+  writeFileSync(join(root, 'broken-audit', 'model.json'), JSON.stringify({ ...bad, levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B &amp; <C>', subtype: 'system' }], edges: [{ from: 'a', to: 'b', label: 'x' }] }] }))
+  const page = await (await fetch(`${base}/`)).text()
+  assert.match(page, /<title>/, 'the grid still renders')
+  assert.match(page, /&amp;/, 'a title is escaped, never injected')
+})

@@ -130,6 +130,9 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['node rank not an integer', node({ rank: 1.5 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['node rank below zero', node({ rank: -1 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['no levels at all', { ...base(), levels: [] }, /at least one level/],
+    ['group with non-string members', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: [1, 2] }] }), /groups\[0\]/],
+    ['group naming a node that is not in the level', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: ['ghost'] }] }), /groups\[0\]/],
+    ['edge style that is not a string', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', style: 5 }] }), /style/],
   ]
   for (const [name, model, expected] of cases) {
     assert.throws(
@@ -157,6 +160,8 @@ test('an optional field is normalised, and a bare level gets a name', () => {
     'every present optional survives',
   )
   assert.equal(child.title, 'a', 'a blank title falls back to the path')
+  const numericTitle = parseModel({ ...base(), levels: [{ path: 'x', title: 7, nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  assert.equal(numericTitle.levels[0].title, 'x', 'a title that is not a string falls back too')
   assert.equal(child.edges[0].style, 'flow', 'an edge with no style is a flow')
   assert.equal(child.edges[0].label, undefined, 'and keeps no empty label')
 })
