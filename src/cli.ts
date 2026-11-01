@@ -10,6 +10,8 @@
                                      host the viewer as a systemd USER unit
   c4v skill list | install [--global] [--harness id,id]
                                      copy this skill into the AI harnesses on this machine
+  c4v publish <model.json> [--root ~/.c4-view]
+                                     copy a model AND its docs into the viewer's store
   c4v gate install | check --staged | defer --reason "..." | status | report | uninstall
                                      keep docs/c4 in step with the code, in YOUR repo (optional)
   c4v prefs pending | show | set <id>=<answer> | greeting
@@ -42,6 +44,8 @@ const USAGE = `c4v — agent-driven C4 renderer
                                      host the viewer as a systemd USER unit
   c4v skill list | install [--global] [--harness id,id]
                                      copy this skill into the AI harnesses on this machine
+  c4v publish <model.json> [--root ~/.c4-view]
+                                     copy a model AND its docs into the viewer's store
   c4v gate install | check --staged | defer --reason "..." | status | report | uninstall
                                      keep docs/c4 in step with the code, in YOUR repo (optional)
   c4v prefs pending | show | set <id>=<answer> | greeting
@@ -184,6 +188,7 @@ function argumentError(args: Args): number | null {
   }
   if (args.command === 'serve' || args.command === 'doctor') return null
   if (args.command === 'skill' || args.command === 'prefs' || args.command === 'gate') return null
+  if (args.command === 'publish') return null
   if (args.command === 'service') {
     const action = argvSecond(args)
     if (action !== 'install' && action !== 'uninstall' && action !== 'status') {
@@ -233,6 +238,10 @@ async function otherCommand(args: Args, argv: string[]): Promise<number | null> 
     case 'prefs': {
       const { prefsCommand } = await import('./cli-skill.ts')
       return prefsCommand(argv)
+    }
+    case 'publish': {
+      const { publishCommand } = await import('./cli-publish.ts')
+      return publishCommand(argv)
     }
     case 'gate': {
       const { gateCommand } = await import('./cli-gate.ts')

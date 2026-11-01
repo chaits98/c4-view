@@ -105,7 +105,13 @@ node src/cli.ts audit  model.json --strict --require-docs   # exit 0 is the deli
 node src/cli.ts render model.json --out out/                # one file per level, flat
 node src/cli.ts render model.json --expand c4v/cli --out out/   # the composed picture, as a page draws it
 node src/cli.ts serve  --port 8788                          # read-only viewer
+node src/cli.ts publish model.json [--as <id>]              # model AND docs into the viewer's store
 ```
+
+**Hover text comes from the docs, and `POST /api/diagrams` copies only the model.** To see your docs in the
+viewer, publish: `c4v publish model.json` copies the model and both doc directories into the store the viewer
+reads. A model POSTed without them opens with an empty hover panel — that is the difference the two commands
+make, and the reason to prefer `publish` whenever docs exist.
 
 Docs live beside the model, **flat**, one directory for the whole model: `docs/c4/<id>/nodes/<node-id>.md` and
 `docs/c4/<id>/edges/<from>__<to>.md`. `--require-docs` fails when any node or edge of any level has nothing to

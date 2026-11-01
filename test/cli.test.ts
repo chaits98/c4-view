@@ -240,3 +240,11 @@ test('--no-lens is geometry only, so a corpus fixture is judged on its drawing',
   // this corpus has drilled levels that are dead ends; --no-lens says "geometry only", and says so explicitly
   assert.equal(await run(['audit', fixture, '--strict', '--flat', '--no-lens']), 0)
 })
+
+test('c4v publish runs through the same entry point as everything else', async () => {
+  const dir = workdir()
+  const model = join(dir, 'solo.json')
+  writeFileSync(model, JSON.stringify({ id: 'solo', title: 'Solo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }))
+  assert.equal(await run(['publish', model, '--root', join(dir, 'store')]), 0)
+  assert.equal(await run(['publish']), 2, 'and a bare publish is a usage error')
+})

@@ -3,6 +3,19 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.8] — the docs you write reach the viewer you wrote them for
+
+### Fixed
+- **Published docs were invisible.** `POST /api/diagrams` copies the model body only, while every page reads
+  hover text from `<store>/<id>/<model-id>/nodes|edges` — so a repo with 30 written docs opened in the viewer
+  with an empty hover panel, and the feature looked broken. `c4v publish <model.json> [--as <id>]` copies the
+  model **and** both doc directories into the store; it reports how many docs travelled, and says so plainly
+  when there are none.
+
+### Documentation
+- Skill: `publish` documented next to `serve`, with the reason — `POST` carries the model, `publish` carries
+  the docs, and docs are what hover shows.
+
 ## [0.6.7] — a badge that means what the audit means
 
 ### Fixed
