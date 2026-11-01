@@ -119,7 +119,7 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
     # not), so compare like with like.
     coverage_floor() {
       [ -f coverage/lcov.info ] || return 1
-      awk -F: -v floor="${BRANCH_FLOOR:-88.5}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
+      awk -F: -v floor="${BRANCH_FLOOR:-89.5}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
         END { pct = (lh + bh) * 100 / (lf + bf); br = bh * 100 / bf;
               printf "lines+branches %d/%d = %.1f%% (floor 95) · branches %d/%d = %.1f%% (floor %d)\n", lh + bh, lf + bf, pct, bh, bf, br, floor;
               exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info

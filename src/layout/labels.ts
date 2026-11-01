@@ -67,7 +67,9 @@ function candidates(pts: Point[], w: number): Point[] {
     const coarse = Array.from({ length: 9 }, (_, i) => at(run.x1 + (run.len * i) / 8))
     out.push(...near, ...coarse)
   }
-  if (!out.length && pts.length) out.push({ x: pts[0].x, y: pts[0].y })
+  // a route with no horizontal run — or no points at all — still needs one candidate, or the
+  // caller indexes undefined and the whole page dies on a malformed route
+  if (!out.length) out.push({ x: pts[0]?.x ?? 0, y: pts[0]?.y ?? 0 })
   return out
 }
 
