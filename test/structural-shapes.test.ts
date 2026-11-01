@@ -21,6 +21,7 @@ const shapes: Array<{ name: string; nodes: Array<Record<string, unknown>>; edges
   { name: 'cycle', nodes: [node('a'), node('b'), node('c')], edges: [edge('a', 'b'), edge('b', 'c'), edge('c', 'a')] },
   { name: 'fan-out', nodes: [node('hub'), node('l'), node('r'), node('t')], edges: [edge('hub', 'l'), edge('hub', 'r'), edge('hub', 't')] },
   { name: 'islands', nodes: [node('a'), node('b'), node('x'), node('y')], edges: [edge('a', 'b'), edge('x', 'y')] },
+  { name: 'empty-ranks', nodes: [node('a', { rank: 0 }), node('z', { rank: 6 })], edges: [] },
   { name: 'pinned', nodes: [node('a', { rank: 0 }), node('b', { rank: 3 })], edges: [edge('a', 'b')] },
   { name: 'single', nodes: [node('solo')], edges: [] },
   { name: 'rank-gap', nodes: [node('a', { rank: 0 }), node('b', { rank: 5 })], edges: [edge('b', 'a')] },
@@ -48,3 +49,23 @@ for (const shape of shapes) {
     assert.ok(card.includes('audit clean'), 'and the card agrees')
   })
 }
+
+test('a gutter too narrow for one track per wire spreads them instead of overlapping', () => {
+  // four wires crossing the same gutter in a cramped layout: the base tracks do not fit
+  const nodes = [['a0', 'a1', 'a2', 'a3'].map((id) => ({ id, label: id, subtype: 'system' })), ['b0', 'b1', 'b2', 'b3'].map((id) => ({ id, label: id, subtype: 'system' }))].flat()
+  const edges = ['a0->b3', 'a1->b2', 'a2->b1', 'a3->b0'].map((pair) => {
+    const [from, to] = pair.split('->')
+    return { from, to }
+  })
+  const model = parseModel({ id: 'tight', title: 'Tight', layout: { rankGap: 60, lane: 4 }, levels: [{ path: '', nodes, edges }] })
+  const level = renderModel(model).levels[0]
+  assert.ok(level.audit.ok, `a cramped gutter still audits clean: ${JSON.stringify(level.audit)}`)
+  assert.equal(level.audit.wireWire, 0, 'and no two wires share a segment')
+})
+
+test('dummies stack in a rank without colliding', () => {
+  const nodes = [{ id: 'a', label: 'A', subtype: 'system', rank: 0 }, { id: 'b', label: 'B', subtype: 'system', rank: 0 }, { id: 'c', label: 'C', subtype: 'system', rank: 4 }]
+  const edges = [{ from: 'a', to: 'c' }, { from: 'b', to: 'c' }]
+  const level = renderModel(parseModel({ id: 'dummies', title: 'Dummies', levels: [{ path: '', nodes, edges }] })).levels[0]
+  assert.ok(level.audit.ok, `dummies are placed, not stacked: ${JSON.stringify(level.audit)}`)
+})

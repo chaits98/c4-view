@@ -132,3 +132,23 @@ test('a card whose svg has no viewBox is not called wide', () => {
   const flat = indexPage([{ id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }])
   assert.ok(!flat.includes('is-wide'), 'no width, no ratio, no crop')
 })
+
+test('a level with a path but no title is named by its path, in the crumbs and the select', () => {
+  const bare = parseModel({ id: 'bare-levels', title: 'Bare', levels: [
+    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] },
+    { path: 'api/v1', nodes: [{ id: 'b', label: 'B', subtype: 'system' }], edges: [] },
+  ] })
+  const html = viewerPage(bare, 'api/v1')
+  assert.ok(html.includes('<option value="api/v1" selected>api/v1</option>'), 'the select falls back to the path')
+  assert.ok(html.includes('<span>api/v1</span>'), 'and so does the crumb')
+})
+
+test('a node with a desc but no tech keeps the desc line', () => {
+  const one = parseModel({ id: 'desc-only', title: 'Desc', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', desc: 'does the thing' }], edges: [] }] })
+  assert.match(viewerPage(one, ''), /A<\/strong> <code>a<\/code> — does the thing/, 'no dangling separator, no empty tech')
+})
+
+test('an edge with no label still appears in the text version, without a dash', () => {
+  const one = parseModel({ id: 'unlabelled', title: 'U', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ from: 'a', to: 'b' }] }] })
+  assert.ok(viewerPage(one, '').includes('<li>A → B</li>'), 'the flow is listed with no trailing dash')
+})

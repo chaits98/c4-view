@@ -56,3 +56,10 @@ test('a corrupt prefs file is reported, not fatal, and the next write repairs it
   assert.equal(prefsCommand(['prefs', 'set', 'network=local'], prefsFile), 0)
   assert.match(readFileSync(prefsFile, 'utf8'), /"viewer.mode": "local"/)
 })
+
+test('a flag with no value, and a greeting with no version, are both handled', () => {
+  assert.equal(prefsCommand(['prefs', 'greeting', '--version'], prefsFile), 0, 'a dangling --version falls back to 0.0.0')
+  assert.equal(prefsCommand(['prefs', 'greeting'], prefsFile), 0, 'no flag at all is the same')
+  // a flag with no value is the same as no flag: the install falls back to the global default
+  assert.equal(skillCommand(['skill', 'install', '--harness'], home), 0)
+})

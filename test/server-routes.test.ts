@@ -281,6 +281,14 @@ test('a chunked body with no content-length is still measured', async () => {
       controller.enqueue(chunk)
     },
   })
-  const res = await fetch(`${base}/api/diagrams`, { method: 'POST', body, duplex: 'half' } as RequestInit)
-  assert.equal(res.status, 413, 'the size ceiling does not depend on a declared length')
+  // the server answers 413 and closes the connection while the client is still writing, so the
+  // client may see the status or a reset — either way the write was refused, not buffered
+  let outcome: number | 'reset' = 0
+  try {
+    outcome = (await fetch(`${base}/api/diagrams`, { method: 'POST', body, duplex: 'half' } as RequestInit)).status
+  } catch {
+    outcome = 'reset'
+  }
+  assert.ok(outcome === 413 || outcome === 'reset', `refused mid-stream: ${outcome}`)
+  assert.equal((await fetch(`${base}/health`)).status, 200, 'and the server is still there afterwards')
 })
