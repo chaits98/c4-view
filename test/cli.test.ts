@@ -148,3 +148,10 @@ test('--no-token is refused off loopback', async () => {
 test('service uninstall on a machine with no unit is not an error', async () => {
   assert.equal(await run(['service', 'uninstall']), 0)
 })
+
+test('the skill and prefs verbs are reachable from the one dispatch', async () => {
+  // they live in cli-skill.ts and are loaded lazily; this proves the wiring, not the behaviour
+  assert.equal(await run(['skill', 'list']), 0)
+  assert.equal(await run(['prefs', 'pending']), 0)
+  assert.equal(await run(['prefs', 'nonsense']), 2)
+})

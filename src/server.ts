@@ -40,8 +40,8 @@ export async function serve(opts: { port: number; root: string; host?: string; t
       const message = error instanceof Error ? error.message : String(error)
       if (res.headersSent) return res.destroy()
       // a route that names a diagram can say which file is broken; anything else can only say 500
-      const id = /\.(svg|png)$/.test(pathname ?? '') ? pathname?.slice(3).replace(/\.(svg|png)$/, '') : pathname?.startsWith('/d/') ? pathname.slice(3).split('/')[0] : null
-      if (id) return broken(req, res, decodeURIComponent(id))
+      const asked = pathname ? diagramRoute(pathname) : null
+      if (asked && 'id' in asked) return broken(req, res, asked.id)
       json(res, 500, { error: message })
     })
   })
