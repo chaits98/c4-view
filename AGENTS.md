@@ -76,6 +76,14 @@ Never commit with `--no-verify`. A hook slow enough to tempt you is a hook bug: 
 | "the skill is good" | a graded run from `tools/matrix.sh`, never an opinion |
 | "the diagram is right" | the rendered PNG, looked at — gates cannot see a wrong layer |
 
+**Damage guards are excluded, by name and with a reason.** A branch that can only run when the
+installation is broken (a missing package file, an old Node, a non-`Error` throw, a client that keeps
+writing past a refusal, Chromium running as root, a gutter with 198 lanes) is annotated inline with
+`/* node:coverage disable */ … /* node:coverage enable */` and a comment saying which state it covers.
+Two rules keep this honest: the annotation states the damage it covers, and the damage must not be
+simulatable — if a seam can simulate it (a bad path, an old version, no browser), write the seam and
+test it instead. `git log -S'node:coverage disable'` lists every exclusion ever added.
+
 **Coverage floor: 95 %, measured as Sonar measures it** — `(covered lines + covered branches) / (lines +
 branches)` over `coverage/lcov.info`. Sonar's own gate on this instance is the built-in "Sonar way" (80 %),
 which cannot be edited without admin rights; the floor lives in `check.sh` so the repo holds the higher bar
