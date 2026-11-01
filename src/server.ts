@@ -169,8 +169,11 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   if (url.searchParams.has('theme')) res.appendHeader('Set-Cookie', themeCookie(theme))
 
   switch (route.kind) {
-    case 'index':
-      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme))
+    case 'index': {
+      const sort = url.searchParams.get('sort') === 'title' ? 'title' : url.searchParams.get('sort') === 'audit' ? 'audit' : 'updated'
+      const filter = url.searchParams.get('audit') === 'fail' ? 'fail' : 'all'
+      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sort, filter))
+    }
     case 'health':
       return json(res, 200, { ok: true, diagrams: list(root).length })
     case 'diagrams':

@@ -26,8 +26,10 @@ ${body}
 </html>
 `
 
-const escape = (text: string): string =>
-  text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c)
+const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+
+/** The five characters that end an HTML attribute if they are not escaped. */
+const escape = (text: string): string => text.replace(/[&<>"']/g, (c) => ESCAPES[c])
 
 /** No diagram with that id. */
 export function missingDiagram(id: string): string {

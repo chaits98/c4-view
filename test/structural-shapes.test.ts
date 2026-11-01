@@ -23,6 +23,7 @@ const shapes: Array<{ name: string; nodes: Array<Record<string, unknown>>; edges
   { name: 'islands', nodes: [node('a'), node('b'), node('x'), node('y')], edges: [edge('a', 'b'), edge('x', 'y')] },
   { name: 'pinned', nodes: [node('a', { rank: 0 }), node('b', { rank: 3 })], edges: [edge('a', 'b')] },
   { name: 'single', nodes: [node('solo')], edges: [] },
+  { name: 'rank-gap', nodes: [node('a', { rank: 0 }), node('b', { rank: 5 })], edges: [edge('b', 'a')] },
   { name: 'parallels', nodes: [node('a'), node('b')], edges: [edge('a', 'b', { label: 'one' }), edge('a', 'b', { label: 'two', style: 'dep' })] },
   { name: 'grouped', nodes: [node('a'), node('b'), node('c')], edges: [edge('a', 'b'), edge('b', 'c')], groups: [{ id: 'g', label: 'Group', members: ['a', 'b'] }] },
 ]

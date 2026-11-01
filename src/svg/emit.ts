@@ -15,7 +15,7 @@ import { shapeOf, shapePath, shapeTextInset } from './shapes.ts'
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 /** labels/tech/identity/id/desc/drill are agent-written: escape every one of them. */
-const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c] ?? '')
+const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ESC[c])
 const n = (v: number): string => String(Math.round((Number.isFinite(v) ? v : 0) * 10) / 10)
 const STYLES: readonly EdgeStyle[] = ['flow', 'dep', 'tent', 'dir']
 

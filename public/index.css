@@ -181,3 +181,27 @@ body {
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-xs);
 }
+
+/* Sort and filter: plain links, current one marked — same shape as the scheme control. */
+.idx-sort-group {
+  display: flex;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+}
+
+.idx-sort {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--shape-full);
+  color: var(--on-surface-variant);
+  text-decoration: none;
+}
+
+.idx-sort[aria-current='true'] {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.idx-sort:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

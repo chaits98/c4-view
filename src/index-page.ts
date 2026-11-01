@@ -22,7 +22,7 @@ import type { Model } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
+const esc = (text: string): string => text.replace(/[&<>"']/g, (c) => ENTITIES[c])
 /** Wider than this and a thumbnail is a grey smear, so it crops instead (visual spec §6). */
 const WIDE = 3
 
@@ -82,6 +82,33 @@ function card(entry: IndexEntry): string {
   )
 }
 
+export type Sort = 'updated' | 'title' | 'audit'
+export type Filter = 'all' | 'fail'
+
+/** Newest first already exists; these are the other two questions a visitor asks. */
+const COMPARE: Record<Sort, (a: IndexEntry, b: IndexEntry) => number> = {
+  updated: byUpdated,
+  title: (a, b) => compareKeys(a.title.toLowerCase(), b.title.toLowerCase()) || compareKeys(a.id, b.id),
+  audit: (a, b) => (a.ok === b.ok ? byUpdated(a, b) : a.ok ? 1 : -1),
+}
+
+/**
+ * Sort and the one filter, as links: the state lives in the URL, so it survives a reload, a share
+ * and Back — and the current choice is readable as text, not only as a colour.
+ */
+function gridControl(sort: Sort, filter: Filter): string {
+  const sorts = (['updated', 'title', 'audit'] as const)
+    .map((value) => {
+      const on = value === sort ? ' aria-current="true"' : ''
+      const label = value === 'updated' ? 'newest' : value
+      return `<a class="idx-sort" href="/?sort=${value}${filter === 'fail' ? '&amp;audit=fail' : ''}"${on}>${label}</a>`
+    })
+    .join('')
+  const failing = filter === 'fail'
+  const filterLink = `<a class="idx-sort" href="/?sort=${sort}${failing ? '' : '&amp;audit=fail'}"${failing ? ' aria-current="true"' : ''}>${failing ? 'showing failures' : 'failures only'}</a>`
+  return `${sorts}${filterLink}`
+}
+
 /** Three plain links: the state is the URL, the cookie remembers it, no script runs. */
 function schemeControl(theme: Theme): string {
   return (['auto', 'light', 'dark'] as const)
@@ -89,15 +116,19 @@ function schemeControl(theme: Theme): string {
     .join('')
 }
 
-export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto'): string {
-  const sorted = [...entries].sort(byUpdated)
-  const cards = sorted.length
-    ? sorted.map(card).join('')
-    : `<div class="empty"><h1 class="t-headline-s">No diagrams yet</h1><p>This store is empty, so there is nothing to draw.</p><p>Send one: <code>c4v render model.json</code>, or <code>curl -X POST --data @model.json &lt;this-host&gt;/api/diagrams</code>.</p></div>`
+export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto', sort: Sort = 'updated', filter: Filter = 'all'): string {
+  const kept = filter === 'fail' ? entries.filter((entry) => !entry.ok) : [...entries]
+  const sorted = kept.sort(COMPARE[sort])
+  const empty =
+    filter === 'fail' && entries.length > 0
+      ? `<div class="empty"><h1 class="t-headline-s">Nothing is failing</h1><p>All ${entries.length} diagrams audit clean.</p><p><a href="/">Show every diagram</a>.</p></div>`
+      : `<div class="empty"><h1 class="t-headline-s">No diagrams yet</h1><p>This store is empty, so there is nothing to draw.</p><p>Send one: <code>c4v render model.json</code>, or <code>curl -X POST --data @model.json &lt;this-host&gt;/api/diagrams</code>.</p></div>`
+  const cards = sorted.length ? sorted.map(card).join('') : empty
   const diagramCount = sorted.length === 1 ? '1 diagram' : `${sorted.length} diagrams`
   return readFileSync(`${PUBLIC}index.html`, 'utf8')
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--THEMELINKS-->', () => schemeControl(theme))
+    .replace('<!--GRIDCONTROL-->', () => gridControl(sort, filter))
     .replace('<!--COUNT-->', () => esc(diagramCount))
     .replace('<!--CARDS-->', () => cards)
 }

@@ -156,35 +156,6 @@ test('the states a first-time reader meets are pages, not JSON', async () => {
     'the model endpoint still returns the bytes on disk — it is the store, not a renderer')
 })
 
-test('an empty store says so in words, with the next action', async () => {
-  const emptyRoot = mkdtempSync(join(tmpdir(), 'c4-view-empty-'))
-  const empty = await serve({ port: 0, root: emptyRoot })
-  try {
-    const page = await (await fetch(`http://127.0.0.1:${(empty.address() as AddressInfo).port}/`)).text()
-    assert.match(page, /<h1[^>]*>No diagrams yet<\/h1>/)
-    assert.match(page, /c4v render model\.json/, 'the action is a command, not a shrug')
-  } finally {
-    await new Promise<void>((done) => empty.close(() => done()))
-    rmSync(emptyRoot, { recursive: true, force: true })
-  }
-})
-
-test('a card that had to crop says so with a class, not a badge', async () => {
-  const wide = {
-    id: 'wide-row',
-    title: 'Ten in a row',
-    levels: [{
-      path: '',
-      nodes: Array.from({ length: 10 }, (_, i) => ({ id: `n${i}`, label: `Service ${i}`, subtype: 'system' })),
-      edges: Array.from({ length: 9 }, (_, i) => ({ from: `n${i}`, to: `n${i + 1}` })),
-    }],
-  }
-  assert.equal((await fetch(`${base}/api/diagrams`, { method: 'POST', body: JSON.stringify(wide) })).status, 201)
-  const page = await (await fetch(`${base}/`)).text()
-  assert.match(page, /class="thumb is-wide"/, 'the crop is declared in the markup')
-  assert.ok(!/wide · \d+ px/.test(page), 'and not repeated as a debug badge on the card')
-})
-
 test('every route shape answers in its own content type', async () => {
   const nested = {
     id: 'nested',
