@@ -18,7 +18,7 @@ Two halves that ship together:
 |---|---|---|
 | `./scripts/setup-dev.sh` | makes a fresh machine able to contribute: node floor, deps, `dist/` build, `core.hooksPath`, scanner image, then proves it | once per machine |
 | `./scripts/check.sh --fast` | gate, `tsc`, tests, goldens, audit, secrets — ~10 s | before **every** commit |
-| `./scripts/check.sh --full` | `--fast` + 4 skill scanners, SonarQube, `npm audit`, doctor — ~2 min | before push / release |
+| `./scripts/check.sh --full` | `--fast` + 4 skill scanners, SonarQube, a **95 % coverage floor**, `npm audit`, doctor — ~2 min | before push / release |
 | `./scripts/check.sh --list` | print the steps | when unsure what runs |
 | `npm run doctor` | can this machine run the tool at all | after install |
 | `npm run goldens` / `npm run goldens:update` | compare / deliberately re-baseline the 11 golden SVGs | after an intended geometry change |
@@ -72,9 +72,15 @@ Never commit with `--no-verify`. A hook slow enough to tempt you is a hook bug: 
 | "it renders" | `c4v audit <model> --strict` exit 0 with the gate lines pasted |
 | "geometry did not drift" | `npm run goldens` — 11 levels byte-identical |
 | "it still works" | `./scripts/check.sh --fast` all PASS |
-| "it ships" | `--full` PASS, including Sonar gate and the four skill scanners |
+| "it ships" | `--full` PASS, including Sonar's verdict, the four skill scanners and ≥95 % coverage |
 | "the skill is good" | a graded run from `tools/matrix.sh`, never an opinion |
 | "the diagram is right" | the rendered PNG, looked at — gates cannot see a wrong layer |
+
+**Coverage floor: 95 %, measured as Sonar measures it** — `(covered lines + covered branches) / (lines +
+branches)` over `coverage/lcov.info`. Sonar's own gate on this instance is the built-in "Sonar way" (80 %),
+which cannot be edited without admin rights; the floor lives in `check.sh` so the repo holds the higher bar
+regardless. New code arrives with the tests that cover it — a branch added "for later" is a branch nobody
+will ever exercise.
 
 Unit tests do not prove integration: use `curl` against a running `c4v serve`, or the testbed.
 

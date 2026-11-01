@@ -47,7 +47,7 @@ c4v prefs set <id>=<value>            record one answer
 c4v prefs greeting [--version x.y.z]  one sentence for the user, or nothing`
 
 /** `skill list|install`. Returns an exit code like every other verb. */
-export function skillCommand(argv: string[]): number {
+export function skillCommand(argv: string[], home: string = homedir()): number {
   const { has, opt, rest } = flags(argv)
   const action = rest[1]
   const all = harnesses()
@@ -70,21 +70,21 @@ export function skillCommand(argv: string[]): number {
     return 1
   }
   const named = (opt('harness') ?? '').split(',').map((id) => id.trim()).filter(Boolean)
-  const chosen = plan(all, { global: has('global') || named.length === 0, named, home: homedir() })
+  const chosen = plan(all, { global: has('global') || named.length === 0, named, home })
   if (!chosen.length) {
     console.error('no harness found. Name one: c4v skill install --harness agents')
     return 1
   }
   for (const item of chosen) {
-    const target = installInto(item.harness, homedir())
+    const target = installInto(item.harness, home)
     console.log(`  ${item.harness.id.padEnd(12)} ${item.reason.padEnd(8)} ${target}`)
   }
   console.log(`\n  ${chosen.length} harness(es) installed. Next: c4v prefs pending`)
   return 0
 }
 
-function prefsShow(prefs: Prefs): number {
-  console.log(`store: ${prefsPath()}`)
+function prefsShow(prefs: Prefs, file: string): number {
+  console.log(`store: ${file}`)
   const entries = Object.entries(prefs.answers)
   if (!entries.length) console.log('  (nothing answered yet — run: c4v prefs pending)')
   for (const [key, value] of entries) console.log(`  ${key} = ${value}`)
@@ -92,7 +92,7 @@ function prefsShow(prefs: Prefs): number {
   return 0
 }
 
-function prefsSet(all: Question[], prefs: Prefs, pair: string): number {
+function prefsSet(all: Question[], prefs: Prefs, pair: string, file: string): number {
   const [id, ...valueParts] = pair.split('=')
   const value = valueParts.join('=')
   if (!id || !value) {
@@ -102,7 +102,7 @@ function prefsSet(all: Question[], prefs: Prefs, pair: string): number {
   try {
     const next = answer(all, prefs, id, value)
     // answering stamps the version, so the NEXT release can say "updated" instead of asking again
-    savePrefs({ ...next, seen: { version: currentVersion(), at: new Date().toISOString() } })
+    savePrefs({ ...next, seen: { version: currentVersion(), at: new Date().toISOString() } }, file)
     console.log(`${id} = ${value}`)
     return 0
   } catch (error) {
@@ -112,13 +112,13 @@ function prefsSet(all: Question[], prefs: Prefs, pair: string): number {
 }
 
 /** `prefs show|pending|set|greeting`. */
-export function prefsCommand(argv: string[]): number {
+export function prefsCommand(argv: string[], file: string = prefsPath()): number {
   const { opt, rest } = flags(argv)
   const action = rest[1]
   const all = questions()
-  const prefs = loadPrefs()
+  const prefs = loadPrefs(file)
 
-  if (action === 'show' || action === undefined) return prefsShow(prefs)
+  if (action === 'show' || action === undefined) return prefsShow(prefs, file)
   if (action === 'pending') {
     const waiting = pending(all, prefs)
     console.log(JSON.stringify(waiting.map((q) => ({ id: q.id, question: q.question, options: q.options, default: q.default, why: q.why })), null, 2))
@@ -130,7 +130,7 @@ export function prefsCommand(argv: string[]): number {
     if (line) console.log(line)
     return 0
   }
-  if (action === 'set') return prefsSet(all, prefs, rest[2] ?? '')
+  if (action === 'set') return prefsSet(all, prefs, rest[2] ?? '', file)
   console.error(`unknown action "${action}"\n\n${SKILL_USAGE}`)
   return 2
 }

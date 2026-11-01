@@ -97,3 +97,77 @@ test('drill paths follow the level path, root has no prefix', () => {
   assert.deepEqual(drillTargets(model, model.levels[1]).get('db'), 'app/db')
   assert.deepEqual(levelOrder(model).map((l) => l.path), ['', 'app', 'app/db'])
 })
+
+/**
+ * The rejections, in one table: each row is a model an agent could actually write, and the fragment
+ * of the path the error must name. A validator that stops naming *where* is as useless as one that
+ * stops rejecting, so the message is part of the assertion.
+ */
+test('every malformed model is refused, naming the place it broke', () => {
+  const withLevel = (level: Record<string, unknown>) => ({ ...base(), levels: [{ path: '', nodes: [], edges: [], ...level }] })
+  const node = (over: Record<string, unknown>) => withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', ...over }] })
+  const cases: Array<[string, unknown, RegExp]> = [
+    ['not an object', 'nope', /must be a JSON object/],
+    ['no id', { ...base(), id: undefined }, /id: required/],
+    ['id with a space', { ...base(), id: 'not ok' }, /id: required/],
+    ['no title', { ...base(), title: '   ' }, /title: required/],
+    ['level not an object', { ...base(), levels: [42] }, /levels\[0\]: must be an object/],
+    ['node not an object', withLevel({ nodes: [7] }), /nodes\[0\]: must be an object/],
+    ['node with no id', node({ id: undefined }), /nodes\[0\]\.id: required/],
+    ['node with no label', node({ label: '' }), /nodes\[0\]\.label: required/],
+    ['unknown subtype', node({ subtype: 'blob' }), /subtype: not a C4 subtype \(blob\)/],
+    ['missing subtype', node({ subtype: undefined }), /subtype: not a C4 subtype \(missing\)/],
+    ['non-string tech', node({ tech: 22 }), /nodes\[0\]\.tech: must be a string when present/],
+    ['edge not an object', withLevel({ edges: ['a→b'] }), /edges\[0\]: must be an object/],
+    ['edge with an unknown from', withLevel({ edges: [{ from: 'ghost', to: 'a' }] }), /edges\[0\]\.from: unknown node "ghost"/],
+    ['edge with an unknown to', withLevel({ edges: [{ from: 'a', to: 'ghost' }] }), /edges\[0\]\.to: unknown node "ghost"/],
+    ['edge label of the wrong type', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', label: 3 }] }), /label: must be a string when present/],
+    ['unknown edge style', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', style: 'dotted' }] }), /style: one of flow\\|dep\\|tent\\|dir/],
+    ['group not an object', withLevel({ groups: [1] }), /groups\[0\]: must be an object/],
+    ['group with no label', withLevel({ groups: [{ id: 'g' }] }), /groups\[0\]\.label: required/],
+    ['flow naming a missing edge', withLevel({ flow: ['a->b'] }), /flow\[0\]: "a->b" is not an edge of this level/],
+    ['layout not an object', { ...base(), layout: 'wide' }, /layout: must be an object when present/],
+    ['node rank not an integer', node({ rank: 1.5 }), /nodes\[0\]\.rank: must be a non-negative integer/],
+    ['node rank below zero', node({ rank: -1 }), /nodes\[0\]\.rank: must be a non-negative integer/],
+    ['no levels at all', { ...base(), levels: [] }, /at least one level/],
+  ]
+  for (const [name, model, expected] of cases) {
+    assert.throws(
+      () => parseModel(model),
+      (error: Error) => error instanceof ModelError && expected.test(error.message),
+      name,
+    )
+  }
+})
+
+test('an optional field is normalised, and a bare level gets a name', () => {
+  const model = parseModel({
+    ...base(),
+    levels: [
+      { nodes: [{ id: 'a', label: 'A', subtype: 'system', tech: 'x', desc: 'y', identity: 'z', group: 'g' }], edges: [] },
+      { path: 'a', title: '', nodes: [{ id: 'b', label: 'B', subtype: 'system' }, { id: 'c', label: 'C', subtype: 'system' }], edges: [{ from: 'b', to: 'c' }] },
+    ],
+  })
+  const [overview, child] = model.levels
+  assert.equal(overview.path, '', 'a level with no path is the overview')
+  assert.equal(overview.title, 'Overview', 'and it is named')
+  assert.deepEqual(
+    { tech: overview.nodes[0].tech, desc: overview.nodes[0].desc, identity: overview.nodes[0].identity, group: overview.nodes[0].group },
+    { tech: 'x', desc: 'y', identity: 'z', group: 'g' },
+    'every present optional survives',
+  )
+  assert.equal(child.title, 'a', 'a blank title falls back to the path')
+  assert.equal(child.edges[0].style, 'flow', 'an edge with no style is a flow')
+  assert.equal(child.edges[0].label, undefined, 'and keeps no empty label')
+})
+
+test('a layout knob that cannot work is refused, not silently ignored', () => {
+  const withLayout = (layout: Record<string, unknown>) => ({ ...base(), layout })
+  assert.throws(() => parseModel(withLayout({ direction: 'TB' })), /"TB" is not implemented — use "LR"/, 'top-to-bottom is not built')
+  assert.throws(() => parseModel(withLayout({ direction: 'diagonal' })), /direction: "LR"/, 'and neither is anything else')
+  assert.throws(() => parseModel(withLayout({ rankGap: 0 })), /layout\.rankGap: must be a positive number/)
+  assert.throws(() => parseModel(withLayout({ rankGap: 'wide' })), /layout\.rankGap: must be a positive number/)
+  assert.throws(() => parseModel(withLayout({ gap: 8 })), /layout\.gap: unknown setting/, 'a typo is named, not ignored')
+  const kept = parseModel(withLayout({ direction: 'LR', rankGap: 96 }))
+  assert.deepEqual({ ...layoutOf(kept) }, { ...DEFAULT_LAYOUT, direction: 'LR', rankGap: 96 }, 'known knobs are kept')
+})
