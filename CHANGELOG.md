@@ -3,6 +3,14 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.6] — the health stamp tells you which code is actually running
+
+### Fixed
+- `/health` reported the version **on disk**, so a server left running from an older checkout looked current.
+  The stamp is now `version@startedAt`, frozen at import: a stale process keeps naming the version it loaded,
+  and its start time sits next to it. That is the difference between "the page is wrong" and "you are looking
+  at yesterday's process" — which is exactly what produced the card-says-clean / page-says-failed report.
+
 ## [0.6.5] — the component page keeps its inputs
 
 ### Fixed

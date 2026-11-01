@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { list } from '../src/store.ts'
-import { buildStamp } from '../src/build.ts'
+import { buildStamp, readVersion } from '../src/build.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'c4v-store-'))
 
@@ -23,7 +23,7 @@ test('a half-written model in the store is skipped by the listing, not fatal', (
   assert.ok(!list(root).some((d) => d.id === 'half-written'), 'a corrupt model is not offered')
 })
 
-test('a checkout with no readable package.json still answers health, as "dev"', () => {
-  assert.match(buildStamp(), /^\d+\.\d+\.\d+\+\d+$/, 'a real checkout reports version+mtime')
-  assert.equal(buildStamp(() => { throw new Error('no package.json') }), 'dev')
+test('the stamp is the version the process loaded, plus when it started', () => {
+  assert.match(buildStamp(), /^\d+\.\d+\.\d+@\d+$/, 'a stale process keeps its own version')
+  assert.equal(readVersion(() => { throw new Error('no package.json') }), 'dev')
 })
