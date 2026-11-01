@@ -254,8 +254,7 @@ async function dispatch(argv: string[]): Promise<number> {
   if (early !== null) return early
   const other = await otherCommand(args, argv)
   if (other !== null) return other
-  const file = args.file
-  if (!file) return 2
+  const file = args.file as string // argumentError has already refused a missing one
   const loaded = loadReport(file, args.opt('level'), args.opt('expand'))
   if (!loaded) return 2
   return reportCommand(

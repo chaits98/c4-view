@@ -76,3 +76,11 @@ test('a rank hint that leaves empty ranks still routes inside the drawing', () =
   assert.ok(Math.max(...coords) <= width, 'a route leaves the drawing')
   assert.ok(Math.min(...coords) >= 0, 'a route has a negative x')
 })
+
+test('renderFile reads the file once and can expand a box on the way through', () => {
+  const lensPath = join(new URL('..', import.meta.url).pathname, 'examples', 'lens.json')
+  const flat = renderFile(lensPath, 'context1')
+  assert.equal(flat.levels[0].path, 'context1')
+  const expanded = renderFile(lensPath, 'context1', 'context1')
+  assert.ok(expanded.levels[0].svg.includes('frame-context1'), 'the dashed frame is drawn')
+})

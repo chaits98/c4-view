@@ -3,6 +3,43 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.6.0] — the picture you can drill into, and a gate that keeps it true
+
+### Added
+- **Drill lens** — a level whose path is `host/...` opens the box from the level above, in place: the host
+  becomes a dashed frame holding its interior, and the outside boxes and their edges stay exactly where
+  they were. Edges that cross the boundary re-attach through **ports**, which are declared, not inferred:
+  `"ports": { "user->host": "router" }`. A crossing edge with no port is a gate failure.
+- **`/d/<id>/<path>` means "the parent, with that box open"** — the picture a reader expects when they click
+  a box. Every box with a level is a real `<a href>`, so middle-click, Back, copy-link and screen readers
+  all work without JavaScript.
+- **Docs beside the model** — `docs/c4/<id>/nodes/<node>.md` and `edges/<from>__<to>.md`, rendered in the
+  hover panel by a ~150-line markdown subset with no dependency. Escaping happens before decoration, so a
+  doc cannot inject markup. `c4v audit --require-docs` fails when a node or edge has nothing to say.
+- **A repo gate, and it is a choice** — `c4v gate install` writes `.githooks/pre-commit` (chaining any hook
+  already there) and points `core.hooksPath` at it. A commit that changes code outside `docs/c4/` must
+  update the model and its docs, or record one line: `c4v gate defer --reason "…"`. The deferral is tied to
+  the staged diff hash **and** the model hashes, so it cannot cover a later edit; `c4v gate report` lists
+  every one of them. `c4v gate uninstall` removes the hook and keeps the log.
+- **The trade-off is stated before anything is written**: the README section, the skill, and a `gate`
+  preference that has no default — the answer stays absent until a person gives it.
+
+### Changed
+- The hover panel renders markdown from the docs and sits beside the node instead of over it.
+- Expanded pages carry the docs of both levels, re-keyed to the ids that are drawn (`a` → `host/a`).
+- `c4v render --expand <path>` and `parseModel` share one read of the file: the model is parsed once.
+
+### Fixed
+- The flow packet no longer travels over an edge label: the dot is inserted under the chip layer.
+- The legend no longer looks like three checkboxes — it is a swatch plus a word, and the words say what the
+  kinds mean instead of repeating the model's vocabulary.
+
+### Gates
+- **100% coverage on the lines a branch adds** (`tools/coverage-new.mjs`: lcov ∩ `git diff -U0 main...HEAD`),
+  enforced in `check.sh` next to the 95% repo floor. A branch that cannot be reached is marked in the source
+  with `coverage:invariant` and the reason, and the tool prints every exemption it honours.
+- Sonar: 0 issues, 0 hotspots, gate OK; 394 tests.
+
 ## [0.5.0] — the checklist is finished
 
 ### Added

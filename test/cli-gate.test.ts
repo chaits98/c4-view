@@ -86,6 +86,13 @@ test('defer without a reason is refused, with the reason why', () => {
   assert.match(bad.out, /needs a reason/)
 })
 
+test('bare `c4v gate` is status, not a usage error', () => {
+  const root = repo()
+  const bare = run(root, ['gate'])
+  assert.equal(bare.code, 0)
+  assert.match(bare.out, /hook file:/)
+})
+
 test('check without --staged explains itself instead of guessing', () => {
   const root = repo()
   const bare = run(root, ['gate', 'check'])

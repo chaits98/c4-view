@@ -1,0 +1,234 @@
+{
+  "id": "c4-view",
+  "title": "c4-view",
+  "layout": {
+    "direction": "LR"
+  },
+  "levels": [
+    {
+      "path": "",
+      "title": "c4-view — one command, one picture",
+      "nodes": [
+        {
+          "id": "who",
+          "label": "Agent or owner",
+          "subtype": "person",
+          "tech": "any harness",
+          "desc": "The only actor. It reads a model or asks for a picture; it never edits the drawing."
+        },
+        {
+          "id": "cli",
+          "label": "c4v",
+          "subtype": "system",
+          "tech": "TypeScript, no runtime deps",
+          "desc": "One binary: render, audit, serve, skill, prefs, gate."
+        },
+        {
+          "id": "json",
+          "label": "model.json",
+          "subtype": "file-storage",
+          "tech": "JSON",
+          "desc": "The source of truth: levels, nodes, edges, ports, flow. Text, so git can diff it."
+        },
+        {
+          "id": "docs",
+          "label": "node & edge docs",
+          "subtype": "file-storage",
+          "tech": "Markdown",
+          "desc": "One file per node and per edge, in the user's repo. This is what hover shows."
+        },
+        {
+          "id": "out",
+          "label": "SVG / PNG",
+          "subtype": "file-storage",
+          "tech": "deterministic bytes",
+          "desc": "The drawing. Same model in, same bytes out."
+        },
+        {
+          "id": "viewer",
+          "label": "live viewer",
+          "subtype": "web-application",
+          "tech": "localhost + token",
+          "desc": "Read-only pages with drill, hover and one edge of flow at a time."
+        },
+        {
+          "id": "git",
+          "label": "git",
+          "subtype": "external-system",
+          "tech": "pre-commit hook",
+          "desc": "Optional gate: a commit that changes code must also change the picture, or say why not."
+        }
+      ],
+      "edges": [
+        {
+          "from": "who",
+          "to": "cli",
+          "label": "asks",
+          "style": "flow"
+        },
+        {
+          "from": "json",
+          "to": "cli",
+          "label": "reads",
+          "style": "dep"
+        },
+        {
+          "from": "docs",
+          "to": "cli",
+          "label": "hover",
+          "style": "dep"
+        },
+        {
+          "from": "cli",
+          "to": "out",
+          "label": "writes",
+          "style": "flow"
+        },
+        {
+          "from": "out",
+          "to": "viewer",
+          "label": "serves",
+          "style": "flow"
+        },
+        {
+          "from": "git",
+          "to": "cli",
+          "label": "gate",
+          "style": "flow"
+        }
+      ],
+      "flow": [
+        "who->cli",
+        "json->cli",
+        "cli->out",
+        "out->viewer"
+      ]
+    },
+    {
+      "path": "cli",
+      "title": "Inside c4v: text in, deterministic drawing out",
+      "ports": {
+        "who->cli": "argv",
+        "json->cli": "parse",
+        "docs->cli": "serve",
+        "cli->out": "write",
+        "git->cli": "gate"
+      },
+      "nodes": [
+        {
+          "id": "argv",
+          "label": "argv",
+          "subtype": "module",
+          "tech": "src/cli.ts",
+          "desc": "Turns words into one action. Argument errors are answered before any work is done."
+        },
+        {
+          "id": "parse",
+          "label": "model",
+          "subtype": "module",
+          "tech": "src/model.ts",
+          "desc": "Validates and refuses: every message names the file and the exact key that is wrong."
+        },
+        {
+          "id": "layout",
+          "label": "layout",
+          "subtype": "module",
+          "tech": "src/layout/*",
+          "desc": "Ranks, orders and places boxes. Geometry only — it never decides what is true."
+        },
+        {
+          "id": "route",
+          "label": "routes",
+          "subtype": "module",
+          "tech": "src/layout/route.ts",
+          "desc": "Orthogonal paths that avoid boxes; a crossing is a gate, not a preference."
+        },
+        {
+          "id": "emit",
+          "label": "svg",
+          "subtype": "module",
+          "tech": "src/svg/emit.ts",
+          "desc": "Layers back to front: groups, routes, nodes, chips. One file in, one svg out."
+        },
+        {
+          "id": "write",
+          "label": "writer",
+          "subtype": "module",
+          "tech": "src/cli-output.ts",
+          "desc": "Writes svg or png where asked, and turns gates into an exit code."
+        },
+        {
+          "id": "serve",
+          "label": "server",
+          "subtype": "module",
+          "tech": "src/server.ts",
+          "desc": "Read-only pages, token in a cookie, one route per thing you can look at."
+        },
+        {
+          "id": "gate",
+          "label": "gate",
+          "subtype": "module",
+          "tech": "src/gate.ts",
+          "desc": "Pre-commit truth: staged diff plus model hash, or one recorded reason."
+        }
+      ],
+      "edges": [
+        {
+          "from": "argv",
+          "to": "parse",
+          "label": "loads",
+          "style": "flow"
+        },
+        {
+          "from": "parse",
+          "to": "layout",
+          "label": "levels",
+          "style": "flow"
+        },
+        {
+          "from": "layout",
+          "to": "route",
+          "label": "boxes",
+          "style": "flow"
+        },
+        {
+          "from": "route",
+          "to": "emit",
+          "label": "paths",
+          "style": "flow"
+        },
+        {
+          "from": "emit",
+          "to": "write",
+          "label": "svg",
+          "style": "flow"
+        },
+        {
+          "from": "argv",
+          "to": "serve",
+          "label": "serve",
+          "style": "flow"
+        },
+        {
+          "from": "argv",
+          "to": "gate",
+          "label": "gate",
+          "style": "flow"
+        },
+        {
+          "from": "parse",
+          "to": "serve",
+          "label": "pages",
+          "style": "dep"
+        }
+      ],
+      "flow": [
+        "argv->parse",
+        "parse->layout",
+        "layout->route",
+        "route->emit",
+        "emit->write"
+      ]
+    }
+  ]
+}

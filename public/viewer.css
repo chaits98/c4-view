@@ -207,11 +207,11 @@ body {
   color: var(--on-surface-variant);
 }
 
+/* a swatch, not a checkbox: a bordered square next to a word reads as something you can tick */
 #c4-legend .c4-sw i {
-  width: 13px;
-  height: 13px;
-  border-radius: var(--shape-xs);
-  border: 1px solid var(--outline);
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
 }
 
 /* the flow bar: one edge at a time, bottom centre, play/pause + caption */

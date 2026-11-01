@@ -59,7 +59,8 @@ const defer: Action = (root, argv) => {
     console.log('  recorded in docs/c4/.gate-log.jsonl — commit it with the change it explains')
     return 0
   } catch (error) {
-    console.error(`  ${error instanceof Error ? error.message : String(error)}`)
+    // deferGate throws Error and nothing else; a bare value would read as "undefined" here and be a bug
+    console.error(`  ${(error as Error).message}`)
     return 2
   }
 }

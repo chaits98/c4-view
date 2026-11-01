@@ -142,3 +142,38 @@ test('repoRoot refuses a directory that is not a repository', () => {
   const dir = mkdtempSync(join(tmpdir(), 'c4v-nogit-'))
   assert.throws(() => repoRoot(dir), /not inside a git repository/)
 })
+
+test('nothing staged is not a failure: a hook run by hand must not block', () => {
+  const root = repo()
+  assert.match(verdict(root).lines[0], /nothing staged/)
+})
+
+test('a deferral for this diff that names a different model is stale, not a pass', () => {
+  const root = repo()
+  stage(root, 'app.js', '// v2\n')
+  const entry = deferGate(root, 'no model change needed')
+  // the same diff, recorded against a model that has since been replaced
+  const log = join(root, 'docs/c4/.gate-log.jsonl')
+  const stale = { ...entry, model: { 'docs/c4/shop.json': 'deadbeef' } }
+  writeFileSync(log, `${JSON.stringify(stale)}\n`)
+  const result = verdict(root)
+  assert.equal(result.ok, false)
+  assert.match(result.lines[1], /a deferral exists for this diff but the model changed since/)
+})
+
+test('installing over an existing hook chains it, and says what hooksPath was before', () => {
+  const root = repo()
+  mkdirSync(join(root, '.githooks'), { recursive: true })
+  writeFileSync(join(root, '.githooks/pre-commit'), '#!/bin/sh\necho old\n')
+  git(root, 'config', 'core.hooksPath', '.husky')
+  const lines = installGate(root)
+  const hook = readFileSync(join(root, '.githooks/pre-commit'), 'utf8')
+  assert.match(hook, /chain whatever this repo already had/)
+  assert.ok(lines.some((line) => line.includes('was ".husky"')), lines.join(' | '))
+})
+
+test('a repo with no docs directory has no models, and expansion of that list is empty', () => {
+  const root = mkdtempSync(join(tmpdir(), 'c4v-nodocs-'))
+  git(root, 'init', '-q', '.')
+  assert.deepEqual(models(root), {})
+})

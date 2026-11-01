@@ -136,6 +136,8 @@
     return docsCache
   }
 
+  const KIND_NAMES = { concept: 'concept', step: 'inside one component', tool: 'infrastructure' }
+
   function buildLegend() {
     if (!legend) return
     const seen = new Map()
@@ -152,7 +154,7 @@
         const dot = document.createElement('i')
         dot.style.background = fill
         const name = document.createElement('span')
-        name.textContent = kind
+        name.textContent = KIND_NAMES[kind] ?? kind
         item.append(dot, name)
         return item
       }),

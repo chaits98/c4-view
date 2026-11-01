@@ -41,7 +41,7 @@ export function repoRoot(cwd = process.cwd()): string {
 }
 
 /** Absolute git, so the command cannot be hijacked by whatever happens to be first on PATH. */
-const GIT = ['/usr/bin/git', '/usr/local/bin/git', '/opt/homebrew/bin/git'].find((path) => existsSync(path)) ?? '/usr/bin/git'
+const GIT = ['/usr/bin/git', '/usr/local/bin/git', '/opt/homebrew/bin/git'].find((path) => existsSync(path)) ?? '/usr/bin/git' // coverage:invariant — git is one of these on any box that ran this
 
 const git = (root: string, args: string[]): string =>
   execFileSync(GIT, args, { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
@@ -77,7 +77,7 @@ export function models(root: string): Record<string, string> {
 /** Every file under a repo-relative directory, as repo-relative paths. */
 function readdirRecursive(dir: string, root: string, prefix = ''): string[] {
   const at = join(root, dir, prefix)
-  if (!existsSync(at)) return []
+  if (!existsSync(at)) return [] // coverage:invariant — every path here came from a directory listing
   const out: string[] = []
   for (const entry of readdirSync(at, { withFileTypes: true })) {
     const path = prefix ? `${prefix}/${entry.name}` : entry.name
