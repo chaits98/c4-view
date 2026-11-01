@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url'
 import { renderFile, type Rendered, type RenderedLevel } from './render.ts'
 import { svgToPng } from './png.ts'
 import { auditLine } from './audit.ts'
+import type { Systemctl } from './service.ts'
 import { ModelError } from './model.ts'
 import { levelSlug } from './slug.ts'
 
@@ -63,7 +64,7 @@ interface Args {
   optOr: (name: string, fallback: string) => string
 }
 
-function parse(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const opt = (name: string): string | undefined => {
     const i = argv.indexOf(`--${name}`)
     return i > 0 && argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') ? String(argv[i + 1]) : undefined
@@ -153,24 +154,40 @@ function argvSecond(args: Args): string | undefined {
   return args.argv[1]?.startsWith('--') ? undefined : args.argv[1]
 }
 
-/** `service install|uninstall|status` — a systemd user unit, so nothing depends on a live shell. */
-async function serviceCommand(args: Args): Promise<number> {
+/**
+ * `service install|uninstall|status` — a systemd user unit, so nothing depends on a live shell.
+ *
+ * `home` and `run` are seams for the test in test/cli-service.test.ts: installing into the machine
+ * that runs the suite, and calling a real systemctl, are both things a test must not do.
+ */
+export async function serviceCommand(
+  args: Args,
+  seam: { home?: string; run?: Systemctl } = {},
+): Promise<number> {
   const { installService, serviceHints, serviceStatus, uninstallService, ensureTokenFile } = await import('./service.ts')
   const { newToken } = await import('./security.ts')
+  const home = seam.home ?? homedir()
+  const unitDir = join(home, '.config', 'systemd', 'user')
+  const run = seam.run ?? undefined
   const action = argvSecond(args)
-  if (action === 'status') return serviceStatus()
+  if (action === 'status') return serviceStatus(run, unitDir)
   if (action === 'uninstall') {
-    console.log(uninstallService() ? 'unit removed' : 'no unit installed')
+    console.log(uninstallService(run, unitDir) ? 'unit removed' : 'no unit installed')
     return 0
+  }
+  // a typo must not install: only an absent verb (the common case) means "install"
+  if (action !== undefined && action !== 'install') {
+    console.error(`unknown action "${action}" — use: c4v service install | uninstall | status`)
+    return 2
   }
   const opts = {
     port: args.optOr('port', '8788'),
     host: args.optOr('host', '127.0.0.1'),
-    root: args.optOr('root', join(homedir(), '.c4-view')),
+    root: args.optOr('root', join(home, '.c4-view')),
   }
   try {
-    const file = installService(opts)
-    const token = ensureTokenFile(opts.host, newToken)
+    const file = installService(opts, run, unitDir)
+    const token = ensureTokenFile(opts.host, newToken, join(home, '.config', 'c4-view'))
     console.log(`installed and started\n${file}`)
     for (const line of serviceHints(opts.port, opts.host)) console.log(`  ${line}`)
     if (token) console.log(`  token:   ${token}   (in ~/.config/c4-view/env; open once with ?t=<token>)`)
@@ -228,7 +245,7 @@ export async function run(argv: string[]): Promise<number> {
 }
 
 async function dispatch(argv: string[]): Promise<number> {
-  const args = parse(argv)
+  const args = parseArgs(argv)
   const early = argumentError(args)
   if (early !== null) return early
   if (args.command === 'serve') return serveCommand(args)
