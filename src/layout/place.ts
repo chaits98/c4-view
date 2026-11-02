@@ -35,6 +35,8 @@ function sizeItem(item: RankItem, specs: Map<string, NodeSpec>, ports: Ports, cf
   if (item.dummy) return { w: item.w, h: item.h }
   const node = specs.get(item.id)
   if (!node) return { w: item.w, h: item.h }
+  // the nested renderer sizes a host box to the picture it holds, so that box is already measured
+  if (node.w !== undefined && node.h !== undefined) return { w: node.w, h: node.h }
   const t = measureNode(node, cfg, m)
   const p = Math.max(ports.out.get(item.id) ?? 0, ports.into.get(item.id) ?? 0)
   const box = { w: Math.ceil(t.w), h: Math.ceil(Math.max(t.h, (p + 1) * cfg.portGap)) }

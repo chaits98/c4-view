@@ -49,6 +49,9 @@ export interface NodeSpec {
   rank?: number
   /** boundary group id this node belongs to (see LevelSpec.groups) */
   group?: string
+  /** laid-out size, set by the nested renderer so a host box can hold the picture drawn inside it */
+  w?: number
+  h?: number
 }
 
 export interface EdgeSpec {
@@ -67,6 +70,8 @@ export interface GroupSpec {
 }
 
 export interface LevelSpec {
+  /** true on the picture the full view builds: every level open, frames inside frames */
+  nested?: boolean
   /** drill path: '' for root, 'app' for a child of node `app`, 'app/db' below that */
   path: string
   title?: string

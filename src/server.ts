@@ -7,7 +7,8 @@ import { ModelError, levelOf, parseModel } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { docsDir, levelDocs } from './docs.ts'
 import { pictureAudits, renderExpanded, renderModel } from './render.ts'
-import { fullView } from './expand-all.ts'
+import { nestedLevel } from './nest.ts'
+import { paletteOf } from './theme.ts'
 import { lensReport } from './lens.ts'
 import { list, loadModel, modelFile, save } from './store.ts'
 import { viewerPage } from './viewer-page.ts'
@@ -88,8 +89,8 @@ function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: s
   // `?view=full` draws every level opened at once; anything else is the drill, one level with its frames
   // coverage:invariant — node always sets req.url for an http request
   const view = new URL(req.url ?? '/', 'http://localhost').searchParams.get('view')
-  const spec = view === 'full' ? fullView(model) : undefined
-  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme, docsFor(root, model, id, level, found), spec))
+  const full = view === 'full' ? nestedLevel(model, paletteOf(theme)) : undefined
+  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme, docsFor(root, model, id, level, found), undefined, full))
 }
 
 /**

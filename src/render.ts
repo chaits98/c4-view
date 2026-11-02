@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { parseModel, layoutOf, drillTargets, levelOrder } from './model.ts'
 import { lensReport, type LensReport } from './lens.ts'
 import { expandLevel } from './expand.ts'
-import { fullView } from './expand-all.ts'
+import { nestedLevel } from './nest.ts'
 import { rank } from './layout/rank.ts'
 import { order } from './layout/order.ts'
 import { place } from './layout/place.ts'
@@ -116,10 +116,9 @@ export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DAR
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: report }
 }
 
-/** The whole model as one picture: every level opened in place. */
+/** The whole model as one picture: every level drawn in place, inside its host's box. */
 export function renderAll(model: Model): Rendered {
-  const level = fullView(model)
-  return { id: model.id, title: `${model.title} — every level`, levels: [renderLevel(model, level)], lens: lensReport(model) }
+  return { id: model.id, title: `${model.title} — every level`, levels: [nestedLevel(model)], lens: lensReport(model) }
 }
 
 /** Render every level (root first, then by depth). */
