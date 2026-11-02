@@ -21,7 +21,7 @@ import { audit } from './audit.ts'
 import { placeLabels } from './layout/labels.ts'
 import { measure } from './metrics.ts'
 import { flowIndex } from './flow.ts'
-import type { AuditReport, LevelSpec, Model } from './types.ts'
+import type { AuditReport, LayoutConfig, LevelSpec, Model, Ranked } from './types.ts'
 
 export interface RenderedLevel {
   path: string
@@ -64,7 +64,7 @@ export function transpose(placed: ReturnType<typeof place>, routed: ReturnType<t
  * One layout attempt at a given width budget.
  */
 function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>, labels = true): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
-  const placed = place(order(rank(level, cfg), cfg), level, cfg, measure)
+  const placed = place(maybeOrder(rank(level, cfg), cfg), level, cfg, measure)
   const routed = route(placed, cfg, measure, labels)
   return { placed, routed, audit: audit(placed, routed, level) }
 }
@@ -120,6 +120,13 @@ export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DAR
 export function renderAll(model: Model): Rendered {
   const level = fullView(model)
   return { id: model.id, title: `${model.title} — every level`, levels: [renderLevel(model, level)], lens: lensReport(model) }
+}
+
+/** Bar-ycentre sweeps minimise crossings, but they also interleave a frame's members with its
+ *  neighbours' — in a nested picture the scope-grouped order from `rank` is the one that keeps each
+ *  frame a contiguous block, so it is left alone there. */
+function maybeOrder(ranked: Ranked, cfg: LayoutConfig): Ranked {
+  return ranked.ranks.some((row) => row.some((id) => id.includes('/'))) ? ranked : order(ranked, cfg)
 }
 
 /** Render every level (root first, then by depth). */

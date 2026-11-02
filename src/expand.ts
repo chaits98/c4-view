@@ -82,7 +82,9 @@ export function composeInto(parent: LevelSpec, child: LevelSpec, hostId: string,
   // bounding box of its contents, and a frame that skipped its own nested frames would not enclose them
   groups.push({ id: frameId, label: host.label, members: [...inner.values()] })
 
-  const { edges, remapped } = composeEdges(child, hostId, inner, shared, crossing)
+  // a drill needs only the edges that touch the frame; a full view keeps the rest too, because their ends
+  // are still on the page — that is what makes every node connected in one picture
+  const { edges, remapped } = composeEdges(child, hostId, inner, shared, all ? parent.edges : crossing)
   const flow = composedFlow(parent, child, inner, remapped) ?? []
   return {
     frameId,
@@ -135,10 +137,12 @@ function composeEdges(
   hostId: string,
   inner: Map<string, string>,
   shared: Map<string, string>,
-  crossing: EdgeSpec[],
+  carried: EdgeSpec[],
 ): { edges: EdgeSpec[]; remapped: Map<string, string> } {
   const remapped = new Map<string, string>()
-  const outer = crossing.map((edge) => {
+  const outer = carried.map((edge) => {
+    // an edge that does not touch the host keeps both ends: only a crossing edge has a port to land on
+    if (!crossesInto(edge, hostId)) return edge
     const out = remap(edge, hostId, inner, child)
     remapped.set(edgeKey(edge), edgeKey(out))
     return out
