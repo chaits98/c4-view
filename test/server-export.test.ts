@@ -69,7 +69,7 @@ test('html export is a self-contained page, and layers is every level', async ()
   assert.match(page.body, /<svg/)
   const layers = await get('/d/ship.layers')
   assert.match(layers.name, /ship-layers\.html/)
-  assert.equal((layers.body.match(/<h2>/g) ?? []).length, 3, 'the full diagram, then the two levels')
+  assert.equal((layers.body.match(/<h2>/g) ?? []).length, 1, 'one picture: the full diagram holds every level')
 })
 
 test('the full view exports a png too, and the second ask reuses the file', async () => {
@@ -93,6 +93,17 @@ test('the svg export follows the theme it was asked for', async () => {
   const light = await get('/d/ship.svg?level=box&theme=light')
   assert.notEqual(dark.body, light.body, 'two schemes, two files')
   assert.match(dark.body, /<svg/)
+})
+
+test('a light png is its own file, not the dark render under another name', async () => {
+  const light = await fetch(`${base}/d/ship.png?level=box&theme=light`)
+  const dark = await fetch(`${base}/d/ship.png?level=box&theme=dark`)
+  assert.equal(light.status, 200)
+  assert.equal(dark.status, 200)
+  const a = Buffer.from(await light.arrayBuffer())
+  const b = Buffer.from(await dark.arrayBuffer())
+  assert.ok(a.length > 0 && b.length > 0)
+  assert.notEqual(a.toString('base64'), b.toString('base64'), 'two schemes, two renders')
 })
 
 test('an export of a diagram or a level that is not there is a 404', async () => {

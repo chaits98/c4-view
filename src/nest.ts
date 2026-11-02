@@ -97,7 +97,7 @@ function embed(svg: string, at: Map<string, { x: number; y: number }>, inner: Ma
 /**
  * Every level of the model in one picture. Bottom-up, so a child is finished before its host is sized.
  */
-export function nestedPicture(model: Model, theme: Theme = DARK): Picture {
+export function nestedPicture(model: Model, theme: Theme = DARK, paint = false): Picture {
   const cfg = layoutOf(model)
   const pics = new Map<string, Picture>()
   const deepest = [...model.levels].sort((a, b) => depthOf(b.path) - depthOf(a.path))
@@ -110,7 +110,9 @@ export function nestedPicture(model: Model, theme: Theme = DARK): Picture {
       if (box) at.set(host, { x: box.x, y: box.y })
     }
     // each level keeps its own narration: without the flow map the picture has no steps to walk
-    const svg = embed(emit(placed, routed, spec, cfg, theme, { flow: flowIndex(spec) }), at, inner)
+    // the outermost picture paints the canvas; the nested ones would paint over their host's contents
+    const background = paint && level.path === '' ? { background: theme.bg } : {}
+    const svg = embed(emit(placed, routed, spec, cfg, theme, { flow: flowIndex(spec), ...background }), at, inner)
     const audit = emptyAudit()
     addAudit(audit, report)
     for (const pic of inner.values()) addAudit(audit, pic.audit)
@@ -130,7 +132,7 @@ export function nestedPicture(model: Model, theme: Theme = DARK): Picture {
 }
 
 /** The nested picture shaped like a level render, so the viewer and the CLI take it unchanged. */
-export function nestedLevel(model: Model, theme: Theme = DARK): RenderedLevel {
-  const pic = nestedPicture(model, theme)
+export function nestedLevel(model: Model, theme: Theme = DARK, paint = false): RenderedLevel {
+  const pic = nestedPicture(model, theme, paint)
   return { path: 'full', title: 'Every level', svg: pic.svg, audit: { ...pic.audit, aspect: round2(pic.w / Math.max(1, pic.h)) } }
 }

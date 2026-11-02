@@ -139,6 +139,8 @@ export interface EmitOptions {
   drill?: Map<string, string>
   flow?: Map<string, number>
   linkBase?: string
+  /** paint the canvas behind the drawing: an exported file has no page CSS to do it */
+  background?: string
 }
 
 export function emit(
@@ -158,7 +160,10 @@ export function emit(
     ...chipLayer(routed, cfg, theme),
     ...groupLabelLayer(placed, theme),
   ]
+  const canvas = options.background
+    ? `<rect class="c4-canvas" x="0" y="0" width="${n(w)}" height="${n(h)}" fill="${options.background}"/>`
+    : ''
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +
-    `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}` +
+    `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}${canvas}` +
     `<g class="c4-root" transform="translate(8,8)">${body.join('')}</g></svg>`
 }

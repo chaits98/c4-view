@@ -39,13 +39,29 @@ test('the full export says every level and carries the nested picture', () => {
   assert.match(html, /data-host="api"/, 'the nested picture is what gets exported')
 })
 
-test('all layers opens with the full diagram, then every level', () => {
+test('all layers is the full diagram and nothing else', () => {
   const html = exportLayers(model(), theme)
-  assert.equal((html.match(/<h2>/g) ?? []).length, 3, 'the full diagram, then one heading per level')
-  assert.match(html, /<h2>Full diagram<\/h2>/, 'the whole model comes first: parts alone are not "all layers"')
-  assert.match(html, /data-host="api"/, 'and it is the nested picture, not a level')
-  assert.match(html, /2 levels/)
-  assert.match(html, /API container/, 'a named level uses its title, not its path')
+  assert.equal((html.match(/<h2>/g) ?? []).length, 1, 'one picture: stacking the levels repeated them at other scales')
+  assert.match(html, /<h2>Full diagram<\/h2>/)
+  assert.match(html, /data-host="api"/, 'it is the nested picture, so every level is already inside it')
+  assert.match(html, /2 levels in one picture/)
+})
+
+test('an exported drawing paints its own canvas — a file has no page behind it', () => {
+  const dark = exportOne(model(), '', true, theme)
+  assert.match(dark, /class="c4-canvas"/, 'the rect is there before any box')
+  const light = exportOne(model(), '', true, 'light')
+  assert.notEqual(
+    /class="c4-canvas"[^>]*fill="([^"]+)"/.exec(dark)?.[1],
+    /class="c4-canvas"[^>]*fill="([^"]+)"/.exec(light)?.[1],
+    'two schemes, two canvases',
+  )
+})
+
+test('the flow bar follows the page scheme, never a dark bar with dark ink', () => {
+  const light = exportOne(model(), '', true, 'light')
+  assert.match(light, /body\.light\{--c4-bar:#f3edf7;--c4-ink:#1d1b20\}/)
+  assert.match(light, /background:var\(--c4-bar\);color:var\(--c4-ink\)/)
 })
 
 test('an exported page carries the flow narration, driven by the same module as the viewer', () => {
@@ -55,13 +71,6 @@ test('an exported page carries the flow narration, driven by the same module as 
   assert.match(html, /<script type="module">/, 'and the driver ships with it')
   const inlined = html.slice(html.indexOf('<script'))
   assert.ok(!/^import /m.test(inlined), 'the inlined module has no imports to resolve')
-})
-
-test('a level with no title of its own is named by its path', () => {
-  // parseModel always writes a title, but a caller may hand-build a spec without one
-  const bare = { id: 'shop', title: 'Shop', layout: {}, levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] } as never
-  const html = exportLayers(bare, theme)
-  assert.match(html, /<h2>\(root\)<\/h2>/, 'no title, no path: the root says so')
 })
 
 test('the download menu carries the level and the view it was asked from', () => {

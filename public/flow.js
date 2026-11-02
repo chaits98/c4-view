@@ -22,26 +22,33 @@ if (rootG) {
   /** reduced motion still advances, as a slide deck: no interpolation at all. */
   const STEPPED = 1600
 
-  const domPaths = [...svg.querySelectorAll('path[data-flow]')]
+  // the whole stage, not just the first svg: a nested picture holds one svg per level, and each numbers its
+  // own steps from 1 — so an edge sorts by which picture it lives in first, then by its step inside it
+  const domPaths = [...stage.querySelectorAll('path[data-flow]')]
   // a chip carries its edge key now; the positional pairing stays as the fallback for an
   // older exported svg
-  const chipEls = [...svg.querySelectorAll('g[data-chip]')]
+  const chipEls = [...stage.querySelectorAll('g[data-chip]')]
   const byKey = new Map(chipEls.filter((g) => g.dataset.key).map((g) => [g.dataset.key, g.textContent.trim()]))
   const positional = chipEls.length === domPaths.length
     ? new Map(domPaths.map((el, i) => [el.dataset.key, chipEls[i].textContent.trim()]))
     : new Map()
+  const pictureOf = (el) => {
+    const own = el.closest('svg')
+    return own ? [...stage.querySelectorAll('svg')].indexOf(own) : 0
+  }
   const edges = domPaths
     .map((el) => ({
       el,
+      picture: pictureOf(el),
       step: Number(el.dataset.flow),
       key: el.dataset.key || '',
       label: byKey.get(el.dataset.key) ?? positional.get(el.dataset.key) ?? '',
     }))
     .filter((e) => Number.isFinite(e.step))
-    .sort((a, b) => a.step - b.step)
+    .sort((a, b) => (a.picture - b.picture) || (a.step - b.step))
 
   // the caption names nodes the way the drawing does; viewer.js owns that reading
-  const nodeById = new Map([...svg.querySelectorAll('g[data-id]')].map((g) => [g.dataset.id, g]))
+  const nodeById = new Map([...stage.querySelectorAll('g[data-id]')].map((g) => [g.dataset.id, g]))
   const labelOf = (id) => {
     const node = nodeById.get(id)
     const read = window.__c4 && window.__c4.labelOf

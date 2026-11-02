@@ -103,7 +103,7 @@ const MAX_WIDTH = 1600
 const WIDE_ASPECT = 3
 
 /** Render one level: the whole pipeline, in order, with no hidden state. */
-export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>, linkBase?: string): RenderedLevel {
+export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DARK, drill?: Map<string, string>, linkBase?: string, paint = false): RenderedLevel {
   const cfg = layoutOf(model)
   const { placed, routed, audit: report } = layoutLevel(level, cfg)
   // a composed (expanded) level is not in the model, so its drill map is supplied by the caller
@@ -111,6 +111,8 @@ export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DAR
     drill: drill ?? drillTargets(model, level),
     flow: flowIndex(level),
     linkBase,
+    // an exported svg has no page behind it; the viewer's page does, so it does not pay for the rect
+    ...(paint ? { background: palette.bg } : {}),
   })
   // coverage:invariant — a level always has a path; 'Overview' is for a hand-built spec
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: report }
@@ -122,14 +124,14 @@ export function renderAll(model: Model): Rendered {
 }
 
 /** Render every level (root first, then by depth). */
-export function renderModel(model: Model, only?: string, palette: Theme = DARK, linkBase?: string): Rendered {
+export function renderModel(model: Model, only?: string, palette: Theme = DARK, linkBase?: string, paint = false): Rendered {
   const levels = levelOrder(model).filter((l) => only === undefined || l.path === only)
   if (!levels.length) {
     const known = levelOrder(model).map((l) => l.path || '(root)').join(', ')
     throw new Error(`no level "${only ?? ''}" — this model has: ${known}`)
   }
   const lens = lensReport(model)
-  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette, undefined, linkBase)), lens }
+  return { id: model.id, title: model.title, levels: levels.map((level) => renderLevel(model, level, palette, undefined, linkBase, paint)), lens }
 }
 
 /**

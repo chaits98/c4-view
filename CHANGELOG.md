@@ -3,6 +3,21 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.2] — the export is the picture, the whole picture, and it paints its own canvas
+
+Four things a reader hit at once:
+
+- **An exported svg had no background.** The drawing carried dark-mode colours on a transparent canvas, so a
+  browser painted it on white and every label washed out. Exports now paint their own canvas rect
+  (`c4-canvas`) in the palette they were asked for.
+- **A light PNG was the dark render.** `pngFor` cached one file per level and ignored the scheme, so the
+  second export in another theme was served the first one's picture. The cache key carries the scheme now.
+- **`All layers` stacked every level after the full diagram.** The nested picture already holds every level;
+  the extra sections repeated the same boxes at other scales. It is the full diagram only.
+- **The flow bar in an exported page was a dark pill with dark ink.** It inherited the page's text colour onto
+  a hard-coded dark background. The bar takes its own `--c4-bar` / `--c4-ink` per scheme, and the driver now
+  walks every nested picture in order, so the full diagram narrates all of its edges (1 / 27) instead of none.
+
 ## [0.12.1] — the layers download keeps the scheme too
 
 The one export that ignored the theme was the one that ignores the level: `All layers` now carries `theme=`
