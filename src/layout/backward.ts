@@ -99,8 +99,12 @@ function corridorFor(chain: Chain, k: number, ctx: {
 }
 
 export function planBackward(placed: Placed, cfg: LayoutConfig, ports: Map<string, number>, tracks: Map<number, Map<string, number>>): Map<string, Back> {
+  // One set for every gutter, holding every track already drawn anywhere: a corridor that only avoided its
+  // OWN gutter's tracks could, and did, land on a track in another gutter — two wires sharing one vertical.
+  const shared = new Set<number>()
+  for (const t of tracks.values()) for (const x of t.values()) shared.add(x)
   const used = new Map<number, Set<number>>()
-  for (const [g, t] of tracks) used.set(g, new Set(t.values()))
+  for (const g of tracks.keys()) used.set(g, shared)
   const lastRank = Math.max(...[...placed.items.values()].map((it) => it.rank))
   const chains = placed.chains.filter((c) => c.backward).sort((a, b) => compareKeys(a.key, b.key))
   const out = new Map<string, Back>()

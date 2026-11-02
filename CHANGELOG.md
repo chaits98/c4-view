@@ -3,6 +3,24 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.10.0] — a second view: every level open at once
+
+The viewer had one mode: a level, with one box drilled. It now has two, and the second is the whole model in a
+single picture — the root's boxes, each container's components inside its dashed frame, and those frames inside
+their own.
+
+- **`?view=full`** serves it, and the header carries **Drill in / Full diagram** as real links, the current mode
+  marked with `aria-current`.
+- **`c4v render model.json --all`** writes the same picture to a file (and `--png` with it).
+- Nesting is a fold, not a second engine: `composeInto` is applied bottom-up, so a child arrives already holding
+  its frames and the parent only nests them. Every geometry gate applies to the result — the app's own model
+  composes to 24 nodes, 13 edges and 3 nested frames, and audits clean at 0.69 crossings per edge.
+- A port that named a drilled host — `cli->server` — is matched after the fold by its far side
+  (`cli/args->server`), and re-pointed at the frame's entry when the host becomes a frame. Both are what make
+  "one picture" possible without hand-written ids.
+- The return corridor now avoids every gutter's tracks, not just its own: a backward wire could land on a
+  forward wire's vertical and read as one wire that splits.
+
 ## [0.9.5] — two fits, one meaning each
 
 The three fit buttons are two, and they mean the same thing whatever the drawing's shape:

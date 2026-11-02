@@ -28,7 +28,7 @@
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readModel, renderExpanded, renderModel, type Rendered } from './render.ts'
+import { readModel, renderAll, renderExpanded, renderModel, type Rendered } from './render.ts'
 import { reportCommand } from './cli-output.ts'
 import type { Systemctl } from './service.ts'
 import type { Model } from './types.ts'
@@ -123,10 +123,17 @@ async function serveCommand(args: Args): Promise<number> {
 
 /** Render the model, or print why it could not be read. */
 /** Read, validate and render once; both the picture and the model come back from the same parse. */
-function loadReport(file: string, level: string | undefined, expand?: string): { report: Rendered; model: Model } | null {
+/** Which picture the command asked for: the whole model, one drill, or the levels as written. */
+function reportFor(model: Model, level: string | undefined, expand: string | undefined, all: boolean): Rendered {
+  if (all) return renderAll(model)
+  if (expand) return renderExpanded(model, expand)
+  return renderModel(model, level)
+}
+
+function loadReport(file: string, level: string | undefined, expand?: string, all = false): { report: Rendered; model: Model } | null {
   try {
     const model = readModel(file)
-    const report = expand ? renderExpanded(model, expand) : renderModel(model, level)
+    const report = reportFor(model, level, expand, all)
     return { report, model }
   } catch (error) {
     if (error instanceof ModelError) console.error(error.message)
@@ -244,7 +251,7 @@ async function dispatch(argv: string[]): Promise<number> {
   const other = await otherCommand(args, argv)
   if (other !== null) return other
   const file = args.file
-  const loaded = loadReport(file, args.opt('level'), args.opt('expand'))
+  const loaded = loadReport(file, args.opt('level'), args.opt('expand'), args.has('all'))
   if (!loaded) return 2
   return reportCommand(
     {

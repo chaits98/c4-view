@@ -25,6 +25,19 @@ import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+/**
+ * The two ways to read the same model: one level with its drill frames, or every level opened at once.
+ * Real links, like the zoom presets, so a mode survives a reload, a share and Back.
+ */
+function viewMode(levelRoot: string, mode: 'full' | 'drill'): string {
+  const link = (value: 'full' | 'drill', text: string): string => {
+    const href = value === 'full' ? `${levelRoot}?view=full` : levelRoot
+    const on = value === mode
+    return `<a class="c4-zoom-btn" href="${esc(href)}" data-view="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
+  }
+  return link('drill', 'Drill in') + link('full', 'Full diagram')
+}
+
 /** Every untrusted string in the page goes through this; the svg is already escaped. */
 function esc(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
@@ -218,8 +231,12 @@ export function viewerPage(
   zoomRaw: string | null = null,
   theme: Theme = 'auto',
   docs?: LevelDocs,
+  /** the level to draw instead of the one named — the full view passes its composed picture here */
+  spec?: LevelSpec,
 ): string {
-  const drawn = draw(model, level, theme)
+  const drawn = spec
+    ? { level: renderLevel(model, spec, paletteOf(theme), undefined, `/d/${model.id}`), spec, note: '' }
+    : draw(model, level, theme)
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
   // indented by depth: the list is a tree, and a flat list of paths makes a reader work out the nesting
@@ -248,6 +265,7 @@ export function viewerPage(
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
+    .replace('<!--VIEWMODE-->', () => viewMode(levelRoot, spec ? 'full' : 'drill'))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom, drawnSize)}"`)
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note))
     .replace('<!--TEXT-->', () => textVersion(drawn.spec))

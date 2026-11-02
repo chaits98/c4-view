@@ -57,3 +57,44 @@ test('an upright level still renders and still audits clean', () => {
   assert.equal(drawn.audit.ok, true)
   assert.match(drawn.svg, /<svg[^>]+height="[\d.]+"/)
 })
+
+test('the full view composes every level into one picture, and it audits clean', async () => {
+  const { fullView } = await import('../src/expand-all.ts')
+  const { renderLevel } = await import('../src/render.ts')
+  const model = parseModel({
+    id: 'deep',
+    title: 'Deep',
+    levels: [
+      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }], edges: [{ from: 'out', to: 'box', label: 'in' }] },
+      { path: 'box', nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }], edges: [{ from: 'stage', to: 'inner', label: 'next' }], ports: { 'out->box': 'stage' } },
+      { path: 'box/inner', nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic' }], edges: [], ports: { 'stage->inner': 'leaf' } },
+    ],
+  } as never)
+  const lv = fullView(model)
+  // out stays, box is a frame, its two children become nodes, and inner is a frame too: out + stage + leaf
+  assert.equal(lv.nodes.length, 3, 'every node of every level, with the drilled boxes replaced by frames')
+  assert.equal((lv.groups ?? []).length, 2, 'one frame per drilled box, nested')
+  const drawn = renderLevel(model, lv)
+  assert.equal(drawn.audit.nodeNode, 0)
+  assert.equal(drawn.audit.wireNode, 0)
+  assert.equal(drawn.audit.groupNode, 0, 'a frame never covers a stranger')
+})
+
+test('a port that named a drilled host lands on the entry of its frame', async () => {
+  const { composeInto } = await import('../src/expand.ts')
+  const parent = {
+    path: '',
+    nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'host', label: 'Host', subtype: 'system' }],
+    edges: [{ from: 'a', to: 'host', label: 'in' }],
+    ports: { 'up->root': 'host' },
+  }
+  const child = {
+    path: 'host',
+    nodes: [{ id: 'first', label: 'First', subtype: 'service-logic' }],
+    edges: [],
+    flow: ['first->first'],
+    ports: { 'a->host': 'first' },
+  }
+  const out = composeInto(parent as never, child as never, 'host', true)
+  assert.equal(out.level.ports?.['up->root'], 'host/first', 'the outside edge enters the frame at its first stage')
+})

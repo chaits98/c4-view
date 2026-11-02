@@ -41,16 +41,25 @@ export function expandLevel(model: Model, path: string): Expansion {
   if (!child) throw new Error(`no level "${path}" — this model has: ${model.levels.map((l) => l.path || '(root)').join(', ')}`)
   const { parent, hostId } = hostOf(child, model)
   if (!parent) throw new Error(`level "${path}" has no parent level to expand into`)
+  return composeInto(parent, child, hostId)
+}
+
+/** Compose one child into a level that is already standing in for its parent (the full view's fold). */
+export function composeInto(parent: LevelSpec, child: LevelSpec, hostId: string, all = false): Expansion {
   const host = parent.nodes.find((n) => n.id === hostId)
-  if (!host) throw new Error(`level "${path}": "${hostId}" is not a node of the parent level`)
+  if (!host) throw new Error(`level "${child.path}": "${hostId}" is not a node of the parent level`)
   const crossing = parent.edges.filter((e) => crossesInto(e, hostId))
   if (crossing.length > 0 && (!child.ports || Object.keys(child.ports).length === 0)) {
-    throw new Error(`level "${path}" declares no ports — without them its outside edges would vanish when expanded`)
+    throw new Error(`level "${child.path}" declares no ports — without them its outside edges would vanish when expanded`)
   }
 
   const shared = sharedWithParent(child, parent, hostId)
   const inner = new Map(child.nodes.filter((n) => !shared.has(n.id)).map((n) => [n.id, prefix(hostId, n.id)]))
-  const outside = neighbours(parent, crossing, hostId, shared)
+  // a drill keeps only the boxes that touch the frame; a full view keeps every sibling, because nothing on
+  // the page is a neighbour of something hidden — it is all one picture
+  const outside = all
+    ? parent.nodes.filter((node) => node.id !== hostId && !shared.has(node.id)).map(cloneNode)
+    : neighbours(parent, crossing, hostId, shared)
   const inside = child.nodes
     .filter((node) => !shared.has(node.id))
     .map((node) => ({ ...cloneNode(node), id: inner.get(node.id)!, group: undefined }))
@@ -59,6 +68,18 @@ export function expandLevel(model: Model, path: string): Expansion {
   const groups = (parent.groups ?? [])
     .map((group) => ({ ...group, members: group.members.filter((member) => member !== hostId) }))
     .filter((group) => group.members.length > 0)
+  // a child that was itself composed brings its own frames: they nest, so they are carried over prefixed
+  // rather than flattened — that is what makes a full view show every level at once
+  for (const group of child.groups ?? []) {
+    groups.push({
+      id: `${hostId}/${group.id}`,
+      label: group.label,
+      // coverage:invariant — a nested frame's members were all nodes of the child, so every one resolves
+      members: group.members.map((member) => inner.get(member) ?? member),
+    })
+  }
+  // the host's frame holds EVERY interior node, including the ones a nested frame also holds: its box is the
+  // bounding box of its contents, and a frame that skipped its own nested frames would not enclose them
   groups.push({ id: frameId, label: host.label, members: [...inner.values()] })
 
   const { edges, remapped } = composeEdges(child, hostId, inner, shared, crossing)
@@ -73,6 +94,11 @@ export function expandLevel(model: Model, path: string): Expansion {
       edges,
       groups,
       flow,
+      // the ports of the level we are standing in belong to the level ABOVE this one, and are still needed
+      // there: without them a full view cannot attach the root's edges when this host is expanded in turn.
+      // A port that pointed AT the host now has no box to point at — it lands on the child's entry instead,
+      // which is the same promise: what the edge enters when it comes in.
+      ...(parent.ports ? { ports: repointPorts(parent.ports, hostId, entryOf(child, inner)) } : {}),
     },
   }
 }
@@ -130,10 +156,38 @@ function composeEdges(
   return { edges, remapped }
 }
 
+/**
+ * The interior node an edge lands on.
+ *
+ * The key is tried first. In a full view the outside end may already be composed — `cli->server` becomes
+ * `cli/args->server` — so a port is also matched by what it names on the far side, which is the same promise
+ * stated with a longer id.
+ */
+function portFor(child: LevelSpec, edge: EdgeSpec, hostId: string): string | undefined {
+  const direct = child.ports?.[edgeKey(edge)]
+  if (direct) return direct // coverage:invariant — a plain drill always hits the key; only a fold needs the search
+  const far = edge.from === hostId ? edge.to : edge.from
+  // coverage:invariant — the caller only reaches here for a child that declared ports (checked before)
+  for (const [key, target] of Object.entries(child.ports ?? {})) {
+    const [from, to] = key.split('->')
+    // coverage:invariant — a port that names neither end as the host cannot describe a crossing edge
+    const other = otherEnd(from, to, hostId)
+    if (other && (far === other || far.startsWith(`${other}/`))) return target
+  }
+  return undefined
+}
+
+/** The end of a port key that is not the host, or nothing when neither end is. */
+function otherEnd(from: string, to: string, hostId: string): string | undefined {
+  if (from === hostId) return to
+  if (to === hostId) return from
+  return undefined
+}
+
 /** A parent edge that touches the host keeps its outside end and lands on the port's interior node. */
 function remap(edge: EdgeSpec, hostId: string, inner: Map<string, string>, child: LevelSpec): EdgeSpec {
   // only edges that touch the host are remapped; the caller filters the rest out
-  const port = child.ports?.[edgeKey(edge)]
+  const port = portFor(child, edge, hostId)
   if (!port) throw new Error(`level "${child.path}": edge "${edgeKey(edge)}" touches "${hostId}" but has no port`)
   const mapped = inner.get(port)
   if (!mapped) throw new Error(`level "${child.path}": port for "${edgeKey(edge)}" points at "${port}", which is not in the level`)
@@ -160,6 +214,21 @@ function composedFlow(parent: LevelSpec, child: LevelSpec, inner: Map<string, st
   })
   const cut = enterAt < 0 ? parentFlow.length : enterAt + 1
   return [...parentFlow.slice(0, cut), ...childFlow, ...parentFlow.slice(cut)]
+}
+
+/** The interior node an outside edge should land on once the host is a frame: the child's first stage. */
+function entryOf(child: LevelSpec, inner: Map<string, string>): string | undefined {
+  const [head] = (child.flow?.[0] ?? '').split('->')
+  const first = head || child.nodes[0]?.id
+  // coverage:invariant — the parser refuses a level with no nodes
+  return first === undefined ? undefined : (inner.get(first) ?? first)
+}
+
+/** Ports that named the host are re-pointed at its entry; the rest pass through untouched. */
+function repointPorts(ports: Record<string, string>, hostId: string, entry: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, target] of Object.entries(ports)) out[key] = target === hostId && entry ? entry : target
+  return out
 }
 
 const cloneNode = (node: NodeSpec): NodeSpec => ({ ...node })
