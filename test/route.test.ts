@@ -6,6 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { Box, Chain, Placed, PlacedItem, Point, Route } from '../src/types.ts'
+import { routeOf } from '../src/routes.ts'
 import { DEFAULT_LAYOUT } from '../src/types.ts'
 import { measure } from '../src/metrics.ts'
 import { route } from '../src/layout/route.ts'
@@ -219,4 +220,13 @@ test('route never mutates the Placed input', () => {
   const snapshot = structuredClone(placed)
   route(placed, cfg, measure)
   assert.deepEqual(placed, snapshot)
+})
+
+
+test('an export route names its file in the path: svg, png, html and every layer', () => {
+  assert.deepEqual(routeOf('/d/shop.svg'), { kind: 'export', format: 'svg', id: 'shop' })
+  assert.deepEqual(routeOf('/d/shop.png'), { kind: 'export', format: 'png', id: 'shop' })
+  assert.deepEqual(routeOf('/d/shop.html'), { kind: 'export', format: 'html', id: 'shop' })
+  assert.deepEqual(routeOf('/d/shop.layers'), { kind: 'export', format: 'layers', id: 'shop' })
+  assert.equal(routeOf('/d/shop.zip'), null, 'an unknown extension is not an export')
 })

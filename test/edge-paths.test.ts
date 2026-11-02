@@ -30,7 +30,7 @@ test('png export names the fix when there is no browser, and refuses an svg with
       'the message says where it looked',
     )
     // and a browser that exists is asked for an svg that declares no size
-    assert.throws(() => svgToPng('<svg></svg>', join(dir, 'c.png'), 2, () => '/bin/sh'), /carries no width\/height/)
+    assert.throws(() => svgToPng('<svg></svg>', join(dir, 'c.png'), 2, () => '/bin/sh'), /carries neither width\/height nor a viewBox/)
   } finally {
     if (saved === undefined) delete process.env.C4_CHROMIUM
     else process.env.C4_CHROMIUM = saved

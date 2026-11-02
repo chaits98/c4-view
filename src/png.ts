@@ -62,11 +62,15 @@ export function findChromium(exists: (path: string) => boolean = existsSync): st
 }
 
 /** The svg's own width/height attributes (the emitter always writes integers). */
-function sizeOf(svg: string): { w: number; h: number } {
+export function sizeOf(svg: string): { w: number; h: number } {
   const w = /<svg[^>]*\swidth="(\d+(?:\.\d+)?)"/.exec(svg)
   const h = /<svg[^>]*\sheight="(\d+(?:\.\d+)?)"/.exec(svg)
-  if (!w || !h) throw new Error('png: the svg carries no width/height — the emitter must set both')
-  return { w: Math.ceil(Number(w[1])), h: Math.ceil(Number(h[1])) }
+  if (w && h) return { w: Math.ceil(Number(w[1])), h: Math.ceil(Number(h[1])) }
+  // a drawing with one box and no wires can come out with a viewBox and no width/height; the viewBox is
+  // the same rectangle, so it is the size — refusing to rasterise it was a 500 on a valid diagram
+  const box = /<svg[^>]*\sviewBox="[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)"/.exec(svg)
+  if (!box) throw new Error('png: the svg carries neither width/height nor a viewBox — it is not a drawing')
+  return { w: Math.ceil(Number(box[1])), h: Math.ceil(Number(box[2])) }
 }
 
 /**

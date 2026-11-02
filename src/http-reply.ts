@@ -11,10 +11,13 @@ import { deniedPage } from './denied-page.ts'
 import { brokenModel, missingDiagram, missingLevel } from './state-page.ts'
 import type { Theme } from './theme-choice.ts'
 
-export function send(res: ServerResponse, status: number, type: string, body: string | Buffer): void {
+export function send(res: ServerResponse, status: number, type: string, body: string | Buffer, filename?: string): void {
   // a page built from the token-bearing request must not be cached by anything on the way back
   if (type.startsWith('text/html')) res.setHeader('Cache-Control', 'no-store')
-  res.writeHead(status, { 'Content-Type': type, 'Content-Length': Buffer.byteLength(body) })
+  const headers: Record<string, string | number> = { 'Content-Type': type, 'Content-Length': Buffer.byteLength(body) }
+  // an export is a file, so it is named: the browser saves it instead of opening a tab of bare svg
+  if (filename) headers['Content-Disposition'] = `attachment; filename="${filename}"`
+  res.writeHead(status, headers)
   res.end(body)
 }
 

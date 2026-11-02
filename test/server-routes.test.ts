@@ -125,7 +125,8 @@ test('the page carries a text version, and a skip link before the header', async
   assert.match(html, /<details id="c4-text"/, 'the text version is a details block')
   assert.match(html, /Containers \(\d+\)/, 'with a count, so a reader knows what they are missing')
   assert.match(html, /Flows \(\d+\)/)
-  assert.ok(!/<details[^>]*>[\s\S]*<svg/.test(html.slice(html.indexOf('<details'))), 'and no drawing inside it')
+  // anchored at the text block: the download menu is a `<details>` too, and it comes first
+  assert.ok(!/<svg/.test(html.slice(html.indexOf('<details id="c4-text"'), html.indexOf('</details>', html.indexOf('<details id="c4-text"')))), 'and no drawing inside it')
 })
 
 test('the states a first-time reader meets are pages, not JSON', async () => {

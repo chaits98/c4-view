@@ -21,42 +21,11 @@ import type { LevelDocs } from './docs.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
 import { zoomBar, zoomClass, zoomOf } from './viewer-zoom.ts'
+import { composed, downloads, fullSpec, viewMode } from './viewer-controls.ts'
 import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-/** What this page draws: the nested picture, one level with a box drilled, or the level as written. */
-function pickDrawn(
-  model: Model, level: string, theme: Parameters<typeof draw>[2], spec?: LevelSpec, full?: RenderedLevel,
-): { level: RenderedLevel; spec: LevelSpec; note: string } {
-  if (full) return { level: full, spec: fullSpec(model), note: '' }
-  if (spec) return composed(model, spec, theme)
-  return draw(model, level, theme)
-}
-
-/** One level with its drilled box expanded — what the old full view drew, still used by drill links. */
-function composed(model: Model, spec: LevelSpec, theme: Parameters<typeof draw>[2]): { level: RenderedLevel; spec: LevelSpec; note: string } {
-  return { level: renderLevel(model, spec, paletteOf(theme), undefined, `/d/${model.id}`), spec, note: '' }
-}
-
-/** The picture the full view draws: every level, so its text version is the root level's. */
-function fullSpec(model: Model): LevelSpec {
-  return model.levels.find((l) => l.path === '') ?? { path: '', nodes: [], edges: [] }
-}
-
-/**
- * The two ways to read the same model: one level with its drill frames, or every level opened at once.
- * Real links, like the zoom presets, so a mode survives a reload, a share and Back.
- */
-function viewMode(levelRoot: string, mode: 'full' | 'drill'): string {
-  const link = (value: 'full' | 'drill', text: string): string => {
-    const href = value === 'full' ? `${levelRoot}?view=full` : levelRoot
-    const on = value === mode
-    return `<a class="c4-zoom-btn" href="${esc(href)}" data-view="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
-  }
-  return link('drill', 'Drill in') + link('full', 'Full diagram')
-}
-
 /** Every untrusted string in the page goes through this; the svg is already escaped. */
 function esc(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ENTITIES[c] ?? c)
@@ -155,6 +124,15 @@ export function auditBanner(report: AuditReport): string {
     `<ul class="t-body-s">${named.join('')}${more}</ul>` +
     `</section>`
   )
+}
+
+/** What this page draws: the nested picture, one level with a box drilled, or the level as written. */
+function pickDrawn(
+  model: Model, level: string, theme: Theme, spec?: LevelSpec, full?: RenderedLevel,
+): { level: RenderedLevel; spec: LevelSpec; note: string } {
+  if (full) return { level: full, spec: fullSpec(model), note: '' }
+  if (spec) return composed(model, spec, theme)
+  return draw(model, level, theme)
 }
 
 /**
@@ -285,6 +263,7 @@ export function viewerPage(
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
     .replace('<!--VIEWMODE-->', () => viewMode(levelRoot, spec || full ? 'full' : 'drill'))
+    .replace('<!--DOWNLOAD-->', () => downloads(model.id, level, Boolean(spec || full)))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom, drawnSize)}"`)
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note))
     .replace('<!--TEXT-->', () => textVersion(drawn.spec))

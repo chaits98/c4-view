@@ -1,6 +1,6 @@
 /** HTTP surface: `/` is the grid, `/d/<id>` one diagram; a bad id or level segment is a 404. */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ModelError, levelOf, parseModel } from './model.ts'
@@ -12,10 +12,9 @@ import { paletteOf } from './theme.ts'
 import { lensReport } from './lens.ts'
 import { list, loadModel, modelFile, save } from './store.ts'
 import { viewerPage } from './viewer-page.ts'
+import { sendExport } from './server-export.ts'
 import { buildStamp } from './build.ts'
-import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
-import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
 import { diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
@@ -108,14 +107,6 @@ function docsFor(root: string, model: Model, id: string, level: string, found: L
   return { nodes: { ...outer.nodes, ...own.nodes }, edges: { ...outer.edges, ...own.edges } }
 }
 
-function sendExport(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, format: 'svg' | 'png', theme: Theme): void {
-  const model = loadModel(root, id)
-  if (!model) return missing(req, res, id, theme)
-  if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
-  if (format === 'svg') return send(res, 200, 'image/svg+xml; charset=utf-8', renderModel(model, level).levels[0].svg)
-  send(res, 200, 'image/png', readFileSync(pngFor(root, model, level)))
-}
-
 function sendAsset(res: ServerResponse, name: string): void {
   const file = join(PUBLIC, name)
   if (!existsSync(file)) return send(res, 404, 'text/plain; charset=utf-8', `${name} is not installed yet`)
@@ -206,13 +197,6 @@ function findLevel(model: Model, path: string) {
   return validLevel(path) ? levelOf(model, path) : undefined
 }
 
-/** One cached png per level path — `levelSlug` is injective, so `a/b` and `a-b` never share. */
-function pngFor(root: string, model: Model, level: string): string {
-  const out = join(root, model.id, 'out', `${levelSlug(level)}.png`)
-  const source = modelFile(root, model.id)
-  if (existsSync(out) && statSync(out).mtimeMs >= statSync(source).mtimeMs) return out
-  return svgToPng(renderModel(model, level).levels[0].svg, out)
-}
 
 async function create(root: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const raw = await readBody(req, res)

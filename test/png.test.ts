@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { CHROMIUM_ENV, findChromium, svgToPng } from '../src/png.ts'
+import { CHROMIUM_ENV, findChromium, sizeOf, svgToPng } from '../src/png.ts'
 
 // big enough that a real capture cannot compress under the 1 KB blank guard
 const SVG =
@@ -47,6 +47,13 @@ test('an svg with no width/height is refused before any browser runs', () => {
     if (saved === undefined) delete process.env[CHROMIUM_ENV]
     else process.env[CHROMIUM_ENV] = saved
   }
+})
+
+test('a drawing is measured by its width/height, its viewBox, or refused', () => {
+  assert.deepEqual(sizeOf('<svg width="120" height="40"></svg>'), { w: 120, h: 40 })
+  // one box and no wires can come out with a viewBox and no width/height — that is still a size
+  assert.deepEqual(sizeOf('<svg viewBox="0 0 136 54"></svg>'), { w: 136, h: 54 })
+  assert.throws(() => sizeOf('<svg></svg>'), /neither width\/height nor a viewBox/)
 })
 
 test('a real raster comes out at the scale asked for', () => {

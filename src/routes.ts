@@ -13,7 +13,7 @@ export type Route =
   | { kind: 'health' | 'diagrams' | 'index' }
   | { kind: 'model' | 'audit'; id: string }
   | { kind: 'page'; id: string; level: string }
-  | { kind: 'export'; format: 'svg' | 'png'; id: string }
+  | { kind: 'export'; format: 'svg' | 'png' | 'html' | 'layers'; id: string }
   | { kind: 'asset'; name: string }
 
 /** `/`, `/health`, `/api/diagrams` and the public assets — no id, no level. */
@@ -36,10 +36,12 @@ export function apiRoute(pathname: string): Route | null {
 export function diagramRoute(pathname: string): Route | null {
   if (!pathname.startsWith('/d/')) return null
   const rest = pathname.slice(3)
-  const exported = /^([^/]+)\.(svg|png)$/.exec(rest)
+  // .svg / .png draw one picture; .html is that picture in a file that opens without a server;
+  // .layers is every level, one after another, for the reader who wants the parts
+  const exported = /^([^/]+)\.(svg|png|html|layers)$/.exec(rest)
   if (exported) {
     if (!ID.test(exported[1])) return null
-    return { kind: 'export', format: exported[2] === 'svg' ? 'svg' : 'png', id: exported[1] }
+    return { kind: 'export', format: exported[2] as 'svg' | 'png' | 'html' | 'layers', id: exported[1] }
   }
   const segments = rest.split('/')
   // a path that starts with /d/ always yields at least one segment, empty or not

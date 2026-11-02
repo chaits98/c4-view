@@ -3,6 +3,21 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.11.0] — the diagram leaves the viewer, and every level can come with it
+
+A reader can now take the picture out of the tab: **Download** in the header offers
+
+- **SVG** — the drawing, as a vector file;
+- **PNG** — the drawing, as an image (the full view gets its own cached render);
+- **HTML** — the drawing in a page that needs no server, no script, no fonts, and prints;
+- **All layers** — every level one after another, which is what "the parts, not the whole" means.
+
+Every export carries the level and the view it was asked from (`/d/<id>.svg?level=a/b&view=full`) and
+answers with `Content-Disposition`, so the browser saves a named file instead of opening a tab of bare
+markup: `c4-view-full.svg`, `c4-view-layers.html`.
+
+The menu is a native `<details>` disclosure — it opens, closes and takes keyboard focus with no script.
+
 ## [0.10.2] — a host box is a frame, not a shape
 
 The full view sized each host box to the drawing it holds, and then drew it with the outline its subtype
