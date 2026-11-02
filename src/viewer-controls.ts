@@ -35,10 +35,17 @@ export function downloads(id: string, level: string, full: boolean, theme = 'aut
   ]
   return items
     .map(([format, label, hint]) => {
-      const href = format === 'layers' ? `/d/${id}.layers` : `/d/${id}.${format}${tail}`
+      // layers ignores the level (it is every level) but keeps the scheme
+      const href = format === 'layers' ? layersHref(id, theme) : `/d/${id}.${format}${tail}`
       return `<a role="menuitem" href="${esc(href)}" title="${esc(hint)}" download>${label}</a>`
     })
     .join('')
+}
+
+/** Every level, in the scheme on screen: `auto` needs no parameter — the file follows the reader's OS. */
+function layersHref(id: string, theme: string): string {
+  const scheme = theme === 'auto' ? '' : `?theme=${theme}`
+  return `/d/${id}.layers${scheme}`
 }
 
 /**

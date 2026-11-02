@@ -86,3 +86,8 @@ test('the full page reports the root level as its text version', () => {
   assert.equal(notes.spec.path, '')
   assert.match(notes.level.svg, /<svg/)
 })
+
+test('the layers download keeps the scheme as well', () => {
+  assert.match(downloads('shop', '', false, 'light'), /href="\/d\/shop\.layers\?theme=light"/)
+  assert.match(downloads('shop', '', false, 'auto'), /href="\/d\/shop\.layers"/, 'auto needs no parameter')
+})

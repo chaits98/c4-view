@@ -3,6 +3,11 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.1] — the layers download keeps the scheme too
+
+The one export that ignored the theme was the one that ignores the level: `All layers` now carries `theme=`
+like the other three.
+
 ## [0.12.0] — the export follows the screen, and the toolbar reads as one system
 
 **Exports tell the truth about what you are looking at.** The svg keeps the theme you are reading in
