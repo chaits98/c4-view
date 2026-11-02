@@ -1,6 +1,6 @@
 {
   "name": "c4-view",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "type": "module",
   "description": "Agent-driven C4 renderer: a JSON model in, deterministic SVG / PNG / live viewer out. No editing UI \u2014 the layout is computed and gated.",
   "bin": {

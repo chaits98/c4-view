@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { parseModel, layoutOf, drillTargets, levelOrder } from './model.ts'
 import { lensReport, type LensReport } from './lens.ts'
 import { expandLevel } from './expand.ts'
-import { fullView } from './expand-all.ts'
+import { nestedLevel } from './nest.ts'
 import { rank } from './layout/rank.ts'
 import { order } from './layout/order.ts'
 import { place } from './layout/place.ts'
@@ -21,7 +21,7 @@ import { audit } from './audit.ts'
 import { placeLabels } from './layout/labels.ts'
 import { measure } from './metrics.ts'
 import { flowIndex } from './flow.ts'
-import type { AuditReport, LayoutConfig, LevelSpec, Model, Ranked } from './types.ts'
+import type { AuditReport, LevelSpec, Model } from './types.ts'
 
 export interface RenderedLevel {
   path: string
@@ -64,7 +64,7 @@ export function transpose(placed: ReturnType<typeof place>, routed: ReturnType<t
  * One layout attempt at a given width budget.
  */
 function attempt(level: LevelSpec, cfg: ReturnType<typeof layoutOf>, labels = true): { placed: ReturnType<typeof place>; routed: ReturnType<typeof route>; audit: AuditReport } {
-  const placed = place(maybeOrder(rank(level, cfg), cfg), level, cfg, measure)
+  const placed = place(order(rank(level, cfg), cfg), level, cfg, measure)
   const routed = route(placed, cfg, measure, labels)
   return { placed, routed, audit: audit(placed, routed, level) }
 }
@@ -116,17 +116,9 @@ export function renderLevel(model: Model, level: LevelSpec, palette: Theme = DAR
   return { path: level.path, title: level.title ?? level.path ?? 'Overview', svg, audit: report }
 }
 
-/** The whole model as one picture: every level opened in place. */
+/** The whole model as one picture: every level drawn in place, inside its host's box. */
 export function renderAll(model: Model): Rendered {
-  const level = fullView(model)
-  return { id: model.id, title: `${model.title} — every level`, levels: [renderLevel(model, level)], lens: lensReport(model) }
-}
-
-/** Bar-ycentre sweeps minimise crossings, but they also interleave a frame's members with its
- *  neighbours' — in a nested picture the scope-grouped order from `rank` is the one that keeps each
- *  frame a contiguous block, so it is left alone there. */
-function maybeOrder(ranked: Ranked, cfg: LayoutConfig): Ranked {
-  return ranked.ranks.some((row) => row.some((id) => id.includes('/'))) ? ranked : order(ranked, cfg)
+  return { id: model.id, title: `${model.title} — every level`, levels: [nestedLevel(model)], lens: lensReport(model) }
 }
 
 /** Render every level (root first, then by depth). */

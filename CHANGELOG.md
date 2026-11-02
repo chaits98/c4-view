@@ -3,6 +3,26 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.10.1] — the full view draws nested pictures, and every box keeps its edges
+
+0.10.0 shipped a full view that dropped every edge living inside a frame: `c4view` folded to 20 nodes and
+**8** edges while it owns 22, so a frame's boxes floated unconnected. Carrying those edges in the same flat
+composition made a worse picture, not a better one — 27 edges ranked in one pass measured **7.96
+crossings/edge, 40 wires crossing each other, 8 frames over a stranger**.
+
+The fold was the mistake, not the edges. Every level is now drawn by the ordinary pipeline in its own
+space and the host box in the parent is sized to hold that drawing; cross-level edges land on the host
+box, which is where a C4 reader expects a boundary crossing. On the app's own model:
+
+| | nodes | edges | crossings/edge | wire∧node | group∧node |
+|---|---|---|---|---|---|
+| 0.10.0 | 24 | 13 | 0.69 | 0 | 0 |
+| fold + all edges | 24 | 27 | 7.96 | 40 | 8 |
+| **nested pictures** | **27** | **27** | **0.19** | **0** | **0** |
+
+Drill mode is unchanged: it still composes one frame into its parent, which is right when the rest of the
+level has nowhere to be.
+
 ## [0.10.0] — a second view: every level open at once
 
 The viewer had one mode: a level, with one box drilled. It now has two, and the second is the whole model in a

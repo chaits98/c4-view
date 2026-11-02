@@ -25,6 +25,25 @@ import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+/** What this page draws: the nested picture, one level with a box drilled, or the level as written. */
+function pickDrawn(
+  model: Model, level: string, theme: Parameters<typeof draw>[2], spec?: LevelSpec, full?: RenderedLevel,
+): { level: RenderedLevel; spec: LevelSpec; note: string } {
+  if (full) return { level: full, spec: fullSpec(model), note: '' }
+  if (spec) return composed(model, spec, theme)
+  return draw(model, level, theme)
+}
+
+/** One level with its drilled box expanded — what the old full view drew, still used by drill links. */
+function composed(model: Model, spec: LevelSpec, theme: Parameters<typeof draw>[2]): { level: RenderedLevel; spec: LevelSpec; note: string } {
+  return { level: renderLevel(model, spec, paletteOf(theme), undefined, `/d/${model.id}`), spec, note: '' }
+}
+
+/** The picture the full view draws: every level, so its text version is the root level's. */
+function fullSpec(model: Model): LevelSpec {
+  return model.levels.find((l) => l.path === '') ?? { path: '', nodes: [], edges: [] }
+}
+
 /**
  * The two ways to read the same model: one level with its drill frames, or every level opened at once.
  * Real links, like the zoom presets, so a mode survives a reload, a share and Back.
@@ -233,10 +252,10 @@ export function viewerPage(
   docs?: LevelDocs,
   /** the level to draw instead of the one named — the full view passes its composed picture here */
   spec?: LevelSpec,
+  /** the nested picture, already drawn: the full view is every level at once, not one level composed */
+  full?: RenderedLevel,
 ): string {
-  const drawn = spec
-    ? { level: renderLevel(model, spec, paletteOf(theme), undefined, `/d/${model.id}`), spec, note: '' }
-    : draw(model, level, theme)
+  const drawn = pickDrawn(model, level, theme, spec, full)
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
   // indented by depth: the list is a tree, and a flat list of paths makes a reader work out the nesting
@@ -265,7 +284,7 @@ export function viewerPage(
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
-    .replace('<!--VIEWMODE-->', () => viewMode(levelRoot, spec ? 'full' : 'drill'))
+    .replace('<!--VIEWMODE-->', () => viewMode(levelRoot, spec || full ? 'full' : 'drill'))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom, drawnSize)}"`)
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note))
     .replace('<!--TEXT-->', () => textVersion(drawn.spec))

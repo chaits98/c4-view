@@ -40,5 +40,5 @@ export function composeAll(model: Model, path = ''): LevelSpec {
 /** The whole model as one picture, titled for the page it becomes. */
 export function fullView(model: Model): LevelSpec {
   const composed = composeAll(model, '')
-  return { ...composed, path: 'full', title: `${model.title} — every level` }
+  return { ...composed, nested: true, path: 'full', title: `${model.title} — every level` }
 }

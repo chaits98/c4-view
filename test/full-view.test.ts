@@ -47,7 +47,7 @@ test('the full view renders as one picture and carries its own title', () => {
   const all = renderAll(model)
   assert.equal(all.levels.length, 1, 'one page')
   assert.match(all.title, /every level/)
-  assert.ok(all.levels[0].svg.includes('data-group'), 'the frames are drawn')
+  assert.match(all.levels[0].svg, /data-host=|data-group/, 'the host frames are drawn')
 })
 
 test('nesting survives the fold: an outer frame encloses its own nested frames', () => {
