@@ -3,6 +3,12 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.10.2] — a host box is a frame, not a shape
+
+The full view sized each host box to the drawing it holds, and then drew it with the outline its subtype
+asked for — a stadium's corner radius is half its height, so a 1811×1540 host came out as a giant oval
+slicing through its own contents. A box that holds a picture is always a plain rectangle now.
+
 ## [0.10.1] — the full view draws nested pictures, and every box keeps its edges
 
 0.10.0 shipped a full view that dropped every edge living inside a frame: `c4view` folded to 20 nodes and

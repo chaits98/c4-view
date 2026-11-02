@@ -85,7 +85,7 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     const box = placed.boxes.get(node.id)
     if (!box) return [] // coverage:invariant — every node of the level is measured and placed
     const t = measureNode(node, cfg, measure)
-    const shape = shapeOf(node.subtype)
+    const shape = node.shape === 'rect' ? 'rect' : shapeOf(node.subtype)
     /* node:coverage disable */
     // model.parse refuses an unknown subtype, so the fallback only covers a hand-built LevelSpec
     const kind = SUBTYPE_KIND[node.subtype] ?? 'concept'

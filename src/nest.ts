@@ -74,7 +74,9 @@ function sized(model: Model, level: LevelSpec, pics: Map<string, Picture>): { sp
     const pic = model.levels.some((l) => l.path === child) ? pics.get(child) : undefined
     if (!pic) return node
     inner.set(node.id, pic)
-    return { ...node, w: pic.w + 2 * NEST_PAD, h: pic.h + 2 * NEST_PAD + NEST_HEAD }
+    // a host is a frame, not a node: a stadium or diamond stretched to hold a drawing reads as a giant
+    // oval cutting through its own contents
+    return { ...node, shape: 'rect', w: pic.w + 2 * NEST_PAD, h: pic.h + 2 * NEST_PAD + NEST_HEAD }
   })
   return { spec: { ...level, nodes }, inner }
 }

@@ -52,6 +52,8 @@ export interface NodeSpec {
   /** laid-out size, set by the nested renderer so a host box can hold the picture drawn inside it */
   w?: number
   h?: number
+  /** outline override; a host box holding a child picture is always a plain rectangle */
+  shape?: string
 }
 
 export interface EdgeSpec {

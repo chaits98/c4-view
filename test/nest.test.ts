@@ -75,3 +75,9 @@ test('the full page still has a text version when the model has no root level', 
   const page = viewerPage(model, 'only', null, 'auto', undefined, undefined, nestedLevel(model))
   assert.match(page, /data-view="full" aria-current="true"/)
 })
+
+test('a host that holds a drawing is a rectangle, whatever its subtype draws as', () => {
+  const pic = nestedPicture(deep())
+  assert.ok(!/A\d+/.test(pic.svg.split('data-host="box"')[0].slice(-400)), 'no stadium arc on the host outline')
+  assert.match(pic.svg, /data-host="box"/)
+})
