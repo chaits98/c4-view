@@ -14,6 +14,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { lensReport } from './lens.ts'
 import { renderModel } from './render.ts'
 import { paletteOf } from './theme.ts'
 import { compareKeys } from './layout/geometry.ts'
@@ -58,7 +59,14 @@ export function indexEntries(
     const box = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(root.svg)
     const [width, height] = box ? [Number(box[1]), Number(box[2])] : [0, 0]
     /* node:coverage enable */
-    return [{ ...row, svg: root.svg, ok: root.audit.ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: height > 0 && width / height > WIDE }]
+    // the badge is the verdict: geometry AND the modelling checks, the same thing `c4v audit --strict` says.
+    // A card that says "clean" while `audit` fails the model is worse than no badge at all.
+    const ok = root.audit.ok && lensReport(model).problems.length === 0
+    // a card is the wrong shape for a strip in EITHER direction: past 3:1 across, or past 1:3 down, the
+    // thumbnail is a squeezed lie, so it crops and the crop is declared
+    // coverage:invariant — the drawing always carries a viewBox, so its height is never zero
+    const ratio = height > 0 ? width / height : 0
+    return [{ ...row, svg: root.svg, ok, nodes: root.audit.nodes, flows: root.audit.edges, wide: ratio > WIDE || (ratio > 0 && ratio < 1 / WIDE) }]
   })
 }
 
@@ -78,9 +86,10 @@ function card(entry: IndexEntry): string {
   const facts = `${count(entry.levels.length, 'level')} · ${count(entry.nodes, 'node')} · ${count(entry.flows, 'flow')}`
   const state = entry.ok ? 'audit clean' : 'audit failed'
   const heavy = entry.nodes > HEAVY_NODES || entry.svg.length > HEAVY_BYTES
+  const crop = entry.wide ? ' is-wide' : ''
   const thumb = heavy
     ? `<span class="thumb is-placeholder" aria-hidden="true"><span class="t-label-m">${facts} — open to draw</span></span>`
-    : `<span class="thumb${entry.wide ? ' is-wide' : ''}" aria-hidden="true">${entry.svg}</span>`
+    : `<span class="thumb${crop}" aria-hidden="true">${entry.svg}</span>`
   // the whole card is the link, so middle-click and cmd-click work without a handler
   return (
     `<a class="card" href="/d/${encodeURIComponent(entry.id)}">` +
@@ -101,7 +110,13 @@ export type Filter = 'all' | 'fail'
 const COMPARE: Record<Sort, (a: IndexEntry, b: IndexEntry) => number> = {
   updated: byUpdated,
   title: (a, b) => compareKeys(a.title.toLowerCase(), b.title.toLowerCase()) || compareKeys(a.id, b.id),
-  audit: (a, b) => (a.ok === b.ok ? byUpdated(a, b) : a.ok ? 1 : -1),
+  audit: byAudit,
+}
+
+/** Failures first, then newest: the order the badge on every card promises. */
+function byAudit(a: IndexEntry, b: IndexEntry): number {
+  if (a.ok !== b.ok) return a.ok ? 1 : -1
+  return byUpdated(a, b)
 }
 
 /**
@@ -128,14 +143,22 @@ function schemeControl(theme: Theme): string {
     .join('')
 }
 
+/** The two empty states: one cause, one way out, no illustration. */
+function emptyState(filter: Filter, total: number): string {
+  if (filter === 'fail' && total > 0) {
+    return `<div class="empty"><h1 class="t-headline-s">Nothing is failing</h1><p>All ${total} diagrams audit clean.</p><p><a href="/">Show every diagram</a>.</p></div>`
+  }
+  return (
+    `<div class="empty"><h1 class="t-headline-s">No diagrams yet</h1>` +
+    `<p>This store is empty, so there is nothing to draw.</p>` +
+    `<p>Send one: <code>c4v render model.json</code>, or <code>curl -X POST --data @model.json &lt;this-host&gt;/api/diagrams</code>.</p></div>`
+  )
+}
+
 export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto', sort: Sort = 'updated', filter: Filter = 'all'): string {
   const kept = filter === 'fail' ? entries.filter((entry) => !entry.ok) : [...entries]
-  const sorted = kept.sort(COMPARE[sort])
-  const empty =
-    filter === 'fail' && entries.length > 0
-      ? `<div class="empty"><h1 class="t-headline-s">Nothing is failing</h1><p>All ${entries.length} diagrams audit clean.</p><p><a href="/">Show every diagram</a>.</p></div>`
-      : `<div class="empty"><h1 class="t-headline-s">No diagrams yet</h1><p>This store is empty, so there is nothing to draw.</p><p>Send one: <code>c4v render model.json</code>, or <code>curl -X POST --data @model.json &lt;this-host&gt;/api/diagrams</code>.</p></div>`
-  const cards = sorted.length ? sorted.map(card).join('') : empty
+  const sorted = [...kept].sort(COMPARE[sort])
+  const cards = sorted.length ? sorted.map(card).join('') : emptyState(filter, entries.length)
   const diagramCount = sorted.length === 1 ? '1 diagram' : `${sorted.length} diagrams`
   return readFileSync(`${PUBLIC}index.html`, 'utf8')
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))

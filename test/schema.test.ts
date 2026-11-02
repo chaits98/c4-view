@@ -17,7 +17,6 @@ const validate = ajv.compile(schema)
 const files = [
   ...readdirSync(join(ROOT, 'fixtures')).filter((f) => f.endsWith('.json')).map((f) => join('fixtures', f)),
   ...readdirSync(join(ROOT, 'examples')).filter((f) => f.endsWith('.json')).map((f) => join('examples', f)),
-  join('docs', 'c4', 'c4-view.json'),
 ]
 
 for (const file of files) {

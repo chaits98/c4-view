@@ -80,10 +80,22 @@ export interface LevelSpec {
    * first from the source nodes. Every edge animates exactly once, one at a time.
    */
   flow?: string[]
+  /**
+   * Ports make this level a LENS: the inside of one box, not another drawing.
+   *
+   * Key = an edge in the PARENT level that touches the host node (`"client->api"`);
+   * value = the node in THIS level that edge now lands on (`"router"`). The expanded
+   * view keeps the parent's other boxes and re-attaches its edges through these
+   * ports, so nothing outside the box disappears when you look inside it.
+   *
+   * Absent: the level renders standalone, and drilling into it loses the outside.
+   */
+  ports?: Record<string, string>
 }
 
 export interface LayoutConfig {
-  direction: 'LR' | 'TB'
+  /** 'auto' keeps C4's left-to-right unless the drawing is a strip; 'LR' and 'TB' are the user's choice */
+  direction: 'auto' | 'LR' | 'TB'
   /** space between adjacent ranks (columns for LR) */
   rankGap: number
   /** vertical space between nodes inside one rank */
@@ -182,7 +194,14 @@ export interface Routed {
 
 // ── audit ────────────────────────────────────────────────────────────────────
 
+/** How many wires cross per edge: the author's target, not just the gate's threshold. */
+export type DensityVerdict = 'crisp' | 'ok' | 'dense' | 'over'
+
 export interface AuditReport {
+  /** true when this report is of a drilled picture (parent level with one box expanded) */
+  composed?: boolean
+  /** true when the picture is too tangled to follow: more than two wire crossings per edge */
+  dense?: boolean
   level: string
   nodes: number
   edges: number
@@ -194,6 +213,10 @@ export interface AuditReport {
   wireWire: number
   /** proper orthogonal crossings — unavoidable, minimised, reported */
   crossings: number
+  /** crossings per edge, rounded to two places: the author's target number */
+  crossingsPerEdge: number
+  /** crisp (≤0.5/edge) · ok (≤1) · dense (≤2) · over (the gate) */
+  verdict: DensityVerdict
   /** edges the ranking draws right-to-left; usually a `rank` hint that collides with an edge. Reported, never gated. */
   backward: number
   /** label chip ∩ label chip */
@@ -229,7 +252,7 @@ export const SUBTYPE_KIND: Readonly<Record<Subtype, Kind>> = {
 
 /** The default layout config. A model may override any field. */
 export const DEFAULT_LAYOUT: LayoutConfig = {
-  direction: 'LR',
+  direction: 'auto',
   rankGap: 120,
   nodeGap: 36,
   lane: 12,

@@ -161,12 +161,6 @@
           "label": "Payment adapter",
           "subtype": "adapter",
           "tech": "stripe SDK"
-        },
-        {
-          "id": "db",
-          "label": "Orders db",
-          "subtype": "database",
-          "tech": "Postgres 16"
         }
       ],
       "edges": [
@@ -187,14 +181,15 @@
           "to": "pay",
           "label": "authorise",
           "style": "flow"
-        },
-        {
-          "from": "repo",
-          "to": "db",
-          "label": "SQL",
-          "style": "flow"
         }
-      ]
+      ],
+      "ports": {
+        "web->api": "routes",
+        "api->db": "repo",
+        "api->queue": "service",
+        "api->stripe": "pay",
+        "stripe->api": "pay"
+      }
     }
   ]
 }

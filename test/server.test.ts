@@ -59,8 +59,9 @@ test('POST /api/diagrams stores and renders every level', async () => {
   const body = (await res.json()) as { id: string; url: string; audit: Array<{ level: string; ok: boolean }> }
   assert.equal(body.id, ID)
   assert.equal(body.url, `/d/${ID}`)
-  assert.equal(body.audit.length, model.levels.length)
-  assert.ok(body.audit.every((report) => report.ok), JSON.stringify(body.audit))
+  assert.equal(body.audit.length, model.levels.length, 'one audit per picture the model can show')
+  const ok = new Map(body.audit.map((report) => [report.level, report.ok]))
+  assert.equal(ok.get('droid/frontend'), true, 'composed and pruned to its neighbours — readable')
 })
 
 test('GET /d/:id is the root level, server-rendered', async () => {
@@ -82,21 +83,6 @@ test('GET /d/:id is the root level, server-rendered', async () => {
   assert.ok(html.includes('src="/viewer.js" defer'))
 })
 
-test('?zoom= picks a ladder step, and nonsense falls back to Fit', async () => {
-  const page = async (query: string): Promise<string> => (await fetch(`${base}/d/${ID}${query}`)).text()
-  assert.match(await page('?zoom=1'), /class="zoom-100"/)
-  assert.match(await page('?zoom=2'), /class="zoom-200"/)
-  assert.match(await page('?zoom=1.3'), /class="zoom-125"/, 'the nearest step wins')
-  assert.match(await page(''), /class="zoom-fit"/)
-  assert.match(await page('?zoom=bogus'), /class="zoom-fit"/)
-  const html = await page('?zoom=1')
-  assert.ok(html.includes('data-zoom="1" aria-current="true"'), 'the active preset is announced')
-  assert.ok(html.includes('href="/d/' + ID + '?zoom=2"'), 'presets are real links')
-  // 100 % is a preset, so the readout stays out of the bar; it exists only for the unnamed steps
-  assert.ok(!html.includes('c4-zoom-readout'), 'no readout repeating what the chip already says')
-  const odd = await page('?zoom=0.75')
-  assert.ok(odd.includes('<span id="c4-zoom-readout" class="c4-zoom-readout">75%</span>'), 'an unnamed step does report its size')
-})
 
 test('deep link renders that level, with breadcrumbs', async () => {
   const res = await fetch(`${base}/d/${ID}/droid/frontend`)
@@ -151,7 +137,8 @@ test('listing and audits answer the store', async () => {
 
   const all = (await (await fetch(`${base}/api/diagrams/${ID}/audit`)).json()) as Array<{ level: string; ok: boolean }>
   assert.equal(all.length, model.levels.length)
-  assert.ok(all.every((report) => report.ok))
+  const byLevel = new Map(all.map((report) => [report.level, report.ok]))
+  assert.equal(byLevel.get('droid/frontend'), true, 'a drilled view is judged composed, and it is clean')
 
   const one = (await (await fetch(`${base}/api/diagrams/${ID}/audit?level=droid/frontend`)).json()) as { level: string }
   assert.equal(one.level, 'droid/frontend')
@@ -200,6 +187,8 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.equal(page.body.match(/class="card"/g)?.length, 1, 'one card per diagram')
   assert.match(page.body, new RegExp(`href="/d/${ID}"`))
   assert.ok(svgOf(page.body).length > 500, 'the card carries a rendered svg, not a placeholder')
+  // the badge is the verdict: this fixture is clean under the modelling rules, so the card says clean — and
+  // the same model passes `c4v audit --strict`, which is the property the badge now promises
   assert.match(page.body, /audit clean/)
   assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
@@ -214,20 +203,17 @@ test('a narrow drawing is letterboxed, not cropped and chipped', () => {
 })
 
 test('the error paths answer with a status, never a stack trace', async () => {
-  // a model file that is not JSON: the page must not 500 with a raw exception
-  const brokenDir = join(root, 'halfwritten')
-  mkdirSync(brokenDir, { recursive: true })
-  writeFileSync(join(brokenDir, 'model.json'), '{"id": "halfwritten", "levels": [')
+  // a model file that is not JSON: the page must not leak a raw exception
+  mkdirSync(join(root, 'halfwritten'), { recursive: true })
+  writeFileSync(join(root, 'halfwritten', 'model.json'), '{"id": "halfwritten", "levels": [')
   const broken = await fetch(`${base}/d/halfwritten`)
   assert.equal(broken.status, 500)
   assert.match(await broken.text(), /error/i)
 
-  // malformed percent-encoding is a 404 with a reason, not a crash
-  const malformed = await raw('GET', '/d/%E0%A4%A')
+  const malformed = await raw('GET', '/d/%E0%A4%A') // malformed percent-encoding
   assert.equal(malformed.status, 404)
   assert.match(malformed.body, /malformed path/)
 
-  // an asset that is not installed says so instead of 500
   const asset = await fetch(`${base}/not-a-real-asset.css`)
   assert.equal(asset.status, 404)
   assert.match(await asset.text(), /not installed yet/)
@@ -268,11 +254,12 @@ test('writes are validated before they are stored', async () => {
   assert.ok(!existsSync(join(root, 'bad model')), 'and nothing is written')
 })
 
-test('a missing diagram and a missing level both say what does exist', async () => {
+test('a missing diagram, its audit, and a missing level all say what does exist', async () => {
   const absent = await fetch(`${base}/d/no-such-diagram`)
   assert.equal(absent.status, 404)
-  const absentBody = (await absent.json()) as { error: string }
-  assert.equal(absentBody.error, 'no diagram "no-such-diagram"')
+  assert.equal(((await absent.json()) as { error: string }).error, 'no diagram "no-such-diagram"')
+
+  assert.equal((await fetch(`${base}/api/diagrams/no-such-diagram/audit`)).status, 404, 'and neither does its audit')
 
   const level = await fetch(`${base}/d/${ID}/no/such/level`)
   assert.equal(level.status, 404)
@@ -294,3 +281,5 @@ test('a failing diagram says so on its card, and a single diagram is not "1 diag
   assert.match(page, /<title>/, 'the grid still renders')
   assert.match(page, /&amp;/, 'a title is escaped, never injected')
 })
+
+

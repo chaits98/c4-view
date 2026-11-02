@@ -10,6 +10,9 @@
  * @module c4-view/security
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import { hostname as osHostname } from 'node:os'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 export interface Guard {
@@ -47,15 +50,19 @@ function same(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right)
 }
 
+/** The cookie's value, if the request carries one. */
+function cookieToken(req: IncomingMessage): string | null {
+  const hit = (req.headers.cookie ?? '').split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))
+  return hit ? decodeURIComponent(hit.slice(COOKIE.length + 1)) : null
+}
+
 /** The token presented by this request: bearer header, `?t=`, or the cookie the page sets. */
 export function presented(req: IncomingMessage, url: URL): string | null {
   const auth = req.headers.authorization
   if (auth?.startsWith('Bearer ')) return auth.slice(7).trim()
   const query = url.searchParams.get('t')
   if (query) return query
-  const cookie = req.headers.cookie ?? ''
-  const hit = cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))
-  return hit ? decodeURIComponent(hit.slice(COOKIE.length + 1)) : null
+  return cookieToken(req)
 }
 
 /** True when the request may proceed. A guard with no token allows everything. */
@@ -84,20 +91,57 @@ export function applyHeaders(res: ServerResponse): void {
  */
 export function remember(guard: Guard, req: IncomingMessage, url: URL, res: ServerResponse): void {
   if (!guard.token) return
-  if (req.headers.cookie?.includes(`${COOKIE}=`)) return
-  const fresh = url.searchParams.get('t') ?? (req.headers.authorization?.startsWith('Bearer ') ? 'bearer' : null)
-  if (fresh === 'bearer') return
+  const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7).trim() : null
+  const fresh = url.searchParams.get('t') ?? bearer
+  // only a token that checks out is worth remembering, and only when the browser does not already hold it: a
+  // cookie left over from a rotated token shadowed every page after the rotation, and `?t=` could not fix it
+  // because this function refused to rewrite a cookie that already existed.
+  if (!fresh || !same(fresh, guard.token)) return
+  if (cookieToken(req) === guard.token) return
   res.setHeader('Set-Cookie', `${COOKIE}=${encodeURIComponent(guard.token)}; HttpOnly; SameSite=Strict; Path=/`)
 }
 
-/** One line a human can act on, printed at startup. */
-export function guardNotice(guard: Guard, port: number | string): string[] {
+/** Where the one-click link is remembered, so nobody has to copy a token out of a log. */
+export const openUrlPath = (home: string): string => `${home}/.c4-view/open-url`
+
+/**
+ * Remember the one-click URL in a 0600 file and hand back the line that says where it is. A shared box
+ * cannot print the token to its log, and a human should not have to grep for it either.
+ */
+export function rememberOpenUrl(guard: Guard, port: number | string, home: string, hostname = osHostname()): string | null {
+  if (!guard.token) return null
+  const file = openUrlPath(home)
+  const tail = `${port}/?t=${guard.token}`
+  // a shared server is reached by two names: from this box, and from the network. Both go in the file, because
+  // the one a person needs depends on where they are sitting.
+  const urls = guard.host === '0.0.0.0' ? [`http://localhost:${tail}`, `http://${hostname}:${tail}`] : [`http://${guard.host}:${tail}`]
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, `${urls.join('\n')}\n`, { mode: 0o600 })
+  return `  open:    ${file}   (first line: this box · second: the network · xdg-open "$(head -1 ${file})")`
+}
+
+/**
+ * One line a human can act on, printed at startup.
+ *
+ * The token is only ever printed to a TERMINAL. Under systemd, nohup or CI, stdout is a log file that
+ * outlives the run and is read by whoever can read the journal — a bearer token there is a leak, not a hint.
+ */
+export function guardNotice(guard: Guard, port: number | string, showToken = process.stdout.isTTY === true): string[] {
   if (!guard.token) return [`serving http://127.0.0.1:${port}/ — local only`]
   const url = `http://${guard.host === '0.0.0.0' ? '<this-host>' : guard.host}:${port}/`
+  const origin = guard.generated ? 'generated this run; pass --token to pin it' : 'from --token or ~/.config/c4-view/env'
+  if (!showToken) {
+    return [
+      `serving ${url} — shared on the network, token required`,
+      `  token: set (${origin}) — not printed: stdout is not a terminal`,
+      `  open once with: ${url}?t=<token>   (the page then remembers it)`,
+      `  agents: curl -H "authorization: Bearer ***" …`,
+    ]
+  }
   return [
     `serving ${url} — shared on the network, token required`,
     `  token: ${guard.token}${guard.generated ? '  (generated this run; pass --token to pin it)' : ''}`,
     `  open once with: ${url}?t=${guard.token}   (the page then remembers it)`,
-    `  agents: curl -H "authorization: Bearer ${guard.token}" …`,
+    `  agents: curl -H "authorization: Bearer ***" …`,
   ]
 }

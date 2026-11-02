@@ -27,6 +27,11 @@ c4v prefs pending                          # JSON: the questions still unanswere
 
 - If the harness refuses these commands (they read `~/.c4-view`), **move on silently**: the preferences are
   optional, the diagram is not. Never let a rejected `prefs` call end the run.
+- One of the questions asks whether to install a pre-commit gate **in the user's repo**. Stay on the
+  no-answer state until they answer: no hook is written without an explicit yes. On `gate.install = auto`,
+  run `c4v gate install` in the repo you are working in, once — after showing the one-line trade-off — and
+  say in your hand-back that the hook is installed and where. On `manual`, say it is not installed, once,
+  and never nag.
 - Empty `pending` → say nothing about setup.
 - Otherwise ask **all of them in one short message**, each with its options and one clause on what the choice
   does, then record each with `c4v prefs set <id>=<answer>`. Never invent an answer, never ask twice, never
@@ -78,12 +83,18 @@ through, not what runs.
 |---|---|---|---|
 | C1 context | `""` | the system, people, outside services | 4–7 |
 | C2 containers | `<id>` | processes, stores, browser apps, jobs | 6–12 |
-| C3 components | `<id>/<container>` | the stages inside the one container that carries the point | 8–16 |
+| C3 components | `<id>/<container>` | the stages inside one container that carries the point | 6–12 |
 | C4 code | deeper | only when asked about a module | ≤12 |
 
-Ship **C1 + C2 always, plus one C3** (the thing that broke). One C3, not five. Write it inside the repo at
+Ship **C1 + C2 always**, then one C3 **per container that earns it** — typically one to three, never one for
+the whole app and never one per source file. A container earns a C3 when its internals are the argument (the
+thing that broke, the part a reader will ask about); `cli` and `server` both do in this tool, and a model with
+three of them is honest, not greedy. What is dishonest is a level of six boxes you could not deploy or restart
+separately. Write it inside the repo at
 `docs/c4/<id>.json` — never `/tmp`, never `$HOME`: a sandboxed harness denies writes outside the working
-directory and the run loses the file it just built. `<id>` = repo folder in lower-kebab.
+directory and the run loses the file it just built. When you are describing a repo you may **not** write into
+(the product is not yours, or the brief forbids it), write in your own workspace instead and say where the
+model lives in your answer; the rule "inside the repo" applies to the repo you are working in. `<id>` = repo folder in lower-kebab.
 
 **3. Decide each edge by asking what crosses it.** If a noun crosses, that noun is the label (`Ranked`,
 `AuditReport`, `orders.json`, `8 KB SVG`); otherwise the shortest true verb (`writes`, `polls`). An edge you
@@ -92,9 +103,30 @@ drawing.
 
 ## Commands
 
-`c4v` is on PATH when the package is installed. There is **no checkout to find and no `src/cli.ts` to run** —
-looking for one hits a sandbox denial, burns the budget on rejected commands, and ships a model that was never
-audited. If `c4v` is missing: `npm i -g c4-view`, once.
+Audit judges the picture a page draws: a level with a parent is reported **composed** and the line says so
+(`level="c4view/cli" (composed)`). `--flat` audits the authored level instead, for corpus checks only.
+
+```bash
+node src/cli.ts audit  model.json --strict --require-docs   # exit 0 is the deliverable
+node src/cli.ts render model.json --out out/                # one file per level, flat
+node src/cli.ts render model.json --expand c4v/cli --out out/   # the composed picture, as a page draws it
+node src/cli.ts serve  --port 8788                          # read-only viewer
+node src/cli.ts publish model.json [--as <id>]              # model AND docs into the viewer's store
+```
+
+**Hover text comes from the docs, and `POST /api/diagrams` copies only the model.** To see your docs in the
+viewer, publish: `c4v publish model.json` copies the model and both doc directories into the store the viewer
+reads. A model POSTed without them opens with an empty hover panel — that is the difference the two commands
+make, and the reason to prefer `publish` whenever docs exist.
+
+Docs live beside the model, **flat**, one directory for the whole model: `docs/c4/<id>/nodes/<node-id>.md` and
+`docs/c4/<id>/edges/<from>__<to>.md`. `--require-docs` fails when any node or edge of any level has nothing to
+say; `--json` prints the per-picture reports as JSON for a script.
+
+
+`c4v` is on PATH when the package is installed. **Do not go looking for a checkout** of this tool: `node
+src/cli.ts` is only for working *inside* the c4-view repo itself, and hunting for one elsewhere wastes the run
+on sandbox denials. If `c4v` is missing: `npm i -g c4-view`, once.
 
 ```bash
 command -v c4v || npm i -g c4-view
@@ -118,6 +150,56 @@ each SVG (`--scale 1` for a small one). `serve` stores models under `~/.c4-view/
 `POST /api/diagrams` with the model body returns `{ id, url, audit }`. Pages are server-rendered, so a link
 works before any JS runs.
 
+## C4, in four levels — get these names right or the picture lies
+
+| level | a box is | how many | drill? |
+|---|---|---|---|
+| **C1 context** | a person, your system, or an external system it talks to | 4–7 | yes: your system |
+| **C2 container** | something that runs or stores: a process, a service, a CLI, a queue, a database, a hook | 5–12 | yes: **every** container you have something to say about |
+| **C3 component** | a module, controller, service, repository **inside one container** | 6–12 | only if a component earns a C4 code level |
+| **C4 code** | class, interface, table | ≤12 | no |
+
+**The three mistakes that make a diagram worthless, in the order they get made:**
+
+1. **Skipping C2.** Source files on the second level is not a container diagram — it is a component diagram
+   wearing the wrong label. If a box would not appear in a deployment diagram (a process, a port, a store),
+   it does not belong on C2.
+2. **A lens for every container you can describe.** Ship C1 and C2 always; then one C3 per container you can
+   honestly break into 6–12 components, and say in your hand-back which containers got one and why the others
+   did not. There is no bonus for a fifth C3 and no credit for a layer of dead boxes.
+3. **One lens per layer.** A layer where a single box opens and the rest are dead says the system has depth in
+   exactly one place. That is almost never true: each container on C2 gets its own child level, and each of
+   those opens in place, one at a time. Boxes that are genuinely leaves (a browser, an external API) stay leaves —
+   that is a decision you can defend, not a default you were too lazy to check.
+4. **Trusting a green audit that judged the wrong picture.** `c4v audit` judges **what a page draws**: a level
+   with a parent is composed (parent, with that box expanded), because that is the picture a reader opens.
+   `--flat` audits the authored level alone and is for corpus checks only — never for a claim that a drill looks
+   right.
+
+A child level is **the inside of one box**, nothing else: no sibling boxes from above, no second box expanded,
+ports for every parent edge that crosses in. That is why it reads as a lens and not as a second diagram.
+
+**Point the port at the node nearest the frame edge the edge arrives from.** A port that lands at the far end
+of a long chain drags the outside box across the whole page and the wire ends up running under the drawing —
+the troubleshoot table blames `rank` hints for that symptom, and it is usually the port.
+
+**A box shown on two levels is one box.** If an external system appears at C1 and again at C2 (normal: a
+container diagram does show what it talks to), give it the **same id and the same identity** on both levels.
+Composition merges them; different ids make the page draw the same element twice, which is how a reader ends
+up asking why there are two browsers.
+
+**An element that talks to a box must appear on every level between it and that box.** Composition only
+ever sees the level immediately above: leave the actor out of the container level and it vanishes the moment
+somebody drills one level deeper — the component page ends up with one input where the context page showed
+three.
+
+**Every lens needs an entry and an exit — and the audit enforces it.** A box with edges in only one direction is
+a `dead end` failure unless it is a `file-storage`, `database`, `cache` or `external-system` (sinks by nature).
+A drilled page shows only the boxes whose edges cross the frame —
+that is what makes it a lens. If the page has no inbound edge, the parent level is missing who calls this box;
+if it has no outbound edge, the box looks like a dead end. Both are model gaps, not rendering choices: add the
+edge (or say in the hand-back that the box is a genuine sink).
+
 ## The model
 
 **`assets/example.json`** ships beside this file: a complete two-level model — read it for the shape, the field
@@ -126,17 +208,63 @@ an installed package.
 
 | Field | Rule |
 |---|---|
-| `levels[].path` | `""` at the root; a child is the parent path + node id (`api`, `api/db`). A node with a matching child level becomes clickable. |
+| `levels[].path` | `""` at the root; a child is the parent path + node id (`api`, `api/db`). A node with a matching child level becomes clickable — expect several clickable boxes per layer, each with its own level. |
 | `subtype` | exactly one of these 49 — it decides shape and colour: `system, person, role, external-system, boundary, web-application, microservice, database, cache, message-queue, file-storage, search-engine, load-balancer, cdn, serverless-function, batch-job, container-registry, dns, api-gateway, ui-component, api-controller, service-logic, repository, middleware, plugin, module, event-handler, job, adapter, saga, workflow, library, config, migration, test-suite, class, interface, abstract-class, function, enum, type-alias, c4-module, schema, dto, constant, test-file, migration-file, config-file, script`. |
 | `tech` | second line: technology only, ≤5 words. |
-| `identity` | stable human id (`SHP-3`), kept across edits — it is what the user refers to. |
+| `identity` | **required on every node**: a short stable id (`SHP-3`, `C4V-11`), kept across edits. Unique per
+**element**: the same element drawn on two levels (an external system at C1 and C2) carries the SAME identity,
+and that is what tells composition to draw it once. Two different boxes never share one. It is drawn on the box
+and it is how a person names a box to you ("C4V-11 does X") — without it the user describes a box by position
+and you get to guess wrong. |
 | `rank` | absolute column hint, only when computed order fights the truth (an external that must sit right of everything). A hint is a promise about columns: hint a node left of its predecessor and you have declared that edge backward, and the router answers with a corridor under the whole drawing. |
-| `flow` | the linear narration, every edge key once. Omit → derived depth-first from the source nodes. |
-| `groups` | C4 boundaries; members must be **adjacent in the drawing**. |
+| `flow` | the linear narration; **must** name every edge key of that level once (gated). Omit → derived depth-first from the source nodes. |
+| `groups` | C4 boundaries (e.g. "what we run" vs "what we rent"); members must be **adjacent in the drawing**.
+Do **not** wrap a drill level's interior in a group — composition already draws the dashed `frame-<host>` around
+it, and an authored one on top doubles the boundary. |
+
+## What the gates refuse (numbers, not taste)
+
+`audit --strict` fails a level for any overlap — and for these four, which are about honesty rather than geometry:
+
+| gate | fails when |
+|---|---|
+| **narration** | a declared `flow` does not name every edge of that level exactly once (the viewer appends the rest silently, so the animation runs in an order nobody chose) |
+| **one id is one element** | the same node id appears on two levels with different identities — a shared doc would describe two different boxes |
+| **no doors** | a drill level's box has no edges on the level above: the page would show a frame with nothing entering or leaving |
+| **density** | more than **two wire crossings per edge** on a picture, composed or not |
+
+Aspect is **reported, not gated**: a wide picture opens at 100% with a note instead of shrinking its labels to 5px.
+
+### The number to aim at, not just the one to clear
+
+`audit` prints `crossings=13 (1.08/edge, dense)`. The gate is 2/edge; a picture that reads without zooming is
+under **0.5**:
+
+| verdict | crossings per edge | what it means |
+|---|---|---|
+| `crisp` | ≤ 0.5 | reads at 100% |
+| `ok` | ≤ 1 | fine, a wire or two overlaps |
+| `dense` | ≤ 2 | legal, and it looks it — thin the level |
+| `over` | > 2 | the gate refuses it |
+
+**A dense level is a model problem, not a layout problem — and this is measured, not assumed.** Permuting the
+declaration order of an 11-box / 12-edge level 60 times changed its crossings by zero: the ordering, ranking and
+port assignment are already the best they can be *for that graph*. Only the graph changes the picture. Three
+edits, in order of effect:
+
+1. **Fewer boxes.** Two siblings that are always drawn together and always wired to the same things are one
+   component (`store` + `prefs` → one box with two bullets in its doc). This is the big one: the same system at
+   11 boxes reads at 1.08/edge, at 7 boxes at 0.00.
+2. **Fewer bundles.** Three or more edges from one box to the same neighbour set is a layer boundary, not a
+   design: collapse them into one edge whose label names the cargo.
+3. **Split the level.** If the boxes are genuinely distinct, the level is doing two jobs — one of them belongs
+   one level down.
 
 ## Authoring rules
 
-1. **One idea per level.** C1 4–7, C2 6–12, C3 8–16, C4 ≤12 nodes. Above 20 is a modelling mistake — split.
+1. **One idea per level, and the level must be the level it claims.** C1 4–7, C2 5–12, C3 6–12, C4 ≤12 nodes;
+   a C2 box is something that runs or stores, a C3 box is a module inside one container. Above 20 is a modelling
+   mistake — split.
 2. **Every node needs an edge.** An orphan box means the level mixes two stories.
 3. **Labels 1–3 words.** The explanation belongs in `desc` or in a child level.
 4. **Edge labels are the cargo or the verb** (`Ranked`, `AuditReport`, `writes`, `polls`), ≤3 words — they are
@@ -148,8 +276,23 @@ an installed package.
    external API, rented database) earns a boundary; a level with no such seam needs none.
 7. **Every level declares `flow`, in the order a person would explain it.** The derived depth-first order is
    rarely that order, and the flow is what the viewer animates — a level without it is not delivered. Every
-   edge key appears exactly once.
+   edge key appears exactly once. **If the user tells you the order, that is the order**: write their sequence
+   verbatim into `flow`, one edge per step; do not re-derive it and do not "improve" it. Edges your list
+   misses are appended at the end, so an incomplete list animates wrongly rather than failing loudly.
 8. **Never encode state** (counts, statuses, dates) — it rots. Architecture only.
+
+## The repo gate (only when the repo has one)
+
+If the repo you are working in has `.githooks/pre-commit`, a commit that changes code outside `docs/c4/`
+must also update the model and its docs, or you record why not — **before** you commit:
+
+```bash
+c4v gate check --staged                       # the hook runs this; read it, do not guess
+c4v gate defer --reason "why the picture is still true"
+```
+
+A deferral is a claim a reviewer will read. Write what changed and why the diagram does not move; "no change
+needed" alone is not a reason. It covers exactly the staged diff — one more edit and it is stale again.
 
 ## The loop
 
@@ -174,7 +317,9 @@ Gated, must be zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires shar
 - `crossings` above ~2 per edge → the level is too tangled to read; split it.
 - `backward` above zero → an edge drawn right-to-left. Legal if the loop is real; otherwise a `rank` hint
   caused it.
-- `aspect` past ~8 → a long chain. Fine when the sequence IS the point; split when the strip is wide because
+- `aspect` past ~8 is **reported, not gated, and not a defect on its own**: a genuine ten-stage pipeline is a
+  ten-to-one strip and the viewer fits it (that is what the zoom presets are for). Split only when the strip is
+  wide because
   you flattened a hierarchy.
 
 ## Delivering

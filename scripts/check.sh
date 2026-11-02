@@ -47,11 +47,20 @@ fi
 step "gate: 300-line cap, purity, no any/placeholders" node tools/gate.mjs
 step "types: tsc --noEmit"                             npx tsc --noEmit
 step "tests: node --test"                              node --test
-step "goldens: 11 levels byte-identical"               node tools/golden.mjs --check
-step "audit: every fixture and example is green"       bash -c '
-  for f in fixtures/*.json examples/*.json docs/c4/*.json skill/assets/*.json; do
+step "goldens: every corpus level byte-identical"      node tools/golden.mjs --check
+# Corpus fixtures are judged FLAT: `audit` defaults to the composed picture a page draws, and the droid
+# fixture's drilled views are known-bad (36-90 crossings). Examples and the repo's own model are judged
+# composed, because those are the ones a reader opens.
+step "audit: fixtures flat, examples and our own model composed" bash -c '
+  for f in fixtures/*.json; do
+    [ -f "$f" ] || continue
+    node src/cli.ts audit "$f" --strict --flat >/dev/null || { echo "failed: $f"; exit 1; }
+  done
+  for f in examples/*.json docs/c4/*.json skill/assets/*.json; do
+    [ -f "$f" ] || continue   # an empty doc dir must not fail the glob itself
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }
   done'
+step "docs: the sample's nodes and edges all have a doc"  node src/cli.ts audit examples/lens.json --strict --require-docs
 step "tokens: every measured contrast pair clears its WCAG threshold" node tools/contrast.mjs
 
 # ── secrets: cheap, and the one class of mistake git keeps forever ────────────
@@ -63,9 +72,71 @@ else
   skip "secrets: gitleaks" "not installed (setup-dev.sh fetches the image)"
 fi
 
+# ── sonar: every commit -------------------------------------------------------
+# Measured here: ~5 s analysis, ~3 s coverage. It belongs on pre-commit, not only on pre-push:
+# this repo has no remote, so a push never happens, --full never runs, and the quality gate is
+# never consulted — which is how 17 smells and a red gate reached a branch nobody blocked.
+# SonarQube is self-hosted on the maintainer's box, so it is OPTIONAL for a contributor — but it must be
+# impossible to mistake "not run" for "passed", hence SKIP with the reason on its own line.
+if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "$HOME/.env" 2>/dev/null; then
+  if have sonar-scanner || [ -x "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner" ]; then
+    scanner=$(command -v sonar-scanner || echo "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner")
+    if [ -z "${SONAR_TOKEN:-}" ]; then set -a; . "$HOME/.env"; set +a; fi
+    # the scanner exits 0 once the analysis is UPLOADED; only the API knows whether the gate
+    # passed. Reading it is the difference between "sonar ran" and "sonar is green".
+    sonar() {
+      node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1 || return 1
+      # qualitygate.wait makes the scanner itself exit non-zero on a red gate; the API read below
+      # is the second pair of eyes, because a scanner that only uploads reports success
+      "$scanner" -Dsonar.login="$SONAR_TOKEN" -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=180 >/dev/null || return 1
+      # the credential goes in a computed header, not a `-u` argument: a literal auth argument reads
+      # to secret scanners (gitleaks `curl-auth-user`) like a committed password
+      auth="Basic $(printf '%s:' "${SONAR_READ_TOKEN:-$SONAR_TOKEN}" | base64 -w0)"
+      hdr="Authorization: ${auth}"
+      gate=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/qualitygates/project_status?projectKey=c4-view") || return 1
+      # The gate's conditions are NEW code only: once a smell is older than the new-code period it stops
+      # counting, so a green gate sat next to 11 open issues. This repo's rule is zero, and it is checked
+      # here so a smell cannot age its way to green.
+      issues=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/issues/search?componentKeys=c4-view&resolved=false&ps=200") || return 1
+      total=$(printf '%s' "$issues" | sed -n 's/.*"total":\([0-9][0-9]*\).*/\1/p' | head -1)
+      if [ "${total:-0}" != "0" ]; then
+        printf '%s' "$issues" | tr ',' '\n' | grep '"message"' | head -10 >&2
+        echo "sonar: ${total} unresolved issue(s) — the gate counts new code only, this counts every open one" >&2
+        return 1
+      fi
+      printf '%s' "$gate" | grep -q '"status":"OK"' && return 0
+      printf '%s\n' "$gate" | sed 's/},{/}\n{/g' | grep 'ERROR' >&2
+      return 1
+    }
+    step "sonar: analysis + quality gate (reads the verdict, not just the upload)" sonar
+    # The sonar gate on this instance is the built-in "Sonar way", whose coverage condition is 80 and
+    # cannot be edited without admin rights. The project's own floor is 95, so it is enforced here —
+    # measured the way sonar measures it: (covered lines + covered branches) / (lines + branches).
+    # Two floors: the sonar metric at 95, and branch coverage on a ratchet — it may only rise.
+    # Raise BRANCH_FLOOR with each batch of tests; never lower it to get green. The number is in the
+    # lcov basis used here (node's own summary reads ~0.1 higher: it counts a few branches lcov does
+    # not), so compare like with like.
+    coverage_floor() {
+      [ -f coverage/lcov.info ] || return 1
+      awk -F: -v floor="${BRANCH_FLOOR:-90}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
+        END { pct = (lh + bh) * 100 / (lf + bf); br = bh * 100 / bf;
+              printf "lines+branches %d/%d = %.1f%% (floor 95) · branches %d/%d = %.1f%% (floor %d)\n", lh + bh, lf + bf, pct, bh, bf, br, floor;
+              exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info
+    }
+    step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
+# New code gets no allowance: every line and branch this branch added, exercised or explained (a
+# `coverage:invariant` marker that the tool prints).
+step "coverage: 100% on lines this branch adds" node tools/coverage-new.mjs
+  else
+    skip "sonar" "scanner binary not installed"
+  fi
+else
+  skip "sonar" "no SONAR_TOKEN — CI runs it on the maintainer's instance"
+fi
+
 if [ "$mode" = fast ]; then
   echo
-  echo "  $([ "$failed" -eq 0 ] && echo 'ok' || echo "$failed failed") · $skipped skipped · full suite runs on pre-push"
+  echo "  $([ "$failed" -eq 0 ] && echo 'ok' || echo "$failed failed") · $skipped skipped · full suite: skill scanners, deps, doctor"
   exit "$([ "$failed" -eq 0 ] && echo 0 || echo 1)"
 fi
 
@@ -88,49 +159,6 @@ if [ "$(type -t scan)" = function ] && scan true; then :; else fail "skill: no s
 step "deps: npm audit (0 runtime deps, dev tree only)" npm audit --audit-level=high
 step "doctor: this machine can still run the tool"   node src/cli.ts doctor
 
-# SonarQube is self-hosted on the maintainer's box, so it is OPTIONAL for a contributor — but it must be
-# impossible to mistake "not run" for "passed", hence SKIP with the reason on its own line.
-if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "$HOME/.env" 2>/dev/null; then
-  if have sonar-scanner || [ -x "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner" ]; then
-    scanner=$(command -v sonar-scanner || echo "$HOME/.sonar/native-sonar-scanner/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner")
-    if [ -z "${SONAR_TOKEN:-}" ]; then set -a; . "$HOME/.env"; set +a; fi
-    # the scanner exits 0 once the analysis is UPLOADED; only the API knows whether the gate
-    # passed. Reading it is the difference between "sonar ran" and "sonar is green".
-    sonar() {
-      node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1 || return 1
-      # qualitygate.wait makes the scanner itself exit non-zero on a red gate; the API read below
-      # is the second pair of eyes, because a scanner that only uploads reports success
-      "$scanner" -Dsonar.login="$SONAR_TOKEN" -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=180 >/dev/null || return 1
-      # the credential goes in a computed header, not a `-u` argument: a literal auth argument reads
-      # to secret scanners (gitleaks `curl-auth-user`) like a committed password
-      auth="Basic $(printf '%s:' "${SONAR_READ_TOKEN:-$SONAR_TOKEN}" | base64 -w0)"
-      gate=$(curl -fsS -H "Authorization: $auth" "http://127.0.0.1:9000/api/qualitygates/project_status?projectKey=c4-view") || return 1
-      printf '%s' "$gate" | grep -q '"status":"OK"' && return 0
-      printf '%s\n' "$gate" | sed 's/},{/}\n{/g' | grep 'ERROR' >&2
-      return 1
-    }
-    step "sonar: analysis + quality gate (reads the verdict, not just the upload)" sonar
-    # The sonar gate on this instance is the built-in "Sonar way", whose coverage condition is 80 and
-    # cannot be edited without admin rights. The project's own floor is 95, so it is enforced here —
-    # measured the way sonar measures it: (covered lines + covered branches) / (lines + branches).
-    # Two floors: the sonar metric at 95, and branch coverage on a ratchet — it may only rise.
-    # Raise BRANCH_FLOOR with each batch of tests; never lower it to get green. The number is in the
-    # lcov basis used here (node's own summary reads ~0.1 higher: it counts a few branches lcov does
-    # not), so compare like with like.
-    coverage_floor() {
-      [ -f coverage/lcov.info ] || return 1
-      awk -F: -v floor="${BRANCH_FLOOR:-90}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
-        END { pct = (lh + bh) * 100 / (lf + bf); br = bh * 100 / bf;
-              printf "lines+branches %d/%d = %.1f%% (floor 95) · branches %d/%d = %.1f%% (floor %d)\n", lh + bh, lf + bf, pct, bh, bf, br, floor;
-              exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info
-    }
-    step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
-  else
-    skip "sonar" "scanner binary not installed"
-  fi
-else
-  skip "sonar" "no SONAR_TOKEN — CI runs it on the maintainer's instance"
-fi
 
 echo
 echo "  $([ "$failed" -eq 0 ] && echo 'ok' || echo "$failed failed") · $skipped skipped"

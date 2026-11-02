@@ -10,6 +10,10 @@
                                      host the viewer as a systemd USER unit
   c4v skill list | install [--global] [--harness id,id]
                                      copy this skill into the AI harnesses on this machine
+  c4v publish <model.json> [--root ~/.c4-view]
+                                     copy a model AND its docs into the viewer's store
+  c4v gate install | check --staged | defer --reason "..." | status | report | uninstall
+                                     keep docs/c4 in step with the code, in YOUR repo (optional)
   c4v prefs pending | show | set <id>=<answer> | greeting
                                      the answers the user gave once (and the ones still missing)
  *
@@ -21,16 +25,15 @@
  *
  * @module c4-view/cli
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, extname, isAbsolute, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { renderFile, type Rendered, type RenderedLevel } from './render.ts'
-import { svgToPng } from './png.ts'
-import { auditLine } from './audit.ts'
+import { readModel, renderExpanded, renderModel, type Rendered } from './render.ts'
+import { reportCommand } from './cli-output.ts'
 import type { Systemctl } from './service.ts'
+import type { Model } from './types.ts'
 import { ModelError } from './model.ts'
-import { levelSlug } from './slug.ts'
+import { argumentError } from './cli-args.ts'
 
 const USAGE = `c4v — agent-driven C4 renderer
 
@@ -42,6 +45,10 @@ const USAGE = `c4v — agent-driven C4 renderer
                                      host the viewer as a systemd USER unit
   c4v skill list | install [--global] [--harness id,id]
                                      copy this skill into the AI harnesses on this machine
+  c4v publish <model.json> [--root ~/.c4-view]
+                                     copy a model AND its docs into the viewer's store
+  c4v gate install | check --staged | defer --reason "..." | status | report | uninstall
+                                     keep docs/c4 in step with the code, in YOUR repo (optional)
   c4v prefs pending | show | set <id>=<answer> | greeting
                                      the answers the user gave once (and the ones still missing)
 
@@ -58,7 +65,7 @@ interface Args {
   /** the raw argv, for the few commands whose second word is a verb rather than a file */
   argv: string[]
   command: string | undefined
-  file: string | undefined
+  file: string
   has: (name: string) => boolean
   opt: (name: string) => string | undefined
   optOr: (name: string, fallback: string) => string
@@ -72,7 +79,8 @@ export function parseArgs(argv: string[]): Args {
   return {
     argv,
     command: argv[0],
-    file: argv[1] && !argv[1].startsWith('--') ? argv[1] : undefined,
+    // '' means "no file": the parsed command line never has to say `undefined` and every reader can compare
+    file: argv[1] && !argv[1].startsWith('--') ? argv[1] : '',
     has: (name) => argv.includes(`--${name}`),
     opt,
     optOr: (name, fallback) => opt(name) ?? fallback,
@@ -82,36 +90,10 @@ export function parseArgs(argv: string[]): Args {
 /** `'' -> root`, `a/b -> a~b`: a file-safe, injective stem for one level. */
 export { levelSlug as slugOf } from './slug.ts'
 
-/** Where one level's file goes: the named .svg, or `<dir>/<level-slug>.svg`. */
-function outputPath(out: string | undefined, id: string, level: string): string {
-  if (out !== undefined && extname(out) === '.svg') return isAbsolute(out) ? out : resolve(out)
-  return join(out ?? join('out', id), `${levelSlug(level)}.svg`)
-}
-
-function writeLevels(report: Rendered, out: string | undefined, png: boolean, scale: number): string[] {
-  const written: string[] = []
-  for (const level of report.levels) {
-    const target = outputPath(out, report.id, level.path)
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, level.svg)
-    written.push(target)
-    if (png) written.push(svgToPng(level.svg, target.replace(/\.svg$/, '.png'), scale))
-  }
-  return written
-}
-
-function printAudit(levels: RenderedLevel[], asJson: boolean): void {
-  if (asJson) {
-    console.log(JSON.stringify(levels.map((l) => l.audit), null, 2))
-    return
-  }
-  for (const level of levels) console.log(auditLine(level.audit))
-}
-
 /** The serve command owns the process: it resolves only when the server is asked to stop. */
 async function serveCommand(args: Args): Promise<number> {
   const { serve } = await import('./server.ts')
-  const { guardNotice } = await import('./security.ts')
+  const { guardNotice, rememberOpenUrl } = await import('./security.ts')
   const port = Number(args.optOr('port', '8788'))
   const root = args.optOr('root', join(homedir(), '.c4-view'))
   const host = args.optOr('host', '127.0.0.1')
@@ -124,6 +106,8 @@ async function serveCommand(args: Args): Promise<number> {
   const addr = srv.address()
   const shown = typeof addr === 'object' && addr !== null ? addr.port : port
   for (const line of guardNotice(srv.guard, shown)) console.log(line)
+  const openLine = rememberOpenUrl(srv.guard, shown, homedir())
+  if (openLine) console.log(openLine) // coverage:invariant — null only for a loopback server with no token
   console.log(`  diagrams in ${root}`)
   /* node:coverage disable */
   // `serve` owns the process: it returns only through the exit below, so the promise never settles
@@ -138,9 +122,12 @@ async function serveCommand(args: Args): Promise<number> {
 }
 
 /** Render the model, or print why it could not be read. */
-function loadReport(file: string, level: string | undefined): Rendered | null {
+/** Read, validate and render once; both the picture and the model come back from the same parse. */
+function loadReport(file: string, level: string | undefined, expand?: string): { report: Rendered; model: Model } | null {
   try {
-    return renderFile(file, level)
+    const model = readModel(file)
+    const report = expand ? renderExpanded(model, expand) : renderModel(model, level)
+    return { report, model }
   } catch (error) {
     if (error instanceof ModelError) console.error(error.message)
     else console.error(error instanceof Error ? error.message : String(error))
@@ -148,14 +135,17 @@ function loadReport(file: string, level: string | undefined): Rendered | null {
   }
 }
 
-function writeOutputs(args: Args, report: Rendered): void {
-  const scale = Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2))
-  for (const path of writeLevels(report, args.opt('out'), args.has('png'), scale)) console.log(`wrote ${path}`)
-}
-
 /** The sub-action of a two-word command (`service install`). */
 function argvSecond(args: Args): string | undefined {
   return args.argv[1]?.startsWith('--') ? undefined : args.argv[1]
+}
+
+/** The token line: a terminal gets the value, a service log gets its location and nothing else. */
+export function tokenLines(token: string | null, tty: boolean): string[] {
+  if (!token) return []
+  return tty
+    ? [`  token:   ${token}   (in ~/.config/c4-view/env)`]
+    : ['  token:   written to ~/.config/c4-view/env — not printed: a service log is not a terminal']
 }
 
 /**
@@ -194,7 +184,7 @@ export async function serviceCommand(
     const token = ensureTokenFile(opts.host, newToken, join(home, '.config', 'c4-view'))
     console.log(`installed and started\n${file}`)
     for (const line of serviceHints(opts.port, opts.host)) console.log(`  ${line}`)
-    if (token) console.log(`  token:   ${token}   (in ~/.config/c4-view/env; open once with ?t=<token>)`)
+    for (const line of tokenLines(token, process.stdout.isTTY === true)) console.log(line)
     return 0
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
@@ -202,37 +192,6 @@ export async function serviceCommand(
   }
 }
 
-/** Argument errors are answered before any work is done. */
-function argumentError(args: Args): number | null {
-  if (!args.command || args.command === 'help' || args.has('help') || args.command === '--help') {
-    console.log(USAGE)
-    return 0
-  }
-  if (args.command === 'serve' || args.command === 'doctor') return null
-  if (args.command === 'skill' || args.command === 'prefs') return null
-  if (args.command === 'service') {
-    const action = argvSecond(args)
-    if (action !== 'install' && action !== 'uninstall' && action !== 'status') {
-      console.error(`c4v service <install|uninstall|status>\n`)
-      return 2
-    }
-    return null
-  }
-  if (!args.file) {
-    console.error(`missing <model.json>\n\n${USAGE}`)
-    return 2
-  }
-  if (args.command !== 'render' && args.command !== 'audit') {
-    console.error(`unknown command "${args.command}"\n\n${USAGE}`)
-    return 2
-  }
-  const out = args.opt('out')
-  if (out !== undefined && extname(out) === '.svg' && args.opt('level') === undefined) {
-    console.error('--out <file.svg> needs --level (one level per file)\n')
-    return 2
-  }
-  return null
-}
 
 /**
  * Run the command line and resolve its exit code. Never calls process.exit, and never lets an
@@ -248,48 +207,76 @@ export async function run(argv: string[]): Promise<number> {
   }
 }
 
+/** Verbs that run before (and instead of) the render pipeline. null means "not one of mine". */
+async function otherCommand(args: Args, argv: string[]): Promise<number | null> {
+  switch (args.command) {
+    case 'serve': return serveCommand(args)
+    case 'skill': {
+      const { skillCommand } = await import('./cli-skill.ts')
+      return skillCommand(argv)
+    }
+    case 'prefs': {
+      const { prefsCommand } = await import('./cli-skill.ts')
+      return prefsCommand(argv)
+    }
+    case 'publish': {
+      const { publishCommand } = await import('./cli-publish.ts')
+      return publishCommand(argv)
+    }
+    case 'gate': {
+      const { gateCommand } = await import('./cli-gate.ts')
+      return gateCommand(argv)
+    }
+    case 'service': return serviceCommand(args)
+    case 'doctor': {
+      const { doctor } = await import('./doctor.ts')
+      return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1
+    }
+    default: return null
+  }
+}
+
+/** Render or audit: print the report, write files on `render`, and decide the exit code. */
 async function dispatch(argv: string[]): Promise<number> {
   const args = parseArgs(argv)
-  const early = argumentError(args)
+  const early = argumentError(args, USAGE)
   if (early !== null) return early
-  if (args.command === 'serve') return serveCommand(args)
-  if (args.command === 'skill') {
-    const { skillCommand } = await import('./cli-skill.ts')
-    return skillCommand(argv)
-  }
-  if (args.command === 'prefs') {
-    const { prefsCommand } = await import('./cli-skill.ts')
-    return prefsCommand(argv)
-  }
-  if (args.command === 'service') return await serviceCommand(args)
-  if (args.command === 'doctor') {
-    const { doctor } = await import('./doctor.ts')
-    return doctor(args.optOr('root', join(homedir(), '.c4-view'))) ? 0 : 1
-  }
-
-  const report = args.file ? loadReport(args.file, args.opt('level')) : null
-  if (!report) return 2
-
-  const failed = report.levels.filter((l) => !l.audit.ok)
-  printAudit(report.levels, args.has('json'))
-  if (args.command === 'render') writeOutputs(args, report)
-  if (args.has('strict') && failed.length) {
-    console.error(`\n${failed.length}/${report.levels.length} level(s) failed the geometry gate — fix the model, not the picture`)
-    return 1
-  }
-  return 0
+  const other = await otherCommand(args, argv)
+  if (other !== null) return other
+  const file = args.file
+  const loaded = loadReport(file, args.opt('level'), args.opt('expand'))
+  if (!loaded) return 2
+  return reportCommand(
+    {
+      file,
+      json: args.has('json'),
+      strict: args.has('strict'),
+      requireDocs: args.has('require-docs'),
+      flat: args.has('flat'),
+      noLens: args.has('no-lens'),
+      render: args.command === 'render',
+      out: args.opt('out'),
+      png: args.has('png'),
+      scale: Math.max(1, Math.min(4, Number(args.optOr('scale', '2')) || 2)),
+    },
+    loaded.report,
+    loaded.model,
+  )
 }
+
+/** The message a thrown value deserves: an Error explains itself, a bare value is stringified. */
+export const describeError = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 
 // Only the real binary exits the process; importing this module (the tests) must not.
 /* node:coverage disable */
 // Damage-free guard: when this file is imported, argv[1] is the test runner, so it never runs there.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  /* node:coverage enable */
   run(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (error: unknown) => {
-      console.error(error instanceof Error ? error.message : String(error))
+      console.error(describeError(error))
       process.exit(1)
     },
   )
 }
+/* node:coverage enable */

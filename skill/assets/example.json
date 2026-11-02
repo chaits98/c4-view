@@ -1,38 +1,113 @@
 {
   "id": "example",
-  "title": "Example — a two-level model in the smallest honest shape",
+  "title": "Example \u2014 a two-level model in the smallest honest shape",
   "levels": [
     {
       "path": "",
       "title": "Context",
       "nodes": [
-        { "id": "user", "label": "User", "subtype": "person", "tech": "browser", "identity": "EX-1" },
-        { "id": "app", "label": "The app", "subtype": "system", "tech": "Node 22", "desc": "what this repo does, in one sentence" },
-        { "id": "ext", "label": "Third-party API", "subtype": "external-system", "tech": "HTTPS" }
+        {
+          "id": "user",
+          "label": "User",
+          "subtype": "person",
+          "tech": "browser",
+          "identity": "EX-1"
+        },
+        {
+          "id": "app",
+          "label": "The app",
+          "subtype": "system",
+          "tech": "Node 22",
+          "desc": "what this repo does, in one sentence"
+        },
+        {
+          "id": "ext",
+          "label": "Third-party API",
+          "subtype": "external-system",
+          "tech": "HTTPS"
+        }
       ],
       "edges": [
-        { "from": "user", "to": "app", "label": "requests" },
-        { "from": "app", "to": "ext", "label": "reads" }
+        {
+          "from": "user",
+          "to": "app",
+          "label": "requests"
+        },
+        {
+          "from": "app",
+          "to": "ext",
+          "label": "reads"
+        }
       ],
-      "flow": ["user->app", "app->ext"]
+      "flow": [
+        "user->app",
+        "app->ext"
+      ]
     },
     {
       "path": "app",
       "title": "Inside the app",
       "nodes": [
-        { "id": "api", "label": "HTTP layer", "subtype": "api-gateway", "tech": "express", "group": "process" },
-        { "id": "core", "label": "Core", "subtype": "service-logic", "tech": "TypeScript", "group": "process", "desc": "the rules that make this app worth running" },
-        { "id": "store", "label": "Store", "subtype": "database", "tech": "Postgres", "group": "data" }
+        {
+          "id": "api",
+          "label": "HTTP layer",
+          "subtype": "api-gateway",
+          "tech": "express",
+          "group": "process"
+        },
+        {
+          "id": "core",
+          "label": "Core",
+          "subtype": "service-logic",
+          "tech": "TypeScript",
+          "group": "process",
+          "desc": "the rules that make this app worth running"
+        },
+        {
+          "id": "store",
+          "label": "Store",
+          "subtype": "database",
+          "tech": "Postgres",
+          "group": "data"
+        }
       ],
       "edges": [
-        { "from": "api", "to": "core", "label": "calls" },
-        { "from": "core", "to": "store", "label": "writes" }
+        {
+          "from": "api",
+          "to": "core",
+          "label": "calls"
+        },
+        {
+          "from": "core",
+          "to": "store",
+          "label": "writes"
+        }
       ],
       "groups": [
-        { "id": "process", "label": "in-process", "members": ["api", "core"] },
-        { "id": "data", "label": "durable", "members": ["store"] }
+        {
+          "id": "process",
+          "label": "in-process",
+          "members": [
+            "api",
+            "core"
+          ]
+        },
+        {
+          "id": "data",
+          "label": "durable",
+          "members": [
+            "store"
+          ]
+        }
       ],
-      "flow": ["api->core", "core->store"]
+      "flow": [
+        "api->core",
+        "core->store"
+      ],
+      "ports": {
+        "user->app": "api",
+        "app->ext": "core"
+      }
     }
   ]
 }

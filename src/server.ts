@@ -1,24 +1,26 @@
 /** HTTP surface: `/` is the grid, `/d/<id>` one diagram; a bad id or level segment is a 404. */
-import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ModelError, levelOf, levelOrder, parseModel } from './model.ts'
-import { indexEntries, indexPage } from './index-page.ts'
-import { renderModel } from './render.ts'
+import { ModelError, levelOf, parseModel } from './model.ts'
+import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
+import { docsDir, levelDocs } from './docs.ts'
+import { pictureAudits, renderExpanded, renderModel } from './render.ts'
+import { lensReport } from './lens.ts'
+import { list, loadModel, modelFile, save } from './store.ts'
 import { viewerPage } from './viewer-page.ts'
+import { buildStamp } from './build.ts'
 import { svgToPng } from './png.ts'
 import { allowed, applyHeaders, guardFor, remember, type Guard } from './security.ts'
 import { levelSlug } from './slug.ts'
 import { themeCookie, themeOf, type Theme } from './theme-choice.ts'
 import { broken, denied, json, missing, noLevel, redirectClean, send } from './http-reply.ts'
-import { ID, diagramRoute, routeOf, validLevel } from './routes.ts'
-import type { Model } from './types.ts'
+import { diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
+import type { LevelSpec, Model } from './types.ts'
 
 const MAX_BODY = 2 * 1024 * 1024
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
-type Summary = { id: string; title: string; levels: string[]; updated: string }
 
 /** Bind and resolve once listening, so a test can pass port 0. */
 export async function serve(opts: { port: number; root: string; host?: string; token?: string }): Promise<Server & { guard: Guard }> {
@@ -71,16 +73,33 @@ function sendModel(root: string, req: IncomingMessage, res: ServerResponse, id: 
 function sendAudit(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string | null, theme: Theme): void {
   const model = loadModel(root, id)
   if (!model) return missing(req, res, id, theme)
-  if (level === null) return json(res, 200, renderModel(model).levels.map((l) => l.audit))
+  if (level === null) return json(res, 200, pictureAudits(model))
   if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
-  json(res, 200, renderModel(model, level).levels[0].audit)
+  // the audit of a level is the audit of the picture that level's page draws, composed and all
+  json(res, 200, level ? renderExpanded(model, level).levels[0].audit : renderModel(model, level).levels[0].audit)
 }
 
 function sendPage(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, zoom: string | null, theme: Theme): void {
   const model = loadModel(root, id)
   if (!model) return missing(req, res, id, theme)
-  if (!findLevel(model, level)) return noLevel(req, res, level, model, theme)
-  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme))
+  const found = findLevel(model, level)
+  if (!found) return noLevel(req, res, level, model, theme)
+  send(res, 200, 'text/html; charset=utf-8', viewerPage(model, level, zoom, theme, docsFor(root, model, id, level, found)))
+}
+
+/**
+ * Docs for the page: the level's own docs, plus — when the level is a lens — the parent's docs, because an
+ * expanded page still draws the neighbours that live outside the frame and a reader can hover those too.
+ */
+function docsFor(root: string, model: Model, id: string, level: string, found: LevelSpec): ReturnType<typeof levelDocs> {
+  const dir = docsDir(modelFile(root, id), model)
+  const own = levelDocs(dir, found)
+  const cut = level.lastIndexOf('/')
+  const parentPath = cut < 0 ? '' : level.slice(0, cut)
+  const parent = model.levels.find((l) => l.path === parentPath)
+  if (level === '' || !parent) return own
+  const outer = levelDocs(dir, parent)
+  return { nodes: { ...outer.nodes, ...own.nodes }, edges: { ...outer.edges, ...own.edges } }
 }
 
 function sendExport(root: string, req: IncomingMessage, res: ServerResponse, id: string, level: string, format: 'svg' | 'png', theme: Theme): void {
@@ -97,31 +116,53 @@ function sendAsset(res: ServerResponse, name: string): void {
   send(res, 200, name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8', readFileSync(file))
 }
 
+/**
+ * The token gate, in the order it has to happen: decide, remember, then take the token out of the URL.
+ * Returns false when a response has already been sent, so `handle` stays a router.
+ */
+function admitted(guard: Guard, req: IncomingMessage, res: ServerResponse, url: URL, pathname: string): boolean {
+  // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
+  if (!guard.token || pathname === '/health') return true
+  if (!allowed(guard, req, url)) {
+    denied(req, res, themeOf(url.searchParams.get('theme'), req.headers.cookie))
+    return false
+  }
+  remember(guard, req, url, res)
+  // the token leaves the address bar on the first hop: the cookie has it now, and a token left in the
+  // URL ends up in a screenshot, in history, and in any Referer that slips out
+  if (url.searchParams.has('t')) redirectClean(res, url)
+  return !url.searchParams.has('t')
+}
+
+/** `?sort=` → the three orders the grid offers; anything else is "newest". */
+function sortOf(url: URL): Sort {
+  const raw = url.searchParams.get('sort')
+  return raw === 'title' || raw === 'audit' ? raw : 'updated'
+}
+
+const filterOf = (url: URL): Filter => (url.searchParams.get('audit') === 'fail' ? 'fail' : 'all')
+
+/** 405 with the right Allow header, or true when the method is fine. */
+function methodAllowed(route: Route, method: string, res: ServerResponse): boolean {
+  const allow = route.kind === 'diagrams' ? 'GET, POST' : 'GET'
+  if (allow.split(', ').includes(method)) return true
+  res.setHeader('Allow', allow)
+  json(res, 405, { error: `${method} is not allowed here` })
+  return false
+}
+
 async function handle(root: string, guard: Guard, req: IncomingMessage, res: ServerResponse, pathname: string | null): Promise<void> {
   applyHeaders(res)
   if (pathname === null) return json(res, 404, { error: 'malformed path' })
-
-  // /health stays open so a supervisor or an uptime check needs no secret; it exposes counts only.
-  const url = new URL(req.url ?? '/', 'http://localhost')
-  if (guard.token && pathname !== '/health') {
-    if (!allowed(guard, req, url)) return denied(req, res, themeOf(url.searchParams.get('theme'), req.headers.cookie))
-    remember(guard, req, url, res)
-    // the token leaves the address bar on the first hop: the cookie has it now, and a token left in
-    // the URL ends up in a screenshot, in history, and in any Referer that slips out
-    if (url.searchParams.has('t')) return redirectClean(res, url)
-  }
+  const url = new URL(req.url ?? '/', 'http://localhost') // coverage:invariant — node always sets req.url
+  if (!admitted(guard, req, res, url, pathname)) return
   const route = routeOf(pathname)
   if (!route) return json(res, 404, { error: `no route for ${pathname}` })
-
   /* node:coverage disable */
   // node sets `method` on every request; the fallback exists because the type says maybe
   const method = req.method ?? 'GET'
   /* node:coverage enable */
-  const allow = route.kind === 'diagrams' ? 'GET, POST' : 'GET'
-  if (!allow.split(', ').includes(method)) {
-    res.setHeader('Allow', allow)
-    return json(res, 405, { error: `${method} is not allowed here` })
-  }
+  if (!methodAllowed(route, method, res)) return
   const level = url.searchParams.get('level')
   // the scheme: URL → cookie; append, so the guard's token cookie survives this one
   const theme = themeOf(url.searchParams.get('theme'), req.headers.cookie)
@@ -129,12 +170,17 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
 
   switch (route.kind) {
     case 'index': {
-      const sort = url.searchParams.get('sort') === 'title' ? 'title' : url.searchParams.get('sort') === 'audit' ? 'audit' : 'updated'
-      const filter = url.searchParams.get('audit') === 'fail' ? 'fail' : 'all'
-      return send(res, 200, 'text/html; charset=utf-8', indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sort, filter))
+      return send(
+        res,
+        200,
+        'text/html; charset=utf-8',
+        indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sortOf(url), filterOf(url)),
+      )
     }
     case 'health':
-      return json(res, 200, { ok: true, diagrams: list(root).length })
+      // the build is part of the health answer: a viewer left running from an older checkout serves old
+      // pictures, and nothing else on the page says so
+      return json(res, 200, { ok: true, diagrams: list(root).length, build: buildStamp() })
     case 'diagrams':
       return method === 'POST' ? create(root, req, res) : json(res, 200, list(root))
     case 'model':
@@ -150,39 +196,6 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   }
 }
 
-const modelFile = (root: string, id: string): string => join(root, id, 'model.json')
-
-/** Write `.tmp` then rename: a reader never sees half a model. */
-function save(root: string, id: string, raw: string): void {
-  const dir = join(root, id)
-  mkdirSync(dir, { recursive: true })
-  // uniqueness, not unpredictability: a uuid ends the "insecure PRNG" hotspot and cannot
-  // collide between two processes writing the same id
-  const tmp = join(dir, `.model.${randomUUID()}.tmp`)
-  writeFileSync(tmp, raw)
-  renameSync(tmp, modelFile(root, id))
-}
-
-function loadModel(root: string, id: string): Model | null {
-  const file = modelFile(root, id)
-  return existsSync(file) ? parseModel(JSON.parse(readFileSync(file, 'utf8'))) : null
-}
-
-function list(root: string): Summary[] {
-  if (!existsSync(root)) return []
-  const out: Summary[] = []
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const file = modelFile(root, entry.name)
-    if (!entry.isDirectory() || !ID.test(entry.name) || !existsSync(file)) continue
-    try {
-      const model = parseModel(JSON.parse(readFileSync(file, 'utf8')))
-      out.push({ id: entry.name, title: model.title, levels: levelOrder(model).map((l) => l.path), updated: new Date(statSync(file).mtimeMs).toISOString() })
-    } catch {
-      // a corrupt or half-written file must not take the listing down
-    }
-  }
-  return out.sort((a, b) => a.id.localeCompare(b.id))
-}
 function findLevel(model: Model, path: string) {
   return validLevel(path) ? levelOf(model, path) : undefined
 }
@@ -212,8 +225,15 @@ async function create(root: string, req: IncomingMessage, res: ServerResponse): 
     throw error
   }
   save(root, model.id, raw)
-  const rendered = renderModel(model)
-  return json(res, 201, { id: model.id, url: `/d/${model.id}`, audit: rendered.levels.map((l) => l.audit) })
+  const failures = lensReport(model).problems
+  return json(res, 201, {
+    id: model.id,
+    url: `/d/${model.id}`,
+    audit: pictureAudits(model),
+    // what a badge can trust: geometry per picture, plus the modelling checks
+    ok: pictureAudits(model).every((a) => a.ok) && failures.length === 0,
+    lens: failures,
+  })
 }
 
 /** The body as text, or null once a 413 has been answered and the socket closed. */

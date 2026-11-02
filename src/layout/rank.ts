@@ -90,7 +90,7 @@ function assignRanks(
 ): Map<string, number> {
   const rankOf = new Map<string, number>(ids.map((id) => [id, hint.get(id) ?? 0]))
   // every id is seeded above, so a miss here is a bug in this function, not a missing node
-  const at = (id: string): number => rankOf.get(id) as number
+  const at = (id: string): number => rankOrThrow(rankOf, id)
   for (const id of topo) {
     const want = at(id) + 1
     for (const ci of outgoing.get(id) ?? []) {
@@ -102,10 +102,40 @@ function assignRanks(
   return rankOf
 }
 
+/** Read a rank that must exist; a miss is a bug here, not a missing node, so it says so. */
+function rankOrThrow(rankOf: Map<string, number>, id: string): number {
+  const value = rankOf.get(id)
+  if (value === undefined) throw new Error(`rank missing for "${id}" — assignRanks seeds every id`) // coverage:invariant — seeded for every id; a miss is a bug in this file
+  return value
+}
+
+/**
+ * A frame owns its columns. When a box is expanded in place, its interior is wrapped in a group; any node
+ * outside that group whose column falls inside the group's span would be drawn *under* the frame. Push it
+ * out to the side its edges point: the one that feeds the frame goes left, the one the frame feeds goes right.
+ */
+function clearGroupSpans(level: LevelSpec, edges: Edge[], rankOf: Map<string, number>, hint: Map<string, number>): void {
+  for (const group of level.groups ?? []) {
+    const members = group.members.filter((id) => rankOf.has(id))
+    if (members.length < 2) continue
+    const inside = new Set(members)
+    const ranks = members.map((id) => rankOrThrow(rankOf, id))
+    const lo = Math.min(...ranks)
+    const hi = Math.max(...ranks)
+    for (const [id, rank] of rankOf) {
+      if (inside.has(id) || hint.has(id) || rank < lo || rank > hi) continue
+      const feedsFrame = edges.some((e) => e.from === id && inside.has(e.to))
+      // a column of air either side: the frame's own padding would otherwise eat into the neighbour
+      // negative ranks are fine: shiftToZero pulls the whole drawing back afterwards
+      rankOf.set(id, feedsFrame ? lo - 2 : hi + 2)
+    }
+  }
+}
+
 /** Shift every rank so the drawing starts at column 0. */
 function shiftToZero(ids: string[], rankOf: Map<string, number>): void {
   // seeded for every id (see assignRanks), so the reads are total
-  const at = (id: string): number => rankOf.get(id) as number
+  const at = (id: string): number => rankOrThrow(rankOf, id)
   let min = Infinity
   for (const id of ids) min = Math.min(min, at(id))
   if (min === 0) return
@@ -175,6 +205,7 @@ export function rank(level: LevelSpec, cfg: LayoutConfig): Ranked {
 
   const { back, topo } = breakCycles(ids, edges, outgoing)
   const rankOf = assignRanks(ids, topo, edges, outgoing, back, hint)
+  clearGroupSpans(level, edges, rankOf, hint)
   shiftToZero(ids, rankOf)
   for (const id of ids) items.set(id, { id, rank: rankOf.get(id) ?? 0, index: 0, w: 0, h: 0, dummy: false })
 

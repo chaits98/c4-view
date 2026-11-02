@@ -43,9 +43,9 @@ export function diagramRoute(pathname: string): Route | null {
   }
   const segments = rest.split('/')
   // a path that starts with /d/ always yields at least one segment, empty or not
-  const id = segments.shift() as string
+  const [id, ...tail] = segments
   if (!ID.test(id)) return null
-  const level = segments.join('/')
+  const level = tail.join('/')
   if (level !== '' && !validLevel(level)) return null
   return { kind: 'page', id, level }
 }

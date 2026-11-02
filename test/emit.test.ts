@@ -77,7 +77,7 @@ function fixture(): Fixture {
 }
 
 const { placed, routed } = fixture()
-const svg = emit(placed, routed, LEVEL, cfg, DARK, new Map([['db', 'app/db']]))
+const svg = emit(placed, routed, LEVEL, cfg, DARK, { drill: new Map([['db', 'app/db']]) })
 
 const count = (hay: string, needle: string): number => hay.split(needle).length - 1
 const esc = (s: string): string =>
@@ -122,8 +122,15 @@ test('every subtype maps to a shape and every shape path is closed and finite', 
   }
 })
 
+test('a caller with no options gets a plain drawing, not a broken one', () => {
+  const bare = emit(placed, routed, LEVEL, cfg, DARK)
+  assert.ok(bare.startsWith('<svg'))
+  assert.ok(!bare.includes('data-drill'), 'no drill hint invented')
+  assert.equal(count(bare, '<svg'), 1)
+})
+
 test('emission is byte-identical across calls', () => {
-  const again = emit(placed, routed, LEVEL, cfg, DARK, new Map([['db', 'app/db']]))
+  const again = emit(placed, routed, LEVEL, cfg, DARK, { drill: new Map([['db', 'app/db']]) })
   assert.equal(again, svg)
 })
 

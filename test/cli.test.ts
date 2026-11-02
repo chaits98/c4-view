@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { run } from '../src/cli.ts'
+import { describeError, run } from '../src/cli.ts'
 
 const ROOT = new URL('..', import.meta.url).pathname
 const SHOP = join(ROOT, 'examples', 'shop.json')
@@ -170,4 +170,86 @@ test('render writes one svg per level, and audit reads what it wrote', async () 
   assert.ok(existsSync(out), 'and lands where it was asked to')
   assert.equal(await run(['audit', SHOP]), 0, 'every level audits clean')
   assert.equal(await run(['audit', SHOP, '--json']), 0, 'and the json form exits the same way')
+})
+
+test('--require-docs exits 1 and names every missing doc, which is the gate an agent reads', async () => {
+  const dir = workdir()
+  const file = join(dir, 'nodocs.json')
+  writeFileSync(
+    file,
+    JSON.stringify({
+      id: 'nodocs',
+      title: 'No docs',
+      levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }],
+    }),
+  )
+  assert.equal(await run(['audit', file, '--strict', '--require-docs']), 1)
+  // and the same model passes when the question is not asked
+  assert.equal(await run(['audit', file, '--strict']), 0)
+})
+
+test('--json keeps the audit quiet: the caller parses, the human does not read', async () => {
+  assert.equal(await run(['audit', SHOP, '--json']), 0)
+})
+
+test('a lens problem is a strict failure with its own line', async () => {
+  const dir = workdir()
+  const file = join(dir, 'flat-lens.json')
+  writeFileSync(
+    file,
+    JSON.stringify({
+      id: 'flat',
+      title: 'Flat',
+      levels: [
+        { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ from: 'user', to: 'host' }] },
+        // a drill level that declares no ports, while the parent has an edge that needs one
+        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [] },
+      ],
+    }),
+  )
+  assert.equal(await run(['audit', file, '--strict']), 1)
+})
+
+test('c4v gate runs through the same entry point as everything else', async () => {
+  assert.equal(await run(['gate', 'status']), 0)
+  assert.equal(await run(['gate', 'report']), 0)
+})
+
+test('--flat audits the authored level; the default audits the picture a page draws', async () => {
+  const dir = workdir()
+  const file = join(dir, 'drill.json')
+  writeFileSync(
+    file,
+    JSON.stringify({
+      id: 'drill',
+      title: 'Drill',
+      levels: [
+        { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }], edges: [] },
+        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [], ports: {} },
+      ],
+    }),
+  )
+  // both flags run and disagree only about which picture is judged; neither is a usage error
+  assert.ok([0, 1].includes(await run(['audit', file, '--strict', '--flat'])))
+  assert.ok([0, 1].includes(await run(['audit', file, '--strict'])))
+  assert.equal(await run(['audit', file, '--json']), 0)
+})
+
+test('--no-lens is geometry only, so a corpus fixture is judged on its drawing', async () => {
+  const fixture = join(ROOT, 'fixtures', 'droid.json')
+  // this corpus has drilled levels that are dead ends; --no-lens says "geometry only", and says so explicitly
+  assert.equal(await run(['audit', fixture, '--strict', '--flat', '--no-lens']), 0)
+})
+
+test('c4v publish runs through the same entry point as everything else', async () => {
+  const dir = workdir()
+  const model = join(dir, 'solo.json')
+  writeFileSync(model, JSON.stringify({ id: 'solo', title: 'Solo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }))
+  assert.equal(await run(['publish', model, '--root', join(dir, 'store')]), 0)
+  assert.equal(await run(['publish']), 2, 'and a bare publish is a usage error')
+})
+
+test('a thrown value is described, not printed as [object Object]', () => {
+  assert.equal(describeError(new Error('bad model')), 'bad model')
+  assert.equal(describeError('plain string'), 'plain string')
 })

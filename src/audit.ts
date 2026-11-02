@@ -7,7 +7,7 @@
  *
  * @module c4-view/audit
  */
-import type { AuditReport, Box, LevelSpec, Placed, Point, Route, Routed } from './types.ts'
+import type { AuditReport, Box, DensityVerdict, LevelSpec, Placed, Point, Route, Routed } from './types.ts'
 
 /** Intersection area of two boxes (0 when they only touch). */
 export function overlapArea(a: Box, b: Box): number {
@@ -158,6 +158,30 @@ function countGroupNode(placed: Placed, level: LevelSpec, boxes: Map<string, Box
   return count
 }
 
+/**
+ * Readability budget: past two wire crossings per edge the drawing stops being traceable by eye. Not taste —
+ * a number an agent can check before it argues that its picture is fine.
+ */
+export const isDense = (crossings: number, edges: number): boolean => crossings > Math.max(2, edges * 2)
+
+/**
+ * The number an author should aim at, not just the one they must clear. The gate is 2/edge; a picture that
+ * reads without zooming sits under 0.5. Anything between is legal and looks it.
+ */
+export function densityOf(crossings: number, edges: number): { perEdge: number; verdict: DensityVerdict } {
+  const perEdge = edges > 0 ? Math.round((crossings / edges) * 100) / 100 : 0
+  if (isDense(crossings, edges)) return { perEdge, verdict: 'over' }
+  if (perEdge <= 0.5) return { perEdge, verdict: 'crisp' }
+  if (perEdge <= 1) return { perEdge, verdict: 'ok' }
+  return { perEdge, verdict: 'dense' }
+}
+
+/** Which picture this line judges: the root, or a level as it is SERVED (composed). */
+function whereLabel(r: AuditReport): string {
+  if (!r.level) return 'level="(root)"'
+  return r.composed ? `level="${r.level}" (composed)` : `level="${r.level}"`
+}
+
 export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditReport {
   const boxes = [...placed.boxes.values()]
   const byId = placed.boxes
@@ -171,7 +195,9 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
   // a backward edge is legal (a real loop), but an UNINTENDED one means a rank hint fights an edge,
   // and the router will answer with a corridor under the whole drawing — so it is always reported
   const backward = placed.chains.filter((chain) => chain.backward).length
-  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0
+  const dense = isDense(crossings, level.edges.length)
+  const { perEdge, verdict } = densityOf(crossings, level.edges.length)
+  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0 && !dense
   return {
     level: level.path,
     backward,
@@ -185,6 +211,9 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
     chipNode,
     groupNode,
     ok,
+    dense,
+    crossingsPerEdge: perEdge,
+    verdict,
     aspect,
   }
 }
@@ -192,5 +221,8 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
 /** One-line human form, used by the CLI and the workbook. */
 export function auditLine(r: AuditReport): string {
   const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode} group∧node=${r.groupNode}`
-  return `${r.ok ? 'OK  ' : 'FAIL'} level="${r.level || '(root)'}" nodes=${r.nodes} edges=${r.edges} ${gates} crossings=${r.crossings} backward=${r.backward} aspect=${r.aspect}`
+  // a level with a parent is only ever served composed; saying so stops a green line being read as the
+  // authored level passing
+  const where = whereLabel(r)
+  return `${r.ok ? 'OK  ' : 'FAIL'} ${where} nodes=${r.nodes} edges=${r.edges} ${gates} crossings=${r.crossings} (${r.crossingsPerEdge}/edge, ${r.verdict}) backward=${r.backward} aspect=${r.aspect}`
 }

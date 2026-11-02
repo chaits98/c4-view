@@ -121,3 +121,4 @@ test('a point is a legal route input, even with no run to sit on', () => {
   const [out] = placeLabels(routes, placed, cfg, measure)
   assert.ok(out.label?.box.w && out.label.box.w > 0)
 })
+

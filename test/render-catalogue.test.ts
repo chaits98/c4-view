@@ -139,8 +139,14 @@ test('a level with a path but no title is named by its path, in the crumbs and t
     { path: 'api/v1', nodes: [{ id: 'b', label: 'B', subtype: 'system' }], edges: [] },
   ] })
   const html = viewerPage(bare, 'api/v1')
-  assert.ok(html.includes('<option value="api/v1" selected>api/v1</option>'), 'the select falls back to the path')
-  assert.ok(html.includes('<span aria-current="page">api/v1</span>'), 'and so does the crumb, marked as the current page')
+  // the select is a tree now: indented by depth, prefixed with the C4 level, path in the tooltip
+  assert.ok(/<option value="api\/v1" title="api\/v1" selected>/.test(html), 'the select names the level')
+  assert.ok(html.includes('&#160;&#160;&#160;&#160;&#160;&#160;'), 'indented by depth')
+  assert.ok(html.includes('C3 ·'), 'the C4 level is part of the label')
+  assert.ok(
+    html.includes('<h1 class="c4-crumb-h1" aria-current="page">api/v1</h1>'),
+    'and so does the crumb, as the page heading and the current page',
+  )
 })
 
 test('a node with a desc but no tech keeps the desc line', () => {
@@ -161,4 +167,19 @@ test('identity and tech are drawn independently', () => {
   const svg = renderModel(model2).levels[0].svg
   assert.match(svg, /Node 22/, 'tech is drawn when it is the only small line')
   assert.match(svg, /team-payments/, 'identity is drawn when it is the only small line')
+})
+
+test('sorting by title falls back to the id when two titles match', () => {
+  const base = { levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
+  const html = indexPage([{ ...base, id: 'b', title: 'Same' }, { ...base, id: 'a', title: 'Same' }], 'auto', 'title')
+  assert.ok(html.indexOf('/d/a"') < html.indexOf('/d/b"'), 'the id decides, so the order is stable')
+})
+
+test('the fail filter has two empty states: nothing failing, and nothing at all', () => {
+  const clean = { id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
+  const nothing = indexPage([clean], 'auto', 'updated', 'fail')
+  assert.match(nothing, /Nothing is failing/, 'a clean store says so instead of looking broken')
+  assert.match(nothing, /All 1 diagrams audit clean/, 'and counts them')
+  const empty = indexPage([], 'auto', 'updated', 'fail')
+  assert.match(empty, /No diagrams yet/, 'an empty store gets the other state')
 })

@@ -61,53 +61,6 @@ body {
   border-radius: var(--shape-sm);
 }
 
-#c4-stage {
-  flex: 1 1 auto;
-  min-height: 0;
-  position: relative;
-  /* the canvas is the scroll container: pan is native scroll, so arrow keys, touch and the
-     scrollbar all work without a drag handler */
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--outline) transparent;
-  background: var(--canvas);
-}
-
-/* the ring is the token one, pulled inside because the canvas is full-bleed */
-#c4-stage:focus-visible {
-  outline-offset: -2px;
-}
-
-/* Fit is the overview: the svg meets its own box, nothing scrolls.
-   Any other step renders the drawing at its intrinsic px × the step, so 100% is 100%:
-   12px labels are 12px, and the canvas scrolls around them. */
-#c4-stage svg {
-  display: block;
-}
-
-#c4-stage.zoom-fit {
-  padding: var(--space-3);
-}
-
-#c4-stage.zoom-fit svg {
-  width: 100%;
-  height: 100%;
-}
-
-#c4-stage:not(.zoom-fit) svg {
-  width: auto;
-  height: auto;
-  zoom: var(--zoom);
-}
-
-#c4-stage.zoom-50 { --zoom: 0.5; }
-#c4-stage.zoom-75 { --zoom: 0.75; }
-#c4-stage.zoom-100 { --zoom: 1; }
-#c4-stage.zoom-125 { --zoom: 1.25; }
-#c4-stage.zoom-150 { --zoom: 1.5; }
-#c4-stage.zoom-200 { --zoom: 2; }
-#c4-stage.zoom-300 { --zoom: 3; }
-
 #c4-stage svg g[data-id][data-drill] {
   cursor: pointer;
 }
@@ -207,11 +160,11 @@ body {
   color: var(--on-surface-variant);
 }
 
+/* a swatch, not a checkbox: a bordered square next to a word reads as something you can tick */
 #c4-legend .c4-sw i {
-  width: 13px;
-  height: 13px;
-  border-radius: var(--shape-xs);
-  border: 1px solid var(--outline);
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
 }
 
 /* the flow bar: one edge at a time, bottom centre, play/pause + caption */
@@ -262,4 +215,36 @@ body {
   stroke: var(--canvas);
   stroke-width: 2;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--d-edge-active) 80%, transparent));
+}
+
+/* The current crumb is the page's h1: same voice, no second title competing with the bar. */
+#c4-crumbs .c4-crumb-h1 {
+  font: inherit;
+  margin: 0;
+  display: inline;
+  color: var(--c4-fg);
+}
+/* A drill is a link: show it, and keep the focus ring the browser already draws. */
+#c4-stage a.c4-link {
+  cursor: pointer;
+  text-decoration: none;
+}
+/* The one line that explains why a wide drawing opened at 100%. */
+.c4-note {
+  margin: 8px 24px 0;
+  color: var(--c4-dim);
+}
+
+/* Prose: short measure, and long docs scroll instead of growing the card. */
+#c4-hover { max-width: 360px; max-height: 46vh; overflow: auto; }
+#c4-hover .c4-hover-desc p {
+  margin: 0 0 8px;
+}
+#c4-hover .c4-hover-desc h2,
+#c4-hover .c4-hover-desc h3 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+}
+#c4-hover .c4-hover-desc code {
+  font-size: 0.95em;
 }

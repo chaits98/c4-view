@@ -102,8 +102,10 @@ if (rootG) {
         dot.setAttribute('r', '5')
         dot.setAttribute('pointer-events', 'none')
       }
-      // one dot, always: re-added to the routes' own group so it shares their coordinates
-      if (dot.parentNode !== rootG) rootG.append(dot)
+      // one dot, always, and always UNDER the edge labels: the chips are painted after the routes, so a
+      // dot appended last would sit on top of a label it crosses and hide the word
+      const chips = rootG.querySelector('[data-chip]')
+      if (dot.parentNode !== rootG || dot.nextElementSibling !== chips) rootG.insertBefore(dot, chips)
       dot.setAttribute('cx', String(point.x))
       dot.setAttribute('cy', String(point.y))
     }

@@ -92,7 +92,10 @@ export const AUTO: Theme = {
 }
 
 /** A literal palette for files that leave the app: an export has no stylesheet to inherit. */
-export const paletteOf = (choice: string): Theme => (choice === 'auto' ? AUTO : choice === 'light' ? LIGHT : DARK)
+export function paletteOf(choice: string): Theme {
+  if (choice === 'auto') return AUTO
+  return choice === 'light' ? LIGHT : DARK
+}
 
 /** The palette an exported file gets: `auto` becomes the light document, since exports are viewed on paper or in a diff. */
 export const exportPaletteOf = (choice: string): Theme => (choice === 'light' ? LIGHT : DARK)

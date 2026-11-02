@@ -69,10 +69,22 @@ test('a rank hint that leaves empty ranks still routes inside the drawing', () =
   }
   const report = renderModel(parseModel(model))
   assert.equal(report.levels[0].audit.ok, true, auditLine(report.levels[0].audit))
-  // every path point must sit inside the drawing, and the drawing must be wider than a gutter
+  // every path point must sit inside the drawing, and the drawing must span more than a gutter. The long axis
+  // is what collapsed in the regression, and which axis that is depends on the orientation the layout chose.
   const width = Number(/width="([\d.]+)"/.exec(report.levels[0].svg)?.[1])
-  assert.ok(width > 300, `drawing collapsed to ${width}px`)
-  const coords = [...report.levels[0].svg.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map((m) => Number(m[1]))
-  assert.ok(Math.max(...coords) <= width, 'a route leaves the drawing')
-  assert.ok(Math.min(...coords) >= 0, 'a route has a negative x')
+  const height = Number(/height="([\d.]+)"/.exec(report.levels[0].svg)?.[1])
+  assert.ok(Math.max(width, height) > 300, `drawing collapsed to ${width}x${height}`)
+  const xs = [...report.levels[0].svg.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map((m) => Number(m[1]))
+  const ys = [...report.levels[0].svg.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map((m) => Number(m[2]))
+  assert.ok(Math.max(...xs) <= width, 'a route leaves the drawing')
+  assert.ok(Math.min(...xs) >= 0, 'a route has a negative x')
+  assert.ok(Math.max(...ys) <= height, 'a route leaves the drawing vertically')
+})
+
+test('renderFile reads the file once and can expand a box on the way through', () => {
+  const lensPath = join(new URL('..', import.meta.url).pathname, 'examples', 'lens.json')
+  const flat = renderFile(lensPath, 'context1')
+  assert.equal(flat.levels[0].path, 'context1')
+  const expanded = renderFile(lensPath, 'context1', 'context1')
+  assert.ok(expanded.levels[0].svg.includes('frame-context1'), 'the dashed frame is drawn')
 })

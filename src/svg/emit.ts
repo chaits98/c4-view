@@ -38,9 +38,23 @@ function groupLayer(placed: Placed, theme: Theme): string[] {
     const b = g.box
     return `<g data-group="${esc(g.id)}">` +
       `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}" rx="6" ` +
-      `fill="${theme.groupFill}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/>` +
-      `<text x="${n(b.x + 10)}" y="${n(b.y + 12)}" font-family="${FONT_FAMILY}" font-size="11" ` +
-      `text-anchor="start" dominant-baseline="central" fill="${theme.dim}">${esc(g.label)}</text></g>`
+      `fill="${theme.groupFill}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/></g>`
+  })
+}
+
+/**
+ * Group names last, on a plate: an edge label crossing the frame would otherwise sit on top of the name of
+ * the box the reader just opened — the one word on the page that must never be hidden.
+ */
+function groupLabelLayer(placed: Placed, theme: Theme): string[] {
+  return placed.groups.map((g) => {
+    const b = g.box
+    const w = Math.max(48, g.label.length * 6.4 + 16)
+    return `<g data-group-label="${esc(g.id)}">` +
+      `<rect x="${n(b.x + 8)}" y="${n(b.y + 2)}" width="${n(w)}" height="18" rx="4" ` +
+      `fill="${theme.chipBg}" stroke="${theme.groupStroke}" stroke-dasharray="6 4"/>` +
+      `<text x="${n(b.x + 16)}" y="${n(b.y + 11)}" font-family="${FONT_FAMILY}" font-size="11" ` +
+      `text-anchor="start" dominant-baseline="central" fill="${theme.fg}">${esc(g.label)}</text></g>`
   })
 }
 
@@ -63,13 +77,13 @@ function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<stri
   })
 }
 
-function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>): string[] {
+function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, linkBase?: string): string[] {
   const small = Math.max(9, cfg.fontSize - 2)
   const lh = lineHeight(cfg.fontSize)
   const slh = lineHeight(small)
   return level.nodes.flatMap((node: NodeSpec) => {
     const box = placed.boxes.get(node.id)
-    if (!box) return []
+    if (!box) return [] // coverage:invariant — every node of the level is measured and placed
     const t = measureNode(node, cfg, measure)
     const shape = shapeOf(node.subtype)
     /* node:coverage disable */
@@ -81,7 +95,12 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     if (node.desc) attrs.push(`data-desc="${esc(node.desc)}"`)
     const child = drill.get(node.id)
     if (child) attrs.push(`data-drill="${esc(child)}"`)
-    const parts = [`<g class="node" ${attrs.join(' ')}>`]
+    // A drill is navigation, so it is a real link when the caller can name one: middle-click, Back,
+    // copy-link and screen readers all work, and the page needs no JS to follow it.
+    const href = child && linkBase ? `${linkBase}/${child}` : ''
+    const open = href ? `<a class="c4-link" href="${esc(href)}">` : ''
+    const close = open ? '</a>' : ''
+    const parts = [open + `<g class="node" ${attrs.join(' ')}>`]
     parts.push(`<path d="${shapePath(shape, box)}" fill="${k.fill}" stroke="${k.stroke}" stroke-width="1.4"/>`)
     // text lives in the shape's own text band and is centred in it — an actor's head is
     // part of the box, not something to write over
@@ -98,7 +117,7 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     t.lines.forEach((line, i) => parts.push(text(cx, cursor + lh / 2 + i * lh, cfg.fontSize, theme.fg, line)))
     cursor += t.lines.length * lh
     if (t.tech) parts.push(text(cx, cursor + slh / 2, small, theme.dim, t.tech))
-    parts.push('</g>')
+    parts.push(`</g>${close}`)
     return parts
   })
 }
@@ -115,18 +134,29 @@ function chipLayer(routed: Routed, cfg: LayoutConfig, theme: Theme): string[] {
   })
 }
 
+/** What the emitter needs beyond the geometry: where drills go, which edges animate, and how to link them. */
+export interface EmitOptions {
+  drill?: Map<string, string>
+  flow?: Map<string, number>
+  linkBase?: string
+}
+
 export function emit(
   placed: Placed, routed: Routed, level: LevelSpec,
-  cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, flow: Map<string, number> = new Map(),
+  cfg: LayoutConfig, theme: Theme, options: EmitOptions = {},
 ): string {
+  const drill = options.drill ?? new Map<string, string>()
+  const flow = options.flow ?? new Map<string, number>()
+  const linkBase = options.linkBase
   // drawn size never below the boxes it must contain, even if a route stage underpays
   const w = Math.max(placed.size.w, routed.size.w) + 16
   const h = Math.max(placed.size.h, routed.size.h) + 16
   const body = [
     ...groupLayer(placed, theme),
     ...routeLayer(routed, placed, theme, flow),
-    ...nodeLayer(level, placed, cfg, theme, drill),
+    ...nodeLayer(level, placed, cfg, theme, drill, linkBase),
     ...chipLayer(routed, cfg, theme),
+    ...groupLabelLayer(placed, theme),
   ]
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +
     `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}` +
