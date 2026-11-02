@@ -15,6 +15,7 @@
 import { densityOf } from './audit.ts'
 import { layoutOf } from './model.ts'
 import { layoutLevel, type RenderedLevel } from './render.ts'
+import { flowIndex } from './flow.ts'
 import { emit } from './svg/emit.ts'
 import { DARK, type Theme } from './theme.ts'
 import type { AuditReport, LevelSpec, Model } from './types.ts'
@@ -108,7 +109,8 @@ export function nestedPicture(model: Model, theme: Theme = DARK): Picture {
       const box = placed.boxes.get(host)
       if (box) at.set(host, { x: box.x, y: box.y })
     }
-    const svg = embed(emit(placed, routed, spec, cfg, theme, {}), at, inner)
+    // each level keeps its own narration: without the flow map the picture has no steps to walk
+    const svg = embed(emit(placed, routed, spec, cfg, theme, { flow: flowIndex(spec) }), at, inner)
     const audit = emptyAudit()
     addAudit(audit, report)
     for (const pic of inner.values()) addAudit(audit, pic.audit)

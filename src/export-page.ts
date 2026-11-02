@@ -6,10 +6,40 @@
  *
  * @module c4-view/export-page
  */
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { renderModel } from './render.ts'
 import { nestedLevel } from './nest.ts'
+import { flowIndex } from './flow.ts'
 import { LIGHT, exportPaletteOf } from './theme.ts'
 import type { Model } from './types.ts'
+
+/**
+ * The flow driver, inlined. A page a reader keeps should still narrate: the same module the viewer runs,
+ * concatenated with its helper so the file has no imports — one script, no server, no basis to drift.
+ */
+function flowScript(): string {
+  const dir = fileURLToPath(new URL('../public/', import.meta.url))
+  const model = readFileSync(`${dir}flow-model.js`, 'utf8').replace(/^export /gm, '')
+  const driver = readFileSync(`${dir}flow.js`, 'utf8').replace(/^import .*$/m, '')
+  return model + '\n' + driver
+}
+
+const FLOW_CSS = `
+#c4-stage{position:relative}
+#c4-flow-caption{position:fixed;left:50%;bottom:12px;z-index:12;display:flex;align-items:center;gap:8px;
+  max-width:min(70vw,720px);padding:4px 12px 4px 4px;background:var(--c4-bar,#211f26);color:inherit;
+  border:1px solid rgba(128,128,128,.35);border-radius:9999px;box-shadow:0 6px 20px rgb(0 0 0 / .35);
+  transform:translateX(-50%);font:13px/1.2 system-ui,sans-serif}
+.c4-flow-btn{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;
+  padding:0 12px;color:inherit;background:transparent;border:1px solid rgba(128,128,128,.35);
+  border-radius:9999px;font:inherit;cursor:pointer}
+.c4-flow-btn:hover{background:rgba(128,128,128,.16)}
+.c4-flow-btn[aria-disabled='true']{opacity:.38;cursor:default}
+#c4-flow-play{gap:4px;padding:0 16px;font-weight:600}
+#c4-flow-text{margin:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.c4-dot{fill:#7cc4ff;stroke:#0a111b;stroke-width:2}
+`
 
 const CSS = `
 :root{color-scheme:light dark}
@@ -30,16 +60,19 @@ function esc(text: string): string {
 }
 
 /** One svg, dropped inline. The svg is generated here, so it is trusted; the title is not. */
-function figure(title: string, svg: string): string {
-  return `<figure><figcaption>${esc(title)}</figcaption>${svg}</figure>`
+function figure(title: string, svg: string, stage = false): string {
+  const body = stage ? `<div id="c4-stage">${svg}</div>` : svg
+  return `<figure><figcaption>${esc(title)}</figcaption>${body}</figure>`
 }
 
 function shell(title: string, subtitle: string, body: string, light: boolean): string {
   const cls = light ? 'light' : ''
+  // every exported page narrates: the driver ships inside it and finds the picture with a stage
+  const script = `<script type="module">${flowScript()}</script>`
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<title>${esc(title)}</title><style>${CSS}</style></head>` +
-    `<body class="${cls}"><h1>${esc(title)}</h1><p class="sub">${esc(subtitle)}</p>${body}</body></html>`
+    `<title>${esc(title)}</title><style>${CSS}${FLOW_CSS}</style></head>` +
+    `<body class="${cls}"><h1>${esc(title)}</h1><p class="sub">${esc(subtitle)}</p>${body}${script}</body></html>`
 }
 
 /** What the picture is of, in words: the whole model, the root, or one level. */
@@ -53,7 +86,7 @@ export function exportOne(model: Model, level: string, full: boolean, choice = '
   const palette = exportPaletteOf(choice)
   const drawn = full ? nestedLevel(model, palette) : renderModel(model, level).levels[0]
   const title = `${model.title} — ${scopeName(level, full)}`
-  return shell(title, `c4-view · ${model.id}`, figure(full ? 'Full diagram' : `Level ${level || '(root)'}`, drawn.svg), palette === LIGHT)
+  return shell(title, `c4-view · ${model.id}`, figure(full ? 'Full diagram' : `Level ${level || '(root)'}`, drawn.svg, true), palette === LIGHT)
 }
 
 /**
@@ -62,14 +95,19 @@ export function exportOne(model: Model, level: string, full: boolean, choice = '
  */
 export function exportLayers(model: Model, choice = 'dark'): string {
   const palette = exportPaletteOf(choice)
-  const body = model.levels
-    .map((level) => {
-      const drawn = renderModel(model, level.path).levels[0]
-      // the heading names the level, so the picture needs no second caption
-      // coverage:invariant — parseModel gives every level a title (the root gets 'Overview')
-      const label = level.path === '' ? '(root)' : level.path
-      return `<h2>${esc(level.title ?? label)}</h2><figure>${drawn.svg}</figure>`
-    })
-    .join('')
+  // the whole model first — "all layers" is the full diagram AND the parts, not the parts alone — and it is
+  // the picture the flow narration drives, so a reader who opens the file still sees the story move
+  const sections = [`<h2>Full diagram</h2>${figure('every level', nestedLevel(model, palette).svg)}`]
+  // the narration runs on the first picture that declares a flow — one driver, one story
+  let staged = false
+  for (const level of model.levels) {
+    const drawn = renderModel(model, level.path, palette).levels[0]
+    const stage = !staged && flowIndex(level).size > 0
+    if (stage) staged = true
+    // coverage:invariant — parseModel gives every level a title (the root gets 'Overview')
+    const label = level.path === '' ? '(root)' : level.path
+    sections.push(`<h2>${esc(level.title ?? label)}</h2>${figure(label, drawn.svg, stage)}`)
+  }
+  const body = sections.join('')
   return shell(`${model.title} — all layers`, `c4-view · ${model.id} · ${model.levels.length} levels`, body, palette === LIGHT)
 }

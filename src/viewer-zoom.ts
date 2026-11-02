@@ -61,10 +61,11 @@ export function zoomBar(href: (value: string) => string, zoom: Zoom): string {
     return `<a class="c4-zoom-btn" href="${href(value)}" data-zoom="${value}"${on ? ' aria-current="true"' : ''}>${text}</a>`
   })
   const readout = ZOOM_PRESETS.some(([value]) => isOn(value)) ? '' : `<span id="c4-zoom-readout" class="c4-zoom-readout">${sizeOf(zoom)}</span>`
-  return [
-    ...presets,
-    '<button type="button" class="c4-zoom-btn" data-step="-1" aria-label="Zoom out">−</button>',
-    '<button type="button" class="c4-zoom-btn" data-step="1" aria-label="Zoom in">+</button>',
-    readout,
-  ].join('')
+  // Two pills, not one: the fits are options you pick, the stepper is a control you press. In one pill the
+  // readout ("Fit V") sat next to the "Fit V" preset and read as a duplicate button.
+  return `<div class="c4-seg" role="group" aria-label="Fit">${presets.join('')}</div>` +
+    '<div class="c4-seg" role="group" aria-label="Zoom"><button type="button" class="c4-zoom-btn" ' +
+    'data-step="-1" aria-label="Zoom out">−</button>' +
+    '<button type="button" class="c4-zoom-btn" data-step="1" aria-label="Zoom in">+</button>' +
+    `${readout}</div>`
 }

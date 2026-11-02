@@ -21,7 +21,7 @@ test('one export is a self-contained page with the drawing inside it', () => {
   const html = exportOne(model(), '', false, theme)
   assert.match(html, /^<!doctype html>/)
   assert.match(html, /<svg/)
-  assert.ok(!/<script/.test(html), 'no script: the file opens without a server')
+  assert.ok(!/src=|href=/.test(html.slice(0, html.indexOf('<body'))), 'no external file to fetch: it opens offline')
   assert.match(html, /Shop &amp; co/, 'the title is escaped')
   assert.match(html, /overview/, 'a root-level export says what it is')
 })
@@ -39,11 +39,22 @@ test('the full export says every level and carries the nested picture', () => {
   assert.match(html, /data-host="api"/, 'the nested picture is what gets exported')
 })
 
-test('all layers is one page with a heading per level', () => {
+test('all layers opens with the full diagram, then every level', () => {
   const html = exportLayers(model(), theme)
-  assert.equal((html.match(/<h2>/g) ?? []).length, 2, 'one heading per level')
+  assert.equal((html.match(/<h2>/g) ?? []).length, 3, 'the full diagram, then one heading per level')
+  assert.match(html, /<h2>Full diagram<\/h2>/, 'the whole model comes first: parts alone are not "all layers"')
+  assert.match(html, /data-host="api"/, 'and it is the nested picture, not a level')
   assert.match(html, /2 levels/)
   assert.match(html, /API container/, 'a named level uses its title, not its path')
+})
+
+test('an exported page carries the flow narration, driven by the same module as the viewer', () => {
+  const html = exportOne(model(), '', true, theme)
+  assert.match(html, /<div id="c4-stage">/, 'the driver needs a stage')
+  assert.match(html, /c4-flow-caption/, 'the caption bar is styled in the file')
+  assert.match(html, /<script type="module">/, 'and the driver ships with it')
+  const inlined = html.slice(html.indexOf('<script'))
+  assert.ok(!/^import /m.test(inlined), 'the inlined module has no imports to resolve')
 })
 
 test('a level with no title of its own is named by its path', () => {
@@ -60,6 +71,7 @@ test('the download menu carries the level and the view it was asked from', () =>
   assert.match(drill, /href="\/d\/shop\.layers"/, 'every layer is the same file whatever level you are on')
   assert.match(downloads('shop', '', true), /href="\/d\/shop\.svg\?view=full"/)
   assert.match(downloads('shop', '', false), /href="\/d\/shop\.svg"/, 'no query when there is nothing to carry')
+  assert.match(downloads('shop', '', false, 'light'), /theme=light/, 'the file keeps the scheme on screen')
 })
 
 test('the mode switch marks the one you are in', () => {

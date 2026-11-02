@@ -1,0 +1,197 @@
+/* The toolbar: one 56px row, M3 compact density. Split from viewer.css to keep each file
+   under the 300-line rule; the page links both. */
+/* ── the toolbar: one 56px row, M3 compact density ─────────────────────────────
+   Order is navigation → view controls → actions. Nothing that changes the view sits
+   to the right of the export button. Gaps come from {4, 8, 16}; radii from {full, 4}. */
+.c4-bar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-2);
+  height: 56px;
+  padding: 0 var(--space-4);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* a group separator, never a control border: 1px, 24px tall, 8px each side */
+.c4-div {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 24px;
+  margin: 0 var(--space-2);
+  background: var(--outline-variant);
+  border-radius: 1px;
+}
+
+#c4-crumbs {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--on-surface-variant);
+}
+
+#c4-crumbs a {
+  display: inline-block;
+  padding: 2px 4px;
+  margin-inline: -4px;
+  border-radius: var(--shape-xs);
+  color: var(--on-surface-variant);
+  text-decoration: none;
+}
+
+#c4-crumbs a:hover,
+#c4-crumbs a:focus-visible {
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+
+#c4-crumbs span {
+  color: var(--on-surface);
+  font-weight: 500;
+}
+
+#c4-levels {
+  flex: 0 1 auto;
+  height: 40px;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  padding: 0 var(--space-4);
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  font: inherit;
+  cursor: pointer;
+}
+
+#c4-levels:focus-visible,
+.c4-btn:focus-visible,
+.c4-zoom-btn:focus-visible,
+.c4-menu > summary:focus-visible,
+#c4-crumbs a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* A pill of segments: the container is one control, the segments inside are options. */
+#c4-view,
+#c4-zoom {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  background: transparent;
+}
+
+/* one pill per decision: a segmented group is a single control with option segments inside */
+.c4-seg,
+#c4-view {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 40px;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  background: transparent;
+  overflow: hidden;
+}
+
+.c4-seg > * + *,
+#c4-view > * + * {
+  border-left: 1px solid var(--outline-variant);
+}
+
+.c4-zoom-btn,
+.c4-flow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  min-width: 40px;
+  padding: 0 var(--space-4);
+  color: var(--on-surface);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.c4-zoom-btn:hover,
+.c4-flow-btn:hover {
+  background: color-mix(in srgb, var(--on-surface) 8%, transparent);
+}
+
+.c4-zoom-btn:active,
+.c4-flow-btn:active {
+  background: color-mix(in srgb, var(--on-surface) 10%, transparent);
+}
+
+/* selection is a fill swap, not a tint: 12% over a chip is not perceivable (spec §3) */
+.c4-zoom-btn[aria-current='true'] {
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+  font-weight: 500;
+}
+
+.c4-zoom-btn[aria-current='true']:hover {
+  background: color-mix(in srgb, var(--on-secondary-container) 8%, var(--secondary-container));
+}
+
+.c4-zoom-readout {
+  min-width: 52px;
+  padding: 0 var(--space-2);
+  color: var(--on-surface-variant);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one filled action on the row. */
+.c4-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--shape-full);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.c4-btn--filled {
+  color: var(--on-primary);
+  background: var(--primary);
+}
+
+.c4-btn--filled:hover {
+  background: color-mix(in srgb, var(--on-primary) 8%, var(--primary));
+}
+
+/* ≤900px: the fit presets fold into the zoom pill, the labels that remain are the ones that decide
+   something (which view, which level). */
+@media (max-width: 900px) {
+  #c4-levels { max-width: 22vw; }
+  .c4-zoom-btn { padding: 0 var(--space-3); }
+}
+
+/* ≤640px: one row still, no scroll — the export keeps its glyph, the crumbs keep the current node. */
+@media (max-width: 640px) {
+  .c4-bar { padding: 0 var(--space-2); gap: var(--space-1); }
+  .c4-div { margin: 0 var(--space-1); }
+  #c4-crumbs a:not(:last-child) { display: none; }
+  #c4-zoom .c4-seg:first-child { display: none; }
+  .c4-btn--filled { padding: 0 var(--space-3); }
+}
+

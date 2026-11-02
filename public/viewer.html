@@ -6,6 +6,7 @@
 <title>C4 viewer</title>
 <link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/viewer.css">
+<link rel="stylesheet" href="/toolbar.css">
 <link rel="stylesheet" href="/stage.css">
 <link rel="stylesheet" href="/viewer-states.css">
 </head>
@@ -20,10 +21,13 @@
 <header class="c4-bar">
   <nav id="c4-crumbs" aria-label="Breadcrumb"><!--CRUMBS--></nav>
   <div id="c4-view" role="group" aria-label="View mode"><!--VIEWMODE--></div>
+  <span class="c4-div" aria-hidden="true"></span>
   <select id="c4-levels" class="t-label-l" aria-label="Level"><!--LEVELS--></select>
+  <span class="c4-div" aria-hidden="true"></span>
   <div id="c4-zoom" role="group" aria-label="Zoom"><!--ZOOM--></div>
+  <span class="c4-div" aria-hidden="true"></span>
   <details id="c4-download" class="c4-menu">
-    <summary class="c4-zoom-btn" aria-label="Download">Download</summary>
+    <summary class="c4-btn c4-btn--filled" aria-label="Download">Download</summary>
     <div class="c4-menu-sheet" role="menu"><!--DOWNLOAD--></div>
   </details>
 </header>

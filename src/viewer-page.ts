@@ -263,7 +263,7 @@ export function viewerPage(
     .replace('<!--LEVELS-->', () => options)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
     .replace('<!--VIEWMODE-->', () => viewMode(levelRoot, spec || full ? 'full' : 'drill'))
-    .replace('<!--DOWNLOAD-->', () => downloads(model.id, level, Boolean(spec || full)))
+    .replace('<!--DOWNLOAD-->', () => downloads(model.id, level, Boolean(spec || full), theme))
     .replace('class="<!--ZOOMCLASS-->"', () => `class="${zoomClass(zoom, drawnSize)}"`)
     .replace('<!--AUDIT-->', () => auditBanner(drawn.level.audit) + noteBanner(drawn.note))
     .replace('<!--TEXT-->', () => textVersion(drawn.spec))

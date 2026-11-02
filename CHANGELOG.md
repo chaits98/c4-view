@@ -3,6 +3,26 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.0] — the export follows the screen, and the toolbar reads as one system
+
+**Exports tell the truth about what you are looking at.** The svg keeps the theme you are reading in
+(`?theme=` now rides along in every download link, and the export renders in that palette instead of always
+dark). **All layers** now opens with the **full diagram** — "all layers" is the whole thing *and* the parts,
+not the parts alone.
+
+**Every exported page narrates.** The flow driver (`flow.js` + `flow-model.js`) is inlined into the file, so
+an exported html walks its edges with the same caption, the same single dot and the same keyboard controls
+the viewer has, with no server and no network.
+
+Fixed at the source: the nested picture carried **no flow data at all** — `nest.ts` emitted each level with
+an empty flow map, so the full view had nothing to animate.
+
+**The toolbar is an M3 control surface** (research brief from a subagent, implemented in CSS — the product
+still has no bundler, no React, no runtime deps): one 56px row, segmented pills for view mode and fit, a
+stepper pill, filled export button, 40px targets, 8/16px gaps, `full`/`4px` radii only, state layers at
+8%/10% and a 2px focus ring. The fit presets and the zoom stepper are two pills, not one — the readout and
+the "Fit V" preset sat side by side and read as a duplicate button.
+
 ## [0.11.0] — the diagram leaves the viewer, and every level can come with it
 
 A reader can now take the picture out of the tab: **Download** in the header offers

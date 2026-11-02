@@ -20,10 +20,12 @@ function esc(text: string): string {
  * no server (html), and every level one after another (layers) — the drill pictures, for a reader who
  * wants the parts. Exporting what is on screen means carrying the view and the level in the link.
  */
-export function downloads(id: string, level: string, full: boolean): string {
+export function downloads(id: string, level: string, full: boolean, theme = 'auto'): string {
   const query = new URLSearchParams()
   if (level) query.set('level', level)
   if (full) query.set('view', 'full')
+  // the file keeps the scheme the reader is looking at, not the machine's default
+  if (theme !== 'auto') query.set('theme', theme)
   const tail = query.toString() ? `?${query}` : ''
   const items: Array<[string, string, string]> = [
     ['svg', 'SVG', 'the drawing, as a vector file'],

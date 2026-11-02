@@ -58,6 +58,6 @@ export function sendExport(root: string, req: IncomingMessage, res: ServerRespon
     const file = full ? pngOf(root, model, nestedLevel(model, exportPaletteOf(theme)).svg, 'full') : pngFor(root, model, level)
     return send(res, 200, 'image/png', readFileSync(file), `${name}.png`)
   }
-  const svg = full ? nestedLevel(model, exportPaletteOf(theme)).svg : renderModel(model, level).levels[0].svg
+  const svg = full ? nestedLevel(model, exportPaletteOf(theme)).svg : renderModel(model, level, exportPaletteOf(theme)).levels[0].svg
   send(res, 200, 'image/svg+xml; charset=utf-8', svg, `${name}.svg`)
 }

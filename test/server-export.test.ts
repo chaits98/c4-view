@@ -69,7 +69,7 @@ test('html export is a self-contained page, and layers is every level', async ()
   assert.match(page.body, /<svg/)
   const layers = await get('/d/ship.layers')
   assert.match(layers.name, /ship-layers\.html/)
-  assert.equal((layers.body.match(/<h2>/g) ?? []).length, 2)
+  assert.equal((layers.body.match(/<h2>/g) ?? []).length, 3, 'the full diagram, then the two levels')
 })
 
 test('the full view exports a png too, and the second ask reuses the file', async () => {
@@ -86,6 +86,13 @@ test('a level exports a png as well, named after the level', async () => {
   assert.equal(res.status, 200)
   assert.equal(res.headers.get('content-type'), 'image/png')
   assert.match(res.headers.get('content-disposition') ?? '', /ship-box\.png/)
+})
+
+test('the svg export follows the theme it was asked for', async () => {
+  const dark = await get('/d/ship.svg?level=box&theme=dark')
+  const light = await get('/d/ship.svg?level=box&theme=light')
+  assert.notEqual(dark.body, light.body, 'two schemes, two files')
+  assert.match(dark.body, /<svg/)
 })
 
 test('an export of a diagram or a level that is not there is a 404', async () => {

@@ -17,50 +17,6 @@ body {
   color: var(--on-surface);
 }
 
-.c4-bar {
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface);
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-#c4-crumbs {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--on-surface-variant);
-}
-
-#c4-crumbs a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-#c4-crumbs a:hover,
-#c4-crumbs a:focus-visible {
-  text-decoration: underline;
-}
-
-#c4-crumbs span {
-  color: var(--on-surface);
-}
-
-#c4-levels {
-  flex: 0 0 auto;
-  max-width: 40vw;
-  padding: var(--space-1) var(--space-2);
-  color: var(--on-surface);
-  background: var(--surface-container);
-  border: 1px solid var(--outline);
-  border-radius: var(--shape-sm);
-}
-
 #c4-stage svg g[data-id][data-drill] {
   cursor: pointer;
 }
