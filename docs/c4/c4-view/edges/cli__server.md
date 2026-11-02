@@ -1,3 +1,6 @@
-# cli → server
+# cli → server · `starts`
 
-`c4v serve` starts the viewer process. The CLI owns the store; the server only reads it.
+cli hands `starts` to server.
+
+Kept on the C2 · the containers inside c4-view level because that is where the two ends live; if it ever crosses a container boundary on
+the level above, it needs a port there rather than a second arrow here.

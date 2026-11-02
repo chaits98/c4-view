@@ -1,178 +1,148 @@
 {
   "id": "c4-view",
-  "title": "c4-view",
-  "layout": {
-    "direction": "LR"
-  },
+  "title": "c4-view — a JSON model in, a gated deterministic diagram out",
   "levels": [
     {
       "path": "",
-      "title": "L1 — c4-view and what it talks to",
+      "title": "C1 · who asks, what answers, what it touches",
       "nodes": [
         {
-          "id": "who",
+          "id": "agent",
           "identity": "C4V-01",
           "label": "Agent or owner",
           "subtype": "person",
           "tech": "any harness",
-          "desc": "Says what it wants; never edits a drawing."
+          "desc": "Writes the model, runs the CLI, reads the audit line back. Never edits a drawing by hand."
         },
         {
-          "id": "c4v",
+          "id": "c4view",
           "identity": "C4V-02",
           "label": "c4-view",
           "subtype": "system",
-          "tech": "one npm package",
-          "desc": "Renders, audits and serves C4 diagrams from a JSON model."
+          "tech": "one npm package, no deps",
+          "desc": "Turns a JSON model into a deterministic drawing, a gate and a read-only viewer."
         },
         {
-          "id": "git",
+          "id": "repo",
           "identity": "C4V-03",
-          "label": "git",
-          "subtype": "external-system",
-          "tech": "pre-commit hook",
-          "desc": "Stops a commit that changes code without the picture."
+          "label": "Git repository",
+          "subtype": "file-storage",
+          "tech": "model + one doc per element",
+          "desc": "Holds docs/c4/<id>.json, the docs beside it, and — if the owner said yes once — the hook."
         },
         {
-          "id": "files",
+          "id": "harness",
           "identity": "C4V-04",
-          "label": "repo files",
-          "subtype": "file-storage",
-          "tech": "model + docs",
-          "desc": "Model and one doc per node and edge, both in the user's repo."
+          "label": "Agent harness",
+          "subtype": "external-system",
+          "tech": "Claude Code, Hermes, OpenCode",
+          "desc": "Where the skill is installed: a directory of instructions another tool reads."
         },
         {
           "id": "browser",
           "identity": "C4V-05",
-          "label": "browser",
-          "subtype": "web-application",
-          "tech": "reads only",
-          "desc": "The reader of the served pages."
+          "label": "Reader",
+          "subtype": "external-system",
+          "tech": "any browser",
+          "desc": "Opens the link, pans, zooms, hovers a box. The viewer is read-only by construction."
         }
       ],
       "edges": [
         {
-          "from": "who",
-          "to": "c4v",
-          "label": "asks",
+          "from": "agent",
+          "to": "c4view",
+          "label": "model.json",
           "style": "flow"
         },
         {
-          "from": "files",
-          "to": "c4v",
-          "label": "reads",
+          "from": "repo",
+          "to": "c4view",
+          "label": "model + docs",
           "style": "dep"
         },
         {
-          "from": "git",
-          "to": "c4v",
-          "label": "gate",
+          "from": "c4view",
+          "to": "repo",
+          "label": "SVG + gate",
           "style": "flow"
         },
         {
-          "from": "c4v",
+          "from": "c4view",
+          "to": "harness",
+          "label": "skill package",
+          "style": "flow"
+        },
+        {
+          "from": "c4view",
           "to": "browser",
-          "label": "serves",
+          "label": "SVG pages",
           "style": "flow"
         }
       ],
       "flow": [
-        "who->c4v",
-        "files->c4v",
-        "git->c4v",
-        "c4v->browser"
+        "agent->c4view",
+        "repo->c4view",
+        "c4view->repo",
+        "c4view->harness",
+        "c4view->browser"
       ]
     },
     {
-      "path": "c4v",
-      "title": "L2 — the containers inside c4-view",
-      "ports": {
-        "who->c4v": "cli",
-        "files->c4v": "cli",
-        "git->c4v": "hook",
-        "c4v->browser": "server"
-      },
+      "path": "c4view",
+      "title": "C2 · the containers inside c4-view",
       "nodes": [
         {
-          "id": "hook",
-          "identity": "C4V-10",
-          "label": "git hook",
-          "subtype": "batch-job",
-          "tech": ".githooks/pre-commit",
-          "desc": "Three lines of shell in the user's repo; it owns no judgement."
-        },
-        {
           "id": "cli",
-          "identity": "C4V-11",
+          "identity": "C4V-10",
           "label": "c4v CLI",
-          "subtype": "container-registry",
-          "tech": "node, no deps",
-          "desc": "render, audit, gate, skill, prefs — and the command that starts the viewer."
+          "subtype": "microservice",
+          "tech": "node src/cli.ts, no deps",
+          "desc": "One-shot process: parse, lay out, audit, write, and exit with the verdict."
         },
         {
           "id": "server",
           "identity": "C4V-12",
           "label": "viewer server",
           "subtype": "microservice",
-          "tech": "node http, :8788",
-          "desc": "Read-only pages behind a token. It never writes a diagram."
+          "tech": "node:http, :8788",
+          "desc": "Serves the pictures it already has, behind a token. Never writes a diagram."
         },
         {
-          "id": "who",
-          "identity": "C4V-01",
-          "label": "Agent or owner",
-          "subtype": "person",
-          "tech": "any harness",
-          "desc": "The actor. Same box as on the context level, same identity."
+          "id": "viewer",
+          "identity": "C4V-13",
+          "label": "viewer app",
+          "subtype": "web-application",
+          "tech": "public/*.js, stage.css",
+          "desc": "Zoom, hover, drill and the flow animation. Client side, no build step."
         },
         {
-          "id": "files",
-          "identity": "C4V-04",
-          "label": "repo files",
+          "id": "store",
+          "identity": "C4V-14",
+          "label": "diagram store",
           "subtype": "file-storage",
-          "tech": "model + docs",
-          "desc": "The store the CLI reads and writes. Same box as on the context level."
+          "tech": "~/.c4-view/<id>/",
+          "desc": "Published models and their docs; also the repo's own docs/c4 while the CLI works."
         },
         {
-          "id": "git",
-          "identity": "C4V-03",
-          "label": "git",
-          "subtype": "external-system",
-          "tech": "pre-commit",
-          "desc": "Runs the hook. Same box as on the context level, same identity."
-        },
-        {
-          "id": "browser",
-          "identity": "C4V-05",
-          "label": "browser",
-          "subtype": "external-system",
-          "tech": "reads only",
-          "desc": "The reader. Same box as on the context level, same identity."
+          "id": "hook",
+          "identity": "C4V-15",
+          "label": "git hook",
+          "subtype": "batch-job",
+          "tech": ".githooks/pre-commit",
+          "desc": "Three lines of shell in the user's repo. It owns no judgement."
         }
       ],
       "edges": [
         {
-          "from": "who",
-          "to": "cli",
-          "label": "asks",
-          "style": "flow"
-        },
-        {
-          "from": "files",
-          "to": "cli",
-          "label": "reads",
-          "style": "dep"
-        },
-        {
-          "from": "git",
-          "to": "hook",
-          "label": "commit",
-          "style": "flow"
-        },
-        {
           "from": "hook",
           "to": "cli",
-          "label": "check",
+          "label": "gate check",
+          "style": "flow"
+        },
+        {
+          "from": "cli",
+          "to": "store",
+          "label": "publishes",
           "style": "flow"
         },
         {
@@ -183,251 +153,315 @@
         },
         {
           "from": "server",
-          "to": "browser",
-          "label": "serves",
+          "to": "store",
+          "label": "reads",
+          "style": "flow"
+        },
+        {
+          "from": "server",
+          "to": "viewer",
+          "label": "HTML + JS",
           "style": "flow"
         }
       ],
+      "ports": {
+        "agent->c4view": "cli",
+        "repo->c4view": "cli",
+        "c4view->repo": "cli",
+        "c4view->harness": "cli",
+        "c4view->browser": "server"
+      },
       "flow": [
-        "who->cli",
-        "files->cli",
-        "git->hook",
         "hook->cli",
+        "cli->store",
         "cli->server",
-        "server->browser"
+        "server->store",
+        "server->viewer"
       ]
     },
     {
-      "path": "c4v/cli",
-      "title": "L3 — components inside the CLI",
-      "ports": {
-        "who->cli": "argv",
-        "files->cli": "model",
-        "hook->cli": "gate",
-        "cli->server": "argv"
-      },
+      "path": "c4view/cli",
+      "title": "C3 · inside the c4v CLI",
       "nodes": [
         {
-          "id": "argv",
+          "id": "args",
           "identity": "C4V-20",
-          "label": "argv",
-          "subtype": "api-controller",
-          "tech": "src/cli.ts",
-          "desc": "One action per invocation; exit codes are the contract."
-        },
-        {
-          "id": "model",
-          "identity": "C4V-21",
-          "label": "model",
-          "subtype": "module",
-          "tech": "src/model.ts",
-          "desc": "Validates and refuses, naming the file and the key."
-        },
-        {
-          "id": "layout",
-          "identity": "C4V-22",
-          "label": "layout",
-          "subtype": "module",
-          "tech": "src/layout/*",
-          "desc": "Ranks, orders and places boxes. Geometry only."
-        },
-        {
-          "id": "svg",
-          "identity": "C4V-23",
-          "label": "svg",
-          "subtype": "module",
-          "tech": "src/svg/emit.ts",
-          "desc": "Serialises the drawing; escaping happens once, here."
-        },
-        {
-          "id": "writer",
-          "identity": "C4V-24",
-          "label": "writer",
-          "subtype": "repository",
-          "tech": "src/cli-output.ts",
-          "desc": "Writes the files and turns gates into an exit code."
-        },
-        {
-          "id": "gate",
-          "identity": "C4V-25",
-          "label": "gate",
+          "label": "Args + dispatch",
           "subtype": "service-logic",
-          "tech": "src/gate.ts",
-          "desc": "Staged diff plus model hash, or one recorded reason."
+          "tech": "src/cli.ts, cli-args.ts",
+          "desc": "Reads the command line, refuses what cannot work, and calls one verb."
+        },
+        {
+          "id": "parse",
+          "identity": "C4V-21",
+          "label": "Model parse",
+          "subtype": "service-logic",
+          "tech": "src/model.ts",
+          "desc": "Validates the model: ids, subtypes, ranks, ports, direction. Refuses rather than guesses."
+        },
+        {
+          "id": "rank",
+          "identity": "C4V-22",
+          "label": "Rank",
+          "subtype": "service-logic",
+          "tech": "src/layout/rank.ts",
+          "desc": "Longest-path depth, one dummy per column a long edge crosses."
+        },
+        {
+          "id": "order",
+          "identity": "C4V-23",
+          "label": "Order",
+          "subtype": "service-logic",
+          "tech": "src/layout/order.ts",
+          "desc": "Six barycentre sweeps; the ordering with fewest inversions wins."
+        },
+        {
+          "id": "place",
+          "identity": "C4V-24",
+          "label": "Place",
+          "subtype": "service-logic",
+          "tech": "src/layout/place.ts",
+          "desc": "Measures boxes, spaces columns by wire load, stacks rows, boxes up boundaries."
+        },
+        {
+          "id": "route",
+          "identity": "C4V-25",
+          "label": "Route",
+          "subtype": "service-logic",
+          "tech": "src/layout/route.ts",
+          "desc": "Orthogonal wires in gutters, one track per jog, a corridor for the loops."
+        },
+        {
+          "id": "emit",
+          "identity": "C4V-26",
+          "label": "Emit",
+          "subtype": "service-logic",
+          "tech": "src/svg/emit.ts, shapes.ts",
+          "desc": "Deterministic SVG: shapes, chips, the dashed lens frame, the drill links."
+        },
+        {
+          "id": "audit",
+          "identity": "C4V-27",
+          "label": "Audit",
+          "subtype": "service-logic",
+          "tech": "src/audit.ts, lens.ts",
+          "desc": "Counts what a reader would trip over, and the four modelling gates."
+        },
+        {
+          "id": "repo-gate",
+          "identity": "C4V-28",
+          "label": "Repo gate",
+          "subtype": "service-logic",
+          "tech": "src/gate.ts, cli-gate.ts",
+          "desc": "install, check, defer, status, uninstall — the commit-time contract."
+        },
+        {
+          "id": "publish",
+          "identity": "C4V-29",
+          "label": "Publish",
+          "subtype": "service-logic",
+          "tech": "src/cli-publish.ts, store.ts",
+          "desc": "Copies a model and its docs into the store the server reads."
         }
       ],
       "edges": [
         {
-          "from": "argv",
-          "to": "model",
-          "label": "loads",
+          "from": "args",
+          "to": "parse",
+          "label": "model.json",
           "style": "flow"
         },
         {
-          "from": "model",
-          "to": "layout",
-          "label": "levels",
+          "from": "args",
+          "to": "repo-gate",
+          "label": "gate check",
           "style": "flow"
         },
         {
-          "from": "layout",
-          "to": "svg",
-          "label": "boxes",
+          "from": "parse",
+          "to": "rank",
+          "label": "LevelSpec",
           "style": "flow"
         },
         {
-          "from": "svg",
-          "to": "writer",
-          "label": "svg",
+          "from": "rank",
+          "to": "order",
+          "label": "Ranked",
           "style": "flow"
         },
         {
-          "from": "argv",
-          "to": "gate",
-          "label": "gate",
+          "from": "order",
+          "to": "place",
+          "label": "Ordered",
+          "style": "flow"
+        },
+        {
+          "from": "place",
+          "to": "route",
+          "label": "Placed",
+          "style": "flow"
+        },
+        {
+          "from": "route",
+          "to": "emit",
+          "label": "Routed",
+          "style": "flow"
+        },
+        {
+          "from": "route",
+          "to": "audit",
+          "label": "Routed",
+          "style": "flow"
+        },
+        {
+          "from": "emit",
+          "to": "publish",
+          "label": "SVG",
+          "style": "flow"
+        },
+        {
+          "from": "args",
+          "to": "publish",
+          "label": "publish",
           "style": "flow"
         }
       ],
+      "ports": {
+        "hook->cli": "args",
+        "cli->store": "publish",
+        "cli->server": "args"
+      },
       "flow": [
-        "argv->model",
-        "model->layout",
-        "layout->svg",
-        "svg->writer",
-        "argv->gate"
+        "args->parse",
+        "parse->rank",
+        "rank->order",
+        "order->place",
+        "place->route",
+        "route->emit",
+        "route->audit",
+        "emit->publish",
+        "args->publish",
+        "args->repo-gate"
       ]
     },
     {
-      "path": "c4v/server",
-      "title": "L3 — components inside the viewer server",
-      "ports": {
-        "cli->server": "http",
-        "server->browser": "pages"
-      },
+      "path": "c4view/server",
+      "title": "C3 · inside the viewer server",
       "nodes": [
         {
-          "id": "http",
+          "id": "guard",
           "identity": "C4V-30",
-          "label": "http",
-          "subtype": "adapter",
-          "tech": "src/server.ts",
-          "desc": "One request in, one page or one refusal out."
+          "label": "Guard",
+          "subtype": "service-logic",
+          "tech": "src/security.ts",
+          "desc": "One token: query, header or cookie. Refreshes a stale cookie, never prints the token to a log."
         },
         {
-          "id": "router",
+          "id": "routes",
           "identity": "C4V-31",
-          "label": "routes",
-          "subtype": "module",
-          "tech": "src/routes.ts",
-          "desc": "Path to meaning; the tree is small and explicit."
+          "label": "Routes",
+          "subtype": "service-logic",
+          "tech": "src/routes.ts, server.ts",
+          "desc": "The URL table: pages, API, assets. Every reply carries the same security headers."
         },
         {
           "id": "pages",
           "identity": "C4V-32",
-          "label": "pages",
-          "subtype": "module",
-          "tech": "src/viewer-page.ts",
-          "desc": "Grid, level and drill pages, rendered server-side."
+          "label": "Viewer page",
+          "subtype": "service-logic",
+          "tech": "src/viewer-page.ts, viewer-zoom.ts",
+          "desc": "Server-renders the canvas, the level picker and the zoom presets before any script runs."
         },
         {
-          "id": "token",
+          "id": "docs",
           "identity": "C4V-33",
-          "label": "token",
-          "subtype": "middleware",
-          "tech": "src/security.ts",
-          "desc": "Bearer or cookie, never in the address bar."
+          "label": "Hover docs",
+          "subtype": "service-logic",
+          "tech": "src/docs.ts, markdown.ts",
+          "desc": "One markdown file per node and edge, re-keyed for the level being drawn."
         },
         {
-          "id": "store",
+          "id": "api",
           "identity": "C4V-34",
-          "label": "store",
-          "subtype": "repository",
-          "tech": "~/.c4-view",
-          "desc": "The diagrams the viewer can show; written only by the CLI."
+          "label": "Diagram API",
+          "subtype": "service-logic",
+          "tech": "src/server.ts",
+          "desc": "List, fetch, publish. Refuses a body over the limit instead of buffering it."
+        },
+        {
+          "id": "reader",
+          "identity": "C4V-35",
+          "label": "Store reader",
+          "subtype": "file-storage",
+          "tech": "src/store.ts",
+          "desc": "Reads the published models off disk; a missing directory is an empty list, not an error."
+        },
+        {
+          "id": "client",
+          "identity": "C4V-36",
+          "label": "Viewer app",
+          "subtype": "web-application",
+          "tech": "public/viewer.js, flow.js",
+          "desc": "Zoom, hover, drill, and one edge animating at a time."
         }
       ],
       "edges": [
         {
-          "from": "http",
-          "to": "router",
-          "label": "request",
+          "from": "guard",
+          "to": "routes",
+          "label": "allowed",
           "style": "flow"
         },
         {
-          "from": "router",
-          "to": "token",
-          "label": "guards",
-          "style": "flow"
-        },
-        {
-          "from": "router",
+          "from": "routes",
           "to": "pages",
-          "label": "renders",
+          "label": "level",
           "style": "flow"
         },
         {
           "from": "pages",
-          "to": "store",
-          "label": "reads",
-          "style": "dep"
+          "to": "docs",
+          "label": "hover",
+          "style": "flow"
+        },
+        {
+          "from": "routes",
+          "to": "api",
+          "label": "JSON",
+          "style": "flow"
+        },
+        {
+          "from": "api",
+          "to": "reader",
+          "label": "models",
+          "style": "flow"
+        },
+        {
+          "from": "pages",
+          "to": "reader",
+          "label": "model",
+          "style": "flow"
+        },
+        {
+          "from": "pages",
+          "to": "client",
+          "label": "HTML + JS",
+          "style": "flow"
         }
       ],
-      "flow": [
-        "http->router",
-        "router->token",
-        "router->pages",
-        "pages->store"
-      ]
-    },
-    {
-      "path": "c4v/hook",
-      "title": "L3 — what the hook does, in three steps",
       "ports": {
-        "git->hook": "staged",
-        "hook->cli": "exit"
+        "cli->server": "routes",
+        "server->store": "reader",
+        "server->viewer": "pages"
       },
-      "nodes": [
-        {
-          "id": "staged",
-          "identity": "C4V-40",
-          "label": "staged",
-          "subtype": "config",
-          "tech": "git diff --cached",
-          "desc": "What this commit actually changes, plus a hash of it."
-        },
-        {
-          "id": "run",
-          "identity": "C4V-41",
-          "label": "run",
-          "subtype": "job",
-          "tech": "c4v gate check",
-          "desc": "One call into the CLI; the hook adds no logic of its own."
-        },
-        {
-          "id": "exit",
-          "identity": "C4V-42",
-          "label": "exit",
-          "subtype": "function",
-          "tech": "0 | 1",
-          "desc": "The CLI's verdict, inherited verbatim: commit or stop."
-        }
-      ],
-      "edges": [
-        {
-          "from": "staged",
-          "to": "run",
-          "label": "passes",
-          "style": "flow"
-        },
-        {
-          "from": "run",
-          "to": "exit",
-          "label": "verdict",
-          "style": "flow"
-        }
-      ],
       "flow": [
-        "staged->run",
-        "run->exit"
+        "guard->routes",
+        "routes->pages",
+        "pages->reader",
+        "pages->docs",
+        "pages->client",
+        "routes->api",
+        "api->reader"
       ]
     }
   ]

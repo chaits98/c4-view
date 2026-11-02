@@ -1,3 +1,6 @@
-# hook → cli
+# hook → cli · `gate check`
 
-The hook does no thinking: it calls the CLI with `--staged` and inherits its exit code. All judgement lives in one place.
+hook hands `gate check` to cli.
+
+Kept on the C2 · the containers inside c4-view level because that is where the two ends live; if it ever crosses a container boundary on
+the level above, it needs a port there rather than a second arrow here.
