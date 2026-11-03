@@ -249,7 +249,7 @@ the level), in that order, with the numbers attached.
 - **The new-code coverage gate measured `HEAD`, not the code being committed.** It diffed `base...HEAD`, so a
   pre-commit run judged the *previous* commit: new lines could slip in with the check green. It now diffs the
   working tree against the base, which is what a pre-commit hook has to judge.
-- **The corpus fixture is no longer exempt.** `fixtures/droid.json` had two drilled levels that were dead ends
+- **No model is exempt from the lens rules.** The corpus fixture had two drilled levels that were dead ends
   and a 17-component level (the skill's own budget is 6–12); `git hook`-style gaps were being papered over with
   `--no-lens`. The fixture now models the user opening the app and the bridge pushing to the org runtime, the
   frontend level is 12 components, and `check.sh` audits it with the same rules as everything else.

@@ -3,7 +3,7 @@
 The test of the skill is that this is the whole brief. Paste it into a **new session**:
 
 ```
-Build a C4 diagram of this repo: /home/canand/Desktop/Projects/c4-view
+Build a C4 diagram of this repo: <path to this repo>
 ```
 
 That is it — no levels, no rules, no commands, no delivery format. Everything an agent needs must come

@@ -8,7 +8,7 @@
  *            --place--> Placed --route--> Routed --emit--> svg   (+ audit)
  */
 
-// ── the C4 taxonomy (ported from droid-desktop src/react/c4/types.ts) ─────────
+// ── the C4 taxonomy, as the C4 model defines it ─────────────────────────────
 
 export type C4Level = 'context' | 'container' | 'component' | 'code'
 

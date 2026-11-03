@@ -3,7 +3,7 @@
  * without cutting through the nodes stacked under its own ends.
  *
  * A plain drop/rise at the port cut through every node below it (measured: one
- * wire∧node on the agent-org fixture), so a blocked side leaves the column through
+ * wire∧node on one of the corpus models), so a blocked side leaves the column through
  * the gap beneath it and travels in a gutter track instead.
  *
  * @module c4-view/layout/backward
