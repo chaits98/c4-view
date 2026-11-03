@@ -3,6 +3,17 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.3] — a container's name sits above what it holds
+
+Every host box was drawn with its label **centred**, and a host box is sized to the drawing inside it — so a
+container's own name was written across the top of its contents in the app and in every export. A box that
+holds a picture now draws its label at the head, and the picture starts below a **measured** head (the
+label block's own height), not a guessed constant.
+
+Also fixed on the way: an edge whose style the palette does not draw crashed the emitter; it falls back to a
+flow line. And `nestedPicture` accepts a theme choice (`'dark'`) or a palette, instead of silently reading
+`.edges` off a string.
+
 ## [0.12.2] — the export is the picture, the whole picture, and it paints its own canvas
 
 Four things a reader hit at once:

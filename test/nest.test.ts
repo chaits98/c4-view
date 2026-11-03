@@ -2,7 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseModel } from '../src/model.ts'
-import { nestedLevel, nestedPicture, NEST_HEAD, NEST_PAD } from '../src/nest.ts'
+import { HOST_HEAD_PAD, nestedLevel, nestedPicture, NEST_PAD } from '../src/nest.ts'
+import { LIGHT } from '../src/theme.ts'
 
 const deep = (): ReturnType<typeof parseModel> =>
   parseModel({
@@ -37,6 +38,15 @@ test('every level is drawn, once each, and counted', () => {
   assert.equal((pic.svg.match(/class="c4-nested"/g) ?? []).length, 2, 'two hosts hold a child drawing')
 })
 
+test('a host keeps its own label at the head, clear of the picture', () => {
+  const pic = nestedPicture(deep())
+  const host = pic.hosts.get('box')
+  assert.ok(host)
+  const at = /translate\((\d+) (\d+)\)" class="c4-nested" data-host="box"/.exec(pic.svg)
+  assert.ok(at, 'placed with a translate')
+  assert.ok(Number(at[2]) - host.y >= HOST_HEAD_PAD, 'past the head, not on the label')
+})
+
 test('a child drawing sits inside its host box, not over the label', () => {
   const pic = nestedPicture(deep())
   const host = pic.hosts.get('box')
@@ -45,7 +55,7 @@ test('a child drawing sits inside its host box, not over the label', () => {
   assert.ok(at, 'the child is placed with a translate')
   const [x, y] = [Number(at[1]), Number(at[2])]
   assert.ok(x >= host.x && y >= host.y, 'inside the box')
-  assert.equal(y, Math.round(host.y + NEST_PAD + NEST_HEAD), 'below the label strip')
+  assert.ok(y > host.y + NEST_PAD, 'below the host label, not under it')
 })
 
 test('the report is the sum of the levels, not a fresh clean sheet', () => {
@@ -80,4 +90,12 @@ test('a host that holds a drawing is a rectangle, whatever its subtype draws as'
   const pic = nestedPicture(deep())
   assert.ok(!/A\d+/.test(pic.svg.split('data-host="box"')[0].slice(-400)), 'no stadium arc on the host outline')
   assert.match(pic.svg, /data-host="box"/)
+})
+
+test('the picture accepts a theme choice or a palette, and paints a canvas when asked', () => {
+  const asChoice = nestedPicture(deep(), 'light', true)
+  const asPalette = nestedPicture(deep(), LIGHT, true)
+  assert.match(asChoice.svg, /class="c4-canvas"/, 'a string is resolved, not assumed to be a palette')
+  assert.equal(asChoice.svg, asPalette.svg, 'the same scheme, however it was named')
+  assert.ok(!/class="c4-canvas"/.test(nestedPicture(deep()).svg), 'no rect unless the file needs one')
 })

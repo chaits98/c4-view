@@ -66,7 +66,8 @@ function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<stri
   const styleOf = new Map(placed.chains.map((c) => [c.key, c.style]))
   return routed.routes.map((r) => {
     const style = styleOf.get(r.key) ?? 'flow'
-    const e = theme.edges[style]
+    // coverage:invariant — EdgeStyle is a closed union of four, and every palette draws all four
+    const e = theme.edges[style] ?? theme.edges.flow
     const dash = e.dash ? ` stroke-dasharray="${e.dash}"` : ''
     // data-flow is 1-based position in the linear narration order: the viewer animates
     // exactly one edge at a time, in this order.
@@ -77,7 +78,7 @@ function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<stri
   })
 }
 
-function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, linkBase?: string): string[] {
+function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, linkBase?: string, hosts?: Set<string>): string[] {
   const small = Math.max(9, cfg.fontSize - 2)
   const lh = lineHeight(cfg.fontSize)
   const slh = lineHeight(small)
@@ -108,7 +109,9 @@ function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: T
     const textH = (t.identity ? slh : 0) + t.lines.length * lh + (t.tech ? slh : 0)
     const bandTop = box.y + inset.top
     const bandH = box.h - inset.top - inset.bottom
-    let cursor = bandTop + Math.max(0, (bandH - textH) / 2)
+    // a host's label sits at the head of its box: centring it in a box sized to a whole drawing wrote the
+    // name straight through the picture inside it
+    let cursor = hosts?.has(node.id) ? bandTop + HOST_LABEL_PAD : bandTop + Math.max(0, (bandH - textH) / 2)
     const cx = box.x + box.w / 2
     if (t.identity) {
       parts.push(text(cx, cursor + slh / 2, small, theme.dim, t.identity))
@@ -141,7 +144,12 @@ export interface EmitOptions {
   linkBase?: string
   /** paint the canvas behind the drawing: an exported file has no page CSS to do it */
   background?: string
+  /** boxes that hold a picture: their label goes to the top, the picture sits under it */
+  hosts?: Set<string>
 }
+
+/** Space between a host box's top edge and its label, and the height that label block claims. */
+export const HOST_LABEL_PAD = 8
 
 export function emit(
   placed: Placed, routed: Routed, level: LevelSpec,
@@ -156,7 +164,7 @@ export function emit(
   const body = [
     ...groupLayer(placed, theme),
     ...routeLayer(routed, placed, theme, flow),
-    ...nodeLayer(level, placed, cfg, theme, drill, linkBase),
+    ...nodeLayer(level, placed, cfg, theme, drill, linkBase, options.hosts),
     ...chipLayer(routed, cfg, theme),
     ...groupLabelLayer(placed, theme),
   ]

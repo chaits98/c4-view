@@ -17,12 +17,15 @@ import { layoutOf } from './model.ts'
 import { layoutLevel, type RenderedLevel } from './render.ts'
 import { flowIndex } from './flow.ts'
 import { emit } from './svg/emit.ts'
-import { DARK, type Theme } from './theme.ts'
+import { measureNode } from './layout/measure-node.ts'
+import { measure } from './metrics.ts'
+import { DARK, exportPaletteOf, type Theme } from './theme.ts'
 import type { AuditReport, LevelSpec, Model } from './types.ts'
 
 /** Room inside a host box for the picture it holds, on top of the label at its head. */
 export const NEST_PAD = 14
-export const NEST_HEAD = 34
+/** Room between a host's text block and the drawing inside it. */
+export const HOST_HEAD_PAD = 12
 
 const COUNTS = ['nodeNode', 'wireNode', 'wireWire', 'chipChip', 'chipNode', 'groupNode', 'crossings', 'backward'] as const
 
@@ -31,7 +34,7 @@ export interface Picture {
   w: number
   h: number
   /** host node id → top-left of its child picture, in this picture's coordinates */
-  hosts: Map<string, { x: number; y: number }>
+  hosts: Map<string, { x: number; y: number; head: number }>
   levels: number
   nodes: number
   edges: number
@@ -67,9 +70,10 @@ function depthOf(path: string): number {
 }
 
 /** A level with its hosts pre-sized to the pictures already rendered for them. */
-function sized(model: Model, level: LevelSpec, pics: Map<string, Picture>): { spec: LevelSpec; inner: Map<string, Picture> } {
+function sized(model: Model, level: LevelSpec, pics: Map<string, Picture>): { spec: LevelSpec; inner: Map<string, Picture>; heads: Map<string, number> } {
   const path = level.path
   const inner = new Map<string, Picture>()
+  const heads = new Map<string, number>()
   const nodes = level.nodes.map((node) => {
     const child = path === '' ? node.id : `${path}/${node.id}`
     const pic = model.levels.some((l) => l.path === child) ? pics.get(child) : undefined
@@ -77,18 +81,22 @@ function sized(model: Model, level: LevelSpec, pics: Map<string, Picture>): { sp
     inner.set(node.id, pic)
     // a host is a frame, not a node: a stadium or diamond stretched to hold a drawing reads as a giant
     // oval cutting through its own contents
-    return { ...node, shape: 'rect', w: pic.w + 2 * NEST_PAD, h: pic.h + 2 * NEST_PAD + NEST_HEAD }
+    // the head is the host's own text block, measured — a guessed constant let the label sit on the drawing
+    const text = measureNode(node, layoutOf(model), measure)
+    const head = Math.ceil(text.h) + HOST_HEAD_PAD
+    heads.set(node.id, head)
+    return { ...node, shape: 'rect', w: pic.w + 2 * NEST_PAD, h: pic.h + 2 * NEST_PAD + head }
   })
-  return { spec: { ...level, nodes }, inner }
+  return { spec: { ...level, nodes }, inner, heads }
 }
 
 /** Put each child's drawing inside the box its host node was given. */
-function embed(svg: string, at: Map<string, { x: number; y: number }>, inner: Map<string, Picture>): string {
+function embed(svg: string, at: Map<string, { x: number; y: number; head: number }>, inner: Map<string, Picture>): string {
   const groups = [...inner.entries()].flatMap(([host, pic]) => {
     const box = at.get(host)
     if (!box) return [] // coverage:invariant — `at` is built from the same hosts as `inner`
     const x = Math.round(box.x + NEST_PAD)
-    const y = Math.round(box.y + NEST_PAD + NEST_HEAD)
+    const y = Math.round(box.y + NEST_PAD + box.head)
     return [`<g transform="translate(${x} ${y})" class="c4-nested" data-host="${host}">${pic.svg}</g>`]
   })
   return groups.length ? svg.replace(/<\/svg>\s*$/, `${groups.join('')}</svg>`) : svg
@@ -97,22 +105,26 @@ function embed(svg: string, at: Map<string, { x: number; y: number }>, inner: Ma
 /**
  * Every level of the model in one picture. Bottom-up, so a child is finished before its host is sized.
  */
-export function nestedPicture(model: Model, theme: Theme = DARK, paint = false): Picture {
+export function nestedPicture(model: Model, theme: Theme | string = DARK, paint = false): Picture {
+  // a caller may hand over the choice ('dark') or the palette itself; a string is resolved, never assumed
+  const palette: Theme = typeof theme === 'string' ? exportPaletteOf(theme) : theme
   const cfg = layoutOf(model)
   const pics = new Map<string, Picture>()
   const deepest = [...model.levels].sort((a, b) => depthOf(b.path) - depthOf(a.path))
   for (const level of deepest) {
-    const { spec, inner } = sized(model, level, pics)
+    const { spec, inner, heads } = sized(model, level, pics)
     const { placed, routed, audit: report } = layoutLevel(spec, cfg)
-    const at = new Map<string, { x: number; y: number }>()
+    const at = new Map<string, { x: number; y: number; head: number }>()
     for (const host of inner.keys()) {
       const box = placed.boxes.get(host)
-      if (box) at.set(host, { x: box.x, y: box.y })
+      // coverage:invariant — every host is a node of this level, and place() boxes every node it laid out
+      if (box) at.set(host, { x: box.x, y: box.y, head: heads.get(host) ?? 0 })
     }
     // each level keeps its own narration: without the flow map the picture has no steps to walk
     // the outermost picture paints the canvas; the nested ones would paint over their host's contents
-    const background = paint && level.path === '' ? { background: theme.bg } : {}
-    const svg = embed(emit(placed, routed, spec, cfg, theme, { flow: flowIndex(spec), ...background }), at, inner)
+    const background = paint && level.path === '' ? { background: palette.bg } : {}
+    const hosts = new Set(heads.keys())
+    const svg = embed(emit(placed, routed, spec, cfg, palette, { flow: flowIndex(spec), hosts, ...background }), at, inner)
     const audit = emptyAudit()
     addAudit(audit, report)
     for (const pic of inner.values()) addAudit(audit, pic.audit)
@@ -132,7 +144,7 @@ export function nestedPicture(model: Model, theme: Theme = DARK, paint = false):
 }
 
 /** The nested picture shaped like a level render, so the viewer and the CLI take it unchanged. */
-export function nestedLevel(model: Model, theme: Theme = DARK, paint = false): RenderedLevel {
+export function nestedLevel(model: Model, theme: Theme | string = DARK, paint = false): RenderedLevel {
   const pic = nestedPicture(model, theme, paint)
   return { path: 'full', title: 'Every level', svg: pic.svg, audit: { ...pic.audit, aspect: round2(pic.w / Math.max(1, pic.h)) } }
 }
