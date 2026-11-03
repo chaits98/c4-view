@@ -60,5 +60,14 @@
     "llm",
     "cli",
     "layout"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chaits98/c4-view.git"
+  },
+  "homepage": "https://github.com/chaits98/c4-view#readme",
+  "bugs": {
+    "url": "https://github.com/chaits98/c4-view/issues"
+  },
+  "author": "chaits98"
 }
