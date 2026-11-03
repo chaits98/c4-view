@@ -8,11 +8,12 @@ on:
 jobs:
   # The source is TypeScript with no build step, so these run it directly: Node >= 22.18.
   source:
-    runs-on: ${{ matrix.os }}
+    # One OS and three Node versions. The tool is pure JavaScript with no native binding, so a second OS
+    # bought nothing but queued minutes on a private repo — the macOS legs sat 'queued' for half an hour.
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         node: ['22.18', '24', '26']
     steps:
       - uses: actions/checkout@v4
