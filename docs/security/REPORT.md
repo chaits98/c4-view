@@ -1,4 +1,26 @@
-# Security report — c4-view 0.2.2 + the `c4-diagram` skill
+# Security report — c4-view
+
+Two audits are recorded here. The **first** (0.2.2, 2026-10-31) is the deep one: four skill scanners, a
+threat model, and the findings that were fixed. The **second** (0.12.3, 2026-11-03) is a re-run of every
+check that can be re-run, because ten minor versions had landed since — a scan that describes a version
+nobody runs is a decoration.
+
+## Re-run at 0.12.3 — 2026-11-03
+
+| layer | tool | result |
+|---|---|---|
+| repo + full history | gitleaks 8 | **no leaks** — 111 commits, 1.24 MB scanned |
+| package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** over 52 files in `src/` |
+| package code | SonarQube 9.9 (self-hosted) | **0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells**, 0.9% duplication, **98.6% coverage**, 4,796 ncloc, gate **OK** |
+| dependencies | `npm audit --omit=dev` | **0 vulnerabilities**; zero runtime dependencies |
+| skill instructions | SkillSpector, cisco skill-scanner, skillfrisk, agentscan | run in CI on every push (`skill-scan` job); cisco is gated at `--fail-on-severity high` |
+| gates | `./scripts/check.sh` | 300-line ceiling, purity, no `any`, no placeholders, goldens byte-identical |
+
+The Runtime surface table below (F1–F5) is unchanged: every finding is either fixed or accepted with the
+reasoning recorded, and none of the code paths involved has changed since.
+
+## The original audit — 0.2.2, 2026-10-31
+
 
 Scope: the skill's instructions, the package's code and dependencies, and the runtime surface the tool
 exposes. Date: 2026-10-31. Everything below is reproducible with `security/Dockerfile` and the commands
