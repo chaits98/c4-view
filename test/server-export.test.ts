@@ -8,6 +8,9 @@ import type { Server } from 'node:http'
 import { serve } from '../src/server.ts'
 import { save } from '../src/store.ts'
 import { exportName } from '../src/server-export.ts'
+import { findChromium } from '../src/png.ts'
+/** A machine without a browser cannot rasterise; those tests are skipped, not failed. */
+const noBrowser = findChromium() ? false : 'no Chromium on this machine'
 
 const RAW = JSON.stringify({
   id: 'ship',
@@ -72,7 +75,7 @@ test('html export is a self-contained page, and layers is every level', async ()
   assert.equal((layers.body.match(/<h2>/g) ?? []).length, 1, 'one picture: the full diagram holds every level')
 })
 
-test('the full view exports a png too, and the second ask reuses the file', async () => {
+test('the full view exports a png too, and the second ask reuses the file', { skip: noBrowser }, async () => {
   const first = await fetch(`${base}/d/ship.png?view=full`)
   assert.equal(first.status, 200)
   assert.match(first.headers.get('content-disposition') ?? '', /ship-full\.png/)
@@ -81,7 +84,7 @@ test('the full view exports a png too, and the second ask reuses the file', asyn
   assert.equal(again.status, 200, 'the cached render answers just as well')
 })
 
-test('a level exports a png as well, named after the level', async () => {
+test('a level exports a png as well, named after the level', { skip: noBrowser }, async () => {
   const res = await fetch(`${base}/d/ship.png?level=box`)
   assert.equal(res.status, 200)
   assert.equal(res.headers.get('content-type'), 'image/png')
@@ -95,7 +98,7 @@ test('the svg export follows the theme it was asked for', async () => {
   assert.match(dark.body, /<svg/)
 })
 
-test('a light png is its own file, not the dark render under another name', async () => {
+test('a light png is its own file, not the dark render under another name', { skip: noBrowser }, async () => {
   const light = await fetch(`${base}/d/ship.png?level=box&theme=light`)
   const dark = await fetch(`${base}/d/ship.png?level=box&theme=dark`)
   assert.equal(light.status, 200)

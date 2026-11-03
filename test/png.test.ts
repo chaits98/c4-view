@@ -8,6 +8,8 @@ import { existsSync, mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { CHROMIUM_ENV, findChromium, sizeOf, svgToPng } from '../src/png.ts'
+/** A machine without a browser cannot rasterise; those tests are skipped, not failed. */
+const noBrowser = findChromium() ? false : 'no Chromium on this machine'
 
 // big enough that a real capture cannot compress under the 1 KB blank guard
 const SVG =
@@ -18,7 +20,7 @@ const SVG =
   '<path d="M240 100 H 400" stroke="#4a6f95" stroke-width="2" fill="none"/>' +
   '</svg>'
 
-test('a browser is found on this machine, and it exists', () => {
+test('a browser is found on this machine, and it exists', { skip: noBrowser }, () => {
   const browser = findChromium()
   assert.ok(browser, 'no chromium found here — install one or the PNG path is untested on this box')
   assert.ok(existsSync(browser))
@@ -56,7 +58,7 @@ test('a drawing is measured by its width/height, its viewBox, or refused', () =>
   assert.throws(() => sizeOf('<svg></svg>'), /neither width\/height nor a viewBox/)
 })
 
-test('a real raster comes out at the scale asked for', () => {
+test('a real raster comes out at the scale asked for', { skip: noBrowser }, () => {
   if (!findChromium()) return
   const out = join(mkdtempSync(join(tmpdir(), 'c4v-png-')), 'shot.png')
   svgToPng(SVG, out, 2)

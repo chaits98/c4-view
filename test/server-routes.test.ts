@@ -12,6 +12,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { serve } from '../src/server.ts'
+import { findChromium } from '../src/png.ts'
+/** A machine without a browser cannot rasterise; those tests are skipped, not failed. */
+const noBrowser = findChromium() ? false : 'no Chromium on this machine'
 
 const STORED = {
   id: 'routes',
@@ -237,7 +240,7 @@ test('a directory that looks like a diagram but has no model is not a diagram', 
   assert.equal((await fetch(`${base}/d/empty-dir`)).status, 404, 'and asking for it is a 404, not a crash')
 })
 
-test('the png export answers with an image, and reuses the file it already rendered', async () => {
+test('the png export answers with an image, and reuses the file it already rendered', { skip: noBrowser }, async () => {
   const first = await fetch(`${base}/d/${ID}.png`)
   assert.equal(first.status, 200, 'a png is produced on demand')
   assert.match(first.headers.get('content-type') ?? '', /^image\/png/)
