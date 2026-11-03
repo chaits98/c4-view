@@ -7,6 +7,9 @@ import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { serve } from '../src/server.ts'
 import { indexPage } from '../src/index-page.ts'
+import { findChromium } from '../src/png.ts'
+/** A machine without a browser cannot rasterise; those tests are skipped, not failed. */
+const noBrowser = findChromium() ? false : 'no Chromium on this machine'
 
 const fixture = readFileSync(new URL('../examples/nested.json', import.meta.url), 'utf8')
 const model = JSON.parse(fixture) as { id: string; title: string; levels: Array<{ path?: string; title?: string; nodes: unknown[] }> }
@@ -93,12 +96,14 @@ test('deep link renders that level, with breadcrumbs', async () => {
   assert.notEqual(svgOf(html), svgOf(await (await fetch(`${base}/d/${ID}`)).text()), 'a different drawing')
 })
 
-test('svg and png exports carry the right bytes', async () => {
+test('svg exports carry the right bytes', async () => {
   const svg = await fetch(`${base}/d/${ID}.svg?level=orders/pricing`)
   assert.equal(svg.status, 200)
   assert.match(svg.headers.get('content-type') ?? '', /^image\/svg\+xml/)
   assert.ok((await svg.text()).startsWith('<svg'))
+})
 
+test('png exports carry the right bytes', { skip: noBrowser }, async () => {
   const png = await fetch(`${base}/d/${ID}.png`)
   assert.equal(png.status, 200)
   assert.match(png.headers.get('content-type') ?? '', /^image\/png/)
