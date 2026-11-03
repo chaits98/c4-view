@@ -212,12 +212,30 @@ makes two runs differ is a bug even if the picture looks fine.
 src/            the pipeline: model → layout → svg → audit, plus the CLI and the HTTP server
 public/         the viewer: page, styles, pan/zoom, flow narration
 test/           480 tests: units, the real corpus, planted defects, install and prefs
-examples/       two hand-authored models to start from
+examples/       three hand-authored models: containers + drill, boundaries, and a nested three-level model
 docs/c4/        this tool's own C4 model, one markdown doc per node and edge
 docs/           LAYOUT-SPEC.md (normative) · HTTP-API.md · security/ · design/
 skill/          SKILL.md — the document an agent reads
-fixtures/       real corpus models exported read-only from a running app
 ```
+
+## Security
+
+The package has **zero runtime dependencies**, the viewer is read-only, and the skill is a text document —
+so the attack surface is the HTTP server you choose to run. What has actually been scanned, and with what:
+
+| surface | tool | result |
+|---|---|---|
+| skill instructions | SkillSpector 2.12 (static), cisco-ai-skill-scanner 2.3, skillfrisk 0.3, agentscan 1.2 | **0 issues** / 0 findings; agentscan lists 2 low "observed patterns", no verdicts |
+| package code | Semgrep `p/security-audit` + `p/typescript` | 0 findings across `src/` |
+| package code | SonarQube 9.9 | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells |
+| repo + full history | gitleaks 8 | 0 leaks |
+| dependencies | `npm audit`, `osv-scanner` | no runtime tree to audit; three dev-only packages |
+| runtime | threat model + tests | findings F1–F5: F1/F2 fixed (token printed to a non-tty log; `?t=` kept in the URL), F3–F5 accepted and documented |
+
+The full report — commands, versions, and the threats accepted on purpose — is
+[`docs/security/REPORT.md`](docs/security/REPORT.md), reproducible with the container in `security/`. CI re-runs
+the four keyless skill scanners and gitleaks on every push. Report a problem privately via
+[`SECURITY.md`](SECURITY.md).
 
 ## Known ceilings
 

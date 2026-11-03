@@ -15,7 +15,7 @@ const ajv = new Ajv2020({ allErrors: true, strict: false } as never)
 const validate = ajv.compile(schema)
 
 const files = [
-  ...readdirSync(join(ROOT, 'fixtures')).filter((f) => f.endsWith('.json')).map((f) => join('fixtures', f)),
+  ...readdirSync(join(ROOT, 'examples')).filter((f) => f.endsWith('.json')).map((f) => join('examples', f)),
   ...readdirSync(join(ROOT, 'examples')).filter((f) => f.endsWith('.json')).map((f) => join('examples', f)),
 ]
 

@@ -15,7 +15,6 @@
     "goldens:update": "node tools/golden.mjs --save",
     "render": "node src/cli.ts render",
     "serve": "node src/cli.ts serve",
-    "fixtures": "node scripts/export-fixtures.ts",
     "sonar": "sonar-scanner -Dsonar.host.url=http://127.0.0.1:9000",
     "doctor": "node src/cli.ts doctor",
     "install-skill": "bash scripts/install-skill.sh",

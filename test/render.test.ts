@@ -14,7 +14,7 @@ import { renderFile, renderModel } from '../src/render.ts'
 import { parseModel } from '../src/model.ts'
 import { auditLine } from '../src/audit.ts'
 
-const FIXTURES = join(new URL('..', import.meta.url).pathname, 'fixtures')
+const FIXTURES = join(new URL('..', import.meta.url).pathname, 'examples')
 const files = readdirSync(FIXTURES).filter((f) => f.endsWith('.json')).sort()
 
 test('the corpus exists and covers several levels', () => {

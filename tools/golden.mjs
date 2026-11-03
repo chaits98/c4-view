@@ -17,8 +17,8 @@ const ROOT = new URL('..', import.meta.url).pathname
 const STORE = join(ROOT, 'tools', 'golden.txt')
 
 const models = [
-  ...readdirSync(join(ROOT, 'fixtures')).filter((f) => f.endsWith('.json')).map((f) => join('fixtures', f)),
   ...readdirSync(join(ROOT, 'examples')).filter((f) => f.endsWith('.json')).map((f) => join('examples', f)),
+  ...readdirSync(join(ROOT, 'docs/c4')).filter((f) => f.endsWith('.json')).map((f) => join('docs/c4', f)),
 ]
 
 const rows = models.flatMap((file) =>

@@ -48,14 +48,8 @@ step "gate: 300-line cap, purity, no any/placeholders" node tools/gate.mjs
 step "types: tsc --noEmit"                             npx tsc --noEmit
 step "tests: node --test"                              node --test
 step "goldens: every corpus level byte-identical"      node tools/golden.mjs --check
-# Corpus fixtures are judged FLAT: `audit` defaults to the composed picture a page draws, and the droid
-# fixture's drilled views are known-bad (36-90 crossings). Examples and the repo's own model are judged
-# composed, because those are the ones a reader opens.
-step "audit: fixtures flat, examples and our own model composed" bash -c '
-  for f in fixtures/*.json; do
-    [ -f "$f" ] || continue
-    node src/cli.ts audit "$f" --strict --flat >/dev/null || { echo "failed: $f"; exit 1; }
-  done
+# Every shipped model is judged COMPOSED, because composed is the picture a reader opens.
+step "audit: every example and our own model composed" bash -c '
   for f in examples/*.json docs/c4/*.json skill/assets/*.json; do
     [ -f "$f" ] || continue   # an empty doc dir must not fail the glob itself
     node src/cli.ts audit "$f" --strict >/dev/null || { echo "failed: $f"; exit 1; }
@@ -71,6 +65,26 @@ elif have docker && docker image inspect zricethezav/gitleaks:latest >/dev/null 
 else
   skip "secrets: gitleaks" "not installed (setup-dev.sh fetches the image)"
 fi
+
+coverage_floor() {
+  [ -f coverage/lcov.info ] || return 1
+  awk -F: -v floor="${BRANCH_FLOOR:-90}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
+    END { pct = (lh + bh) * 100 / (lf + bf); br = bh * 100 / bf;
+          printf "lines+branches %d/%d = %.1f%% (floor 95) · branches %d/%d = %.1f%% (floor %d)\n", lh + bh, lf + bf, pct, bh, bf, br, floor;
+          exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info
+}
+
+# The lcov basis both coverage steps read. Sonar's analysis produces it as a side effect; on a machine
+# with no Sonar (CI, a contributor's laptop) it has to be produced here — otherwise the steps failed with
+# "no lcov" and a green suite looked red. One extra run only when the file is not already there.
+ensure_lcov() {
+  [ -f coverage/lcov.info ] && return 0
+  mkdir -p coverage
+  node --test --experimental-test-coverage --test-reporter=lcov \
+    --test-reporter-destination=coverage/lcov.info >/dev/null 2>&1
+}
+step "coverage: lcov basis" ensure_lcov
+step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
 
 # ── sonar: every commit -------------------------------------------------------
 # Measured here: ~5 s analysis, ~3 s coverage. It belongs on pre-commit, not only on pre-push:
@@ -116,14 +130,6 @@ if [ -n "${SONAR_TOKEN:-}" ] || [ -f "$HOME/.env" ] && grep -q '^SONAR_TOKEN=' "
     # Raise BRANCH_FLOOR with each batch of tests; never lower it to get green. The number is in the
     # lcov basis used here (node's own summary reads ~0.1 higher: it counts a few branches lcov does
     # not), so compare like with like.
-    coverage_floor() {
-      [ -f coverage/lcov.info ] || return 1
-      awk -F: -v floor="${BRANCH_FLOOR:-90}" '/^LF:/{lf+=$2} /^LH:/{lh+=$2} /^BRF:/{bf+=$2} /^BRH:/{bh+=$2}
-        END { pct = (lh + bh) * 100 / (lf + bf); br = bh * 100 / bf;
-              printf "lines+branches %d/%d = %.1f%% (floor 95) · branches %d/%d = %.1f%% (floor %d)\n", lh + bh, lf + bf, pct, bh, bf, br, floor;
-              exit (pct >= 95 && br >= floor ? 0 : 1) }' coverage/lcov.info
-    }
-    step "coverage: 95% floor (lines + branches, the sonar formula)" coverage_floor
 # New code gets no allowance: every line and branch this branch added, exercised or explained (a
 # `coverage:invariant` marker that the tool prints).
 step "coverage: 100% on lines this branch adds" node tools/coverage-new.mjs

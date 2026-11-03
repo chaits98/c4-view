@@ -8,7 +8,7 @@ import type { AddressInfo } from 'node:net'
 import { serve } from '../src/server.ts'
 import { indexPage } from '../src/index-page.ts'
 
-const fixture = readFileSync(new URL('../fixtures/droid.json', import.meta.url), 'utf8')
+const fixture = readFileSync(new URL('../examples/nested.json', import.meta.url), 'utf8')
 const model = JSON.parse(fixture) as { id: string; title: string; levels: Array<{ path?: string; title?: string; nodes: unknown[] }> }
 const ID = model.id
 
@@ -61,7 +61,7 @@ test('POST /api/diagrams stores and renders every level', async () => {
   assert.equal(body.url, `/d/${ID}`)
   assert.equal(body.audit.length, model.levels.length, 'one audit per picture the model can show')
   const ok = new Map(body.audit.map((report) => [report.level, report.ok]))
-  assert.equal(ok.get('droid/frontend'), true, 'composed and pruned to its neighbours — readable')
+  assert.equal(ok.get('orders/pricing'), true, 'composed and pruned to its neighbours — readable')
 })
 
 test('GET /d/:id is the root level, server-rendered', async () => {
@@ -85,16 +85,16 @@ test('GET /d/:id is the root level, server-rendered', async () => {
 
 
 test('deep link renders that level, with breadcrumbs', async () => {
-  const res = await fetch(`${base}/d/${ID}/droid/frontend`)
+  const res = await fetch(`${base}/d/${ID}/orders/pricing`)
   assert.equal(res.status, 200)
   const html = await res.text()
-  assert.ok(html.includes('data-level="droid/frontend"'))
-  assert.ok(html.includes(`href="/d/${ID}/droid"`), 'ancestor level is an <a>')
+  assert.ok(html.includes('data-level="orders/pricing"'))
+  assert.ok(html.includes(`href="/d/${ID}/orders"`), 'ancestor level is an <a>')
   assert.notEqual(svgOf(html), svgOf(await (await fetch(`${base}/d/${ID}`)).text()), 'a different drawing')
 })
 
 test('svg and png exports carry the right bytes', async () => {
-  const svg = await fetch(`${base}/d/${ID}.svg?level=droid/frontend`)
+  const svg = await fetch(`${base}/d/${ID}.svg?level=orders/pricing`)
   assert.equal(svg.status, 200)
   assert.match(svg.headers.get('content-type') ?? '', /^image\/svg\+xml/)
   assert.ok((await svg.text()).startsWith('<svg'))
@@ -138,15 +138,15 @@ test('listing and audits answer the store', async () => {
   const all = (await (await fetch(`${base}/api/diagrams/${ID}/audit`)).json()) as Array<{ level: string; ok: boolean }>
   assert.equal(all.length, model.levels.length)
   const byLevel = new Map(all.map((report) => [report.level, report.ok]))
-  assert.equal(byLevel.get('droid/frontend'), true, 'a drilled view is judged composed, and it is clean')
+  assert.equal(byLevel.get('orders/pricing'), true, 'a drilled view is judged composed, and it is clean')
 
-  const one = (await (await fetch(`${base}/api/diagrams/${ID}/audit?level=droid/frontend`)).json()) as { level: string }
-  assert.equal(one.level, 'droid/frontend')
+  const one = (await (await fetch(`${base}/api/diagrams/${ID}/audit?level=orders/pricing`)).json()) as { level: string }
+  assert.equal(one.level, 'orders/pricing')
 
   const nope = await fetch(`${base}/api/diagrams/${ID}/audit?level=nope`)
   assert.equal(nope.status, 404)
   const text = await nope.text()
-  assert.ok(text.includes('droid/frontend'), `the 404 names the real paths: ${text}`)
+  assert.ok(text.includes('orders/pricing'), `the 404 names the real paths: ${text}`)
 })
 
 test('concurrent posts of one id leave one parseable file', async () => {
@@ -193,7 +193,7 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
   assert.equal(page.body.match(/<h2[ >]/g)?.length, 1)
   // 1089 × 241 is 4.5:1, so the card crops it and says so instead of squeezing it
   assert.match(page.body, /class="thumb is-wide" aria-hidden="true"/)
-  assert.match(page.body, /6 levels · 5 nodes · 8 flows/, 'the countable facts are text')
+  assert.match(page.body, /nested · 3 levels · 5 nodes · 5 flows/, 'the countable facts are text')
 })
 
 test('a narrow drawing is letterboxed, not cropped and chipped', () => {

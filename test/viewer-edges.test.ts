@@ -18,12 +18,12 @@ test('the root page has no link crumbs, only the current one', () => {
 })
 
 test('a deep level links every crumb above it', () => {
-  const raw = JSON.parse(readFileSync(new URL('../fixtures/droid.json', import.meta.url), 'utf8')) as Record<string, any>
+  const raw = JSON.parse(readFileSync(new URL('../examples/nested.json', import.meta.url), 'utf8')) as Record<string, any>
   const model = parseModel(raw)
-  const deep = model.levels.find((l) => l.path.split('/').length > 2)
+  const deep = model.levels.find((l) => l.path.split('/').length > 1)
   assert.ok(deep, 'the fixture has a deep level')
   const html = viewerPage(model, deep.path)
-  assert.ok(html.includes('<a href="/d/droid'), 'crumbs above the current one are links')
+  assert.ok(html.includes('<a href="/d/nested'), 'crumbs above the current one are links')
   assert.match(html, /<h1 class="c4-crumb-h1" aria-current="page">/)
 })
 

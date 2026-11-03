@@ -97,14 +97,14 @@ test('--expand renders the composed picture through the command line', async () 
 })
 
 test('an expanded page keeps the outside docs and links only interior nodes that have a level', () => {
-  // fixtures/droid.json is the one with a level inside a level, which is what a drill link needs
-  const deep = parseModel(JSON.parse(readFileSync(new URL('../fixtures/droid.json', import.meta.url), 'utf8')) as unknown)
+  // examples/nested.json is the one with a level inside a level, which is what a drill link needs
+  const deep = parseModel(JSON.parse(readFileSync(new URL('../examples/nested.json', import.meta.url), 'utf8')) as unknown)
   const inner = deep.levels.find((l) => l.path.split('/').length === 2)
   assert.ok(inner, 'the fixture has a second level')
   const docs = { nodes: { [inner.path.split('/').pop() as string]: '<p>the door</p>' }, edges: {} }
   const html = viewerPage(deep, inner.path, null, 'auto', docs)
   assert.ok(html.includes('the door'), 'an interior node renders its doc')
-  assert.ok(/href="\/d\/droid\/[^"]+"/.test(html), 'and its own level is a real link')
+  assert.ok(/href="\/d\/nested\/[^"]+"/.test(html), 'and its own level is a real link')
 })
 
 test('a level page with a width too wide to fit opens at 100% and says why', () => {

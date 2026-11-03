@@ -195,12 +195,12 @@ test('a hand-built model with no groups and no flow still expands', () => {
 
 test('the audit judges the picture a page draws, and a broken drill is not clean', () => {
   // the flat level is fine; the composed picture (parent with the box expanded) is what a reader opens
-  const droid = parseModel(JSON.parse(readFileSync(new URL('../fixtures/droid.json', import.meta.url), 'utf8')) as unknown)
-  const audits = pictureAudits(droid)
-  assert.equal(audits.length, droid.levels.length, 'one per addressable picture')
+  const nested = parseModel(JSON.parse(readFileSync(new URL('../examples/nested.json', import.meta.url), 'utf8')) as unknown)
+  const audits = pictureAudits(nested)
+  assert.equal(audits.length, nested.levels.length, 'one per addressable picture')
   const byLevel = new Map(audits.map((a) => [a.level, a]))
   assert.equal(byLevel.get('')?.ok, true)
-  assert.equal(byLevel.get('droid/frontend')?.ok, true, 'a lens shows only its neighbours, so the drilled view is now readable')
+  assert.equal(byLevel.get('orders/pricing')?.ok, true, 'a lens shows only its neighbours, so the drilled view is now readable')
 })
 
 test('a level whose box does not exist above it is a failed audit, not a crash', () => {

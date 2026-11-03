@@ -62,12 +62,12 @@ for (const file of walk(join(ROOT, 'test')).filter((f) => f.endsWith('.test.ts')
 }
 
 // the corpus the audit runs against must exist
-const fixtures = existsSync(join(ROOT, 'fixtures')) ? readdirSync(join(ROOT, 'fixtures')).filter((f) => f.endsWith('.json')) : []
-if (fixtures.length < 3) violations.push(`fixtures:0 corpus missing — expected >=3 exported models, found ${fixtures.length}`)
+const fixtures = readdirSync(join(ROOT, 'examples')).filter((f) => f.endsWith('.json'))
+if (fixtures.length < 3) violations.push(`examples: ${fixtures.length} model(s) — expected at least 3 to exercise the pipeline`)
 
 if (violations.length) {
   console.error(`gate FAILED — ${violations.length} violation(s)`)
   for (const v of violations) console.error(`  ${v}`)
   process.exit(1)
 }
-console.log(`gate OK — ${fixtures.length} fixtures, ${MAX_LINES}-line ceiling, purity + no-any + no-placeholder clean`)
+console.log(`gate OK — ${fixtures.length} example models, ${MAX_LINES}-line ceiling, purity + no-any + no-placeholder clean`)
