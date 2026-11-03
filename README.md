@@ -1,261 +1,233 @@
 # c4-view
 
-A read-only C4 architecture renderer for agents. A JSON model goes in; a deterministic SVG, a PNG, and a
-live viewer come out. There is no editing UI — the agent writes the model, the tool lays it out, an audit
-decides whether it is deliverable.
+**A C4 architecture renderer an agent can drive.** A JSON model goes in; a deterministic SVG, a PNG, a
+self-contained HTML page and a live viewer come out. There is no editing UI — the agent writes the model,
+the tool lays it out, and an audit decides whether it is fit to deliver.
+
+![tests](https://img.shields.io/badge/tests-480%20passing-brightgreen)
+![runtime deps](https://img.shields.io/badge/runtime%20deps-0-blue)
+![node](https://img.shields.io/badge/node-%E2%89%A522.18-informational)
+![license](https://img.shields.io/badge/license-MIT-green)
+
+<img src="docs/readme/hero.svg" alt="A C4 context diagram drawn by c4-view: an agent writes model.json, c4-view renders it, the result lands in a git repo, an agent harness and a browser" width="900">
 
 ```bash
-node src/cli.ts audit  examples/shop.json --strict        # the gate
-node src/cli.ts render examples/shop.json --out out/shop --png --strict
-node src/cli.ts serve  --port 8788                        # grid at http://127.0.0.1:8788/ , one diagram at /d/shop
+npm i -g c4-view
+c4v skill install                          # teach your agent to write models worth drawing
+c4v render docs/c4/c4-view.json --out out --png --strict
+c4v serve --port 8788                      # grid at http://127.0.0.1:8788/
 ```
 
+---
 
-## What the skill does (for users)
+## Why this exists
 
-`c4-view` ships in two halves: the **CLI** that draws, and a **skill** that teaches an AI coding agent how
-to use it well. You install the skill; your agent does the rest.
+Graph tools place boxes first and fix the wires afterwards. The renderer inside the app this came from runs
+mermaid/dagre and then ~1,600 lines of post-processing to re-route edges, nudge labels and recompute spacing
+— and still ships with 26 of 121 nodes carrying a hand-dragged offset.
 
-**What you get when you install it.** A directory with a `SKILL.md`, a worked example model, and a question
-set. Most harnesses read it from `~/.agents/skills/c4-diagram`; Claude Code can read `~/.claude/skills`.
-`c4v skill install` writes it to every harness it finds, or to the ones you name.
+`c4-view` reverses the order: **space for the wires is allocated during layout**, so overlap is impossible
+by construction rather than corrected after the fact. The same model always produces byte-identical SVG,
+so two agent runs can be diffed.
 
-**What it changes about your agent.** Without the skill, asking for "a C4 diagram of this repo" gets you
-mermaid soup, hand-placed boxes, and no way to tell whether it is right. With it, the agent:
+## What you get
+
+Two halves, installed separately:
 
 | | |
 |---|---|
-| **surveys before drawing** | lists the manifest's runtime seams and the top-level directories first, so nothing big is missed |
-| **decides what kind of repo it is** | a system you run → C2 is processes and stores; a library or framework → C2 is thin and the internals are C3 |
-| **writes a model, then gates it** | six geometry gates must be zero before anything is delivered, and the agent fixes the *model*, never the picture |
-| **narrates the flow** | one edge at a time, in a declared order, so you can explain the system out loud |
-| **hands over a receipt** | the audit line per level, the rendered SVG/PNG, and a link |
+| **The CLI** (`c4v`) | validates, lays out, routes, audits, renders, serves. Zero runtime dependencies, no config file, nothing downloaded at install time. |
+| **The skill** (`skill/SKILL.md`) | teaches a coding agent how to write a model that survives the audit: survey first, decide what kind of system you are looking at, one box per thing, a door in and a door out. Installed into every harness it can find. |
 
-**What it asks you, once.** Two questions on first use (viewer local-only or on your network; install for
-every harness or just some), stored in `~/.c4-view/prefs.json`. New releases can add a question — you are
-then asked only the new one, in one short message, not re-interviewed.
+Without the skill, "draw me a C4 of this repo" gets mermaid soup. With it, the agent surveys the manifests,
+picks the right level for the repo's shape, writes the model, runs the audit, fixes the **model** until every
+geometry gate is zero, and hands over a receipt: the audit line per level, the rendered files, and a link.
 
-**What it will not do.** Edit diagrams in the browser, call a remote service, or write outside the repo you
-pointed it at. The viewer is read-only by construction; there is no editing UI to learn.
+## Install
 
 ```bash
-npm i -g c4-view        # the CLI (zero runtime dependencies)
-c4v skill install       # the skill, into every harness found on this machine
-c4v prefs pending       # what it still needs to ask you
+npm i -g c4-view          # from the registry
+# or from a checkout:
+git clone <this repo> c4-view && cd c4-view && npm install -g . && c4v doctor
 ```
 
-
-## Install on a fresh machine
-
-```bash
-git clone <this repo> c4-view && cd c4-view
-npm install -g .          # or: npm link
-c4v doctor                # says exactly what this machine is missing, if anything
-```
-
-Requirements, and nothing else:
-
-| | |
+| requirement | why |
 |---|---|
-| **Node 22.18+** | for a source checkout — Node runs the `.ts` files directly, nothing is transpiled |
-| **Node 18+** | for an install from a packed tarball, which ships prebuilt JS in `dist/` (`npm run build`) |
-| **Chromium / Chrome** | *optional*. Only PNG export uses it; found at `$C4_CHROMIUM`, then the usual install paths, then `PATH`. Without one, `--png` fails with the fix in the message and everything else works |
-| **A font** | the widths come from a committed DejaVu table, so measurement is identical everywhere; the browser substitutes a narrower fallback if DejaVu is missing, which cannot overflow the boxes |
+| **Node 22.18+** | a source checkout runs the `.ts` files directly — nothing is transpiled |
+| **Chromium / Chrome** *(optional)* | only PNG export uses it. Found at `$C4_CHROMIUM`, then the usual paths, then `PATH`. Without one, `--png` fails with the fix in the message and everything else still works |
+| **A font** | widths come from a committed DejaVu advance table, so measurement is identical on every machine |
 
-No runtime dependencies, no post-install downloads, no config file. `c4v` and `node src/cli.ts` are the
-same program; the skill uses whichever is on the machine.
+`c4v doctor` names whatever is missing, with the command that fixes it.
+
+## Commands
 
 ```bash
-c4v audit  examples/shop.json --strict      # the gate
-c4v render examples/shop.json --out out --png --strict
-c4v serve  --port 8788                      # grid at / , one diagram at /d/shop
-c4v service install --port 8788 --host 0.0.0.0   # same server as a systemd USER unit (survives logout)
-npm run install-skill                       # copy the skill into ~/.hermes/skills
+c4v render <model.json> [--level <path>] [--out <dir|file.svg>] [--png] [--scale 2] [--strict]
+c4v audit  <model.json> [--json] [--strict]
+c4v serve  [--port 8788] [--root ~/.c4-view] [--host 127.0.0.1] [--token <t> | --no-token]
+c4v doctor
+c4v service install|status|uninstall        # the viewer as a systemd USER unit
+c4v skill  list|install [--global] [--harness id,id]
+c4v publish <model.json>                    # model + docs into the viewer's store
+c4v gate   install|check --staged|defer|status|report|uninstall
+c4v prefs  pending|show|set|greeting
 ```
 
+## The audit is the product
+
+```
+OK level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chip=0 chip∧node=0 group∧node=0
+   crossings=1 (0.12/edge, crisp) backward=0 aspect=5.2
+```
+
+Six gates are held at **zero** — `node∧node`, `wire∧node`, `wire∧wire`, `chip∧chip`, `chip∧node`,
+`group∧node` — and two numbers are reported rather than gated: `crossings` and `aspect`. Crossings per edge
+prints a verdict (`crisp ≤0.5`, `ok ≤1`, `dense ≤2`, `over >2`), because a picture that needs a magnifier to
+follow a wire is a model problem, not a layout problem.
+
+`--strict` exits 1 when any gate fails, so a pipeline can refuse to publish. `test/audit.test.ts` plants one
+deliberate defect per gate: a grader that only ever prints zeroes proves nothing.
+
+## Two ways to read one model
+
+| mode | what it draws |
+|---|---|
+| **drill** | one level at a time, with the box you clicked expanded in place and the outside world re-attached through explicit `ports` |
+| **full diagram** | every level at once — each container's contents drawn inside its own frame, nested as deep as the model goes |
+
+Both come from the same pipeline; the full view lays each level out in its own space and nests the finished
+drawings, which is why a container's chain stays readable instead of competing for columns with the rest.
+
+## Exports
+
+`Download` in the viewer, or the CLI:
+
+| file | what it is |
+|---|---|
+| `.svg` | the drawing, vector, carrying its own background so it reads anywhere |
+| `.png` | the same picture rasterised (needs Chromium) |
+| `.html` | a self-contained page — inline SVG, inline CSS, the flow narration inlined, no server, no network |
+| `.layers` | the full diagram as one page |
+
+Every export keeps the theme you are looking at and names itself after what it shows (`c4-view-full.svg`).
 
 ## Keeping the diagram honest is a choice you make once
 
-`c4-view` can install a pre-commit gate in your repo:
-
 ```bash
-c4v gate install      # writes .githooks/pre-commit, points core.hooksPath at it
-c4v gate status       # what is installed here
-c4v gate uninstall    # removes the hook, keeps the log
+c4v gate install
 ```
 
-With it, any commit that touches code outside `docs/c4/` must also update the model and its docs — or record
-**one line** saying why no diagram change was warranted:
+Any commit that touches code outside `docs/c4/` must then update the model and its docs — or record one line
+saying why no diagram change was warranted:
 
 ```bash
 c4v gate defer --reason "rename only, no topology change"
 ```
 
-That line is tied to the exact staged diff, so it cannot cover a later edit, and `c4v gate report` lists every
-one of them for review. A hook that blocks a commit prints the command above, so nobody has to consult a wiki
-in the middle of a rebase.
-
-**Skip it and the tool still works exactly the same** — nothing is installed, nothing blocks you, and the
-diagram simply goes stale without telling anyone. That is the trade: the gate costs one line per commit; no
-gate costs a diagram you cannot trust. Install it if the diagram is meant to be read by someone else.
-
-The agent asks you once, on first use, and does nothing until you answer. Saying "no" is recorded (so it is
-never asked again), and `c4v gate install` is always there if you change your mind.
-
-
-## This repo's own C4
-
-The diagram of this tool is written by the skill at release time and lives at `docs/c4/c4-view.json`, next to
-the code it describes — rendered and gated like any other (`c4v render docs/c4/c4-view.json --strict`). It is
-regenerated rather than hand-maintained, which is why the repo does not carry a stale copy.
-
-## Cost and footprint
-
-Measured on this machine, not estimated. The numbers a user actually asks about before installing.
-
-| what | number | how it was measured |
-|---|---|---|
-| **skill, input tokens** | **4,218 tokens** (15.5 kB, ~2,650 words) | tokenized with the Qwen3.5 tokenizer on the exact `skill/SKILL.md`; it is instructions only, no bundled code |
-| package, download | **143 kB** | `npm pack` |
-| package, unpacked | **425 kB** (79 files) | `npm pack --dry-run` |
-| installed on disk | **652 kB** | `npm i -g` into a scratch prefix, `du -sh` |
-| runtime dependencies | **0** | `package.json` has no `dependencies` field |
-| RSS while serving | **95 MB** — of which ~42 MB is Node itself | `ps -o rss` on the running service |
-| peak RSS rendering | **96 MB** | `/usr/bin/time -v` on the 11-level corpus |
-| render speed | 11 levels in **50 ms** | same run |
-| optional | Chromium/Chrome (~300 MB) for `--png` only | discovered at `$C4_CHROMIUM`, then PATH |
-
-For scale: a whole diagram — model, layout, six audit gates, SVG, grid page — costs less than a single
-image upload, and the expensive part of using it is the model that writes the JSON, not the tool.
-
-## What it costs an agent to use
-
-The skill is the context cost; the tool is not, because nothing is imported into the model. A run of
-"build a C4 of this repo" measured **102–422 seconds** on a local 35B model (Qwen3.5-35B-A3B Q2, 21 tok/s),
-on repositories of 130–3,235 files. Most of that is the model reading source, not rendering: rendering the
-result is 50 ms.
-
-
-## Why it exists
-
-The renderer inside `droid-desktop` fights its layout: mermaid/dagre places boxes, then ~1,600 lines of
-post-processing re-route the wires, nudge the labels and add a computed "spread" because dagre packs
-neighbours too tightly. Non-overlap can only ever be approximated after the fact, and the production
-store shows the cost — 26 of 121 nodes carry a hand-dragged offset.
-
-This tool inverts that: **space for the wires is allocated during layout**, so overlap is impossible by
-construction rather than corrected afterwards.
-
-## The pipeline
-
-```
-model.json → model.parse → rank → order → place → route → emit → svg
-                                        ↘ audit (gates the result)
-```
-
-| Stage | File | What it guarantees |
-|---|---|---|
-| parse | `src/model.ts` | every rejection names its place: `levels[2].edges[7].to: unknown node "x"` |
-| rank | `src/layout/rank.ts` | longest-path layering, cycles broken into backward chains, one **dummy** per rank a long edge crosses |
-| order | `src/layout/order.ts` | six barycentre sweeps, best crossing count kept, ties stable by input order |
-| place | `src/layout/place.ts` | measured boxes (DejaVu advance table, no browser), gutters widened to their wire load |
-| route | `src/layout/route.ts` | orthogonal; **one track per jog per gutter**, so two wires can never share a segment |
-| labels | `src/layout/labels.ts` | chips ride their own wire, never over another chip or a node |
-| emit | `src/svg/emit.ts` | one `<svg>`, colours as attributes, every agent-written string escaped |
-| audit | `src/audit.ts` | the five gates + crossings/aspect, computed from the emitted numbers |
-
-Determinism is a feature, not an accident: the same model produces byte-identical SVG in any process, so
-two agent runs can be diffed. Text is measured from `data/font-metrics.json` (generated from
-`DejaVuSans.ttf` by `scripts/gen-metrics.py`), never from a canvas.
-
-## The audit is the product
-
-```
-OK level="" nodes=7 edges=8 node∧node=0 wire∧node=0 wire∧wire=0 chip∧chip=0 chip∧node=0 group∧node=0 crossings=1 backward=0 aspect=5.2
-```
-
-Gated at zero: `node∧node`, `wire∧node`, `wire∧wire` (two wires sharing a collinear segment),
-`chip∧chip`, `chip∧node`, `group∧node`. Reported: `crossings`, `aspect`.
-
-All six are gated: `group∧node` included, because a boundary box over non-adjacent members swallows
-strangers and only the author can fix that — a tool that passes such a picture is lying. A wire may
-touch its own end nodes **only within 8px of its port**; the old blanket exemption let a wire run 107px
-through its own source and still audit clean. `test/audit.test.ts` plants one defect per gate, because a
-grader that only prints zeroes proves nothing.
-
-## The viewer
-
-`serve` stores models under `~/.c4-view/<id>/model.json`. `/` is the grid: every diagram as a card with a
-live thumbnail of its root level, its level count and its audit state — that is the link an agent hands
-over when there are several concepts. A diagram page renders its SVG on the server, so a link works
-before any JavaScript runs. The page then adds pan/zoom, hover, drill-down, a
-legend, and the data-flow narration: **one edge animates at a time**, in `data-flow` order, with a
-caption (`from → to · label · 3 / 9`). It stops at the end and offers replay rather than looping, and
-`prefers-reduced-motion` gets a static dot.
+The line is tied to the exact staged diff, so it cannot cover a later edit, and `c4v gate report` lists every
+one for review. Skip the gate and the tool still works exactly the same — the diagram simply goes stale
+without telling anyone. That is the trade, stated up front: one line per commit, or a diagram you cannot trust.
 
 ## The model, in one level
 
 ```json
 {
-  "id": "shop", "title": "Shop",
+  "id": "shop",
+  "title": "Shop",
   "levels": [{
-    "path": "", "title": "Containers",
-    "nodes": [{ "id": "web", "label": "Storefront", "subtype": "web-application", "tech": "React 19", "identity": "SHP-2" }],
-    "edges": [{ "from": "web", "to": "api", "label": "REST", "style": "flow" }],
-    "groups": [{ "id": "cloud", "label": "our cloud", "members": ["web", "api"] }],
+    "path": "",
+    "title": "Containers",
+    "nodes": [
+      { "id": "web", "label": "Storefront", "subtype": "web-application", "tech": "React 19", "identity": "SHP-2" },
+      { "id": "api", "label": "API", "subtype": "microservice", "tech": "FastAPI", "identity": "SHP-3" }
+    ],
+    "edges": [{ "from": "web", "to": "api", "label": "REST" }],
+    "ports": { "user->shop/web": "router" },
     "flow": ["web->api"]
   }]
 }
 ```
 
-`subtype` is one of 49 C4 types and decides shape and colour. A node becomes drillable when a level
-exists at `<parent path>/<node id>`.
+`subtype` is one of 49 C4 types and decides shape and colour. A node is drillable when a level exists at
+`<parent path>/<node id>`. `ports` says where an outside edge enters a drilled box. `flow` declares the
+narration order; without it, one is derived deterministically.
 
-Authoring rules, delivery contract and the troubleshooting table live in `skill/SKILL.md` — that is the
-document an agent reads.
+The authoring rules, the delivery contract and the troubleshooting table live in
+[`skill/SKILL.md`](skill/SKILL.md) — that is the document an agent reads.
 
-## Gates
+## How it works
+
+```
+model.json → parse → rank → order → place → route → labels → emit → svg
+                                   ↘ audit (gates the result)
+```
+
+| stage | guarantees |
+|---|---|
+| parse | every rejection names its place: `levels[2].edges[7].to: unknown node "x"` |
+| rank | longest-path layering, cycles broken into backward chains, one dummy per rank a long edge crosses |
+| order | six barycentre sweeps, best crossing count kept, ties stable by input order |
+| place | measured boxes from a pinned font table, gutters widened to their wire load |
+| route | orthogonal; **one track per jog per gutter**, so two wires can never share a segment |
+| labels | chips ride their own wire, never over another chip or a node |
+| emit | one `<svg>`, colours as attributes, every agent-written string escaped |
+| audit | the six gates plus crossings and aspect, computed from the emitted numbers |
+
+Each of the ~50 source files stays under 300 lines, which the contributor gate enforces.
+
+## Footprint
+
+Measured on a laptop, not estimated:
+
+| what | number |
+|---|---|
+| runtime dependencies | **0** |
+| package, unpacked | 425 kB (79 files) |
+| installed on disk | 652 kB |
+| RSS while serving | 95 MB (~42 MB of it is Node) |
+| render speed | 11 levels in **50 ms** |
+| skill, input tokens | ~4,200 tokens, instructions only, no bundled code |
+
+## Contributing
 
 ```bash
-node tools/gate.mjs   # ≤300 lines per file, purity, no `any`, no placeholders
-npx tsc --noEmit      # strict
-node --test           # 89 tests
-pnpm test:coverage    # lcov → coverage/lcov.info
-sonar-scanner         # 0 issues, quality gate OK (needs a SONAR token)
+./scripts/check.sh          # everything below, in order
 ```
 
-SonarQube (9.9, local) reads `tsconfig.sonar.json`, not `tsconfig.json`: its bundled TypeScript
-cannot parse `es2023`, `allowImportingTsExtensions`, `verbatimModuleSyntax` or `erasableSyntaxOnly`,
-and when the program fails it **silently skips every file** — the first scan reported a clean project
-because it had analyzed nothing. Current state: 2,282 ncloc, 0 bugs / 0 vulnerabilities / 0 hotspots /
-0 code smells / 0 duplicated lines / 0 debt, 92.6% line coverage, gate **OK**.
+| gate | what it refuses |
+|---|---|
+| `node tools/gate.mjs` | any file over 300 lines, impure layout code, `any`, placeholders |
+| `npx tsc --noEmit` | non-strict types |
+| `node --test` | any failing test (480 of them, including the audit's own defects) |
+| goldens | any change to the corpus output that was not intended |
+| `sonar-scanner` | any **unresolved** issue, not merely any new one — a smell that ages out of the new-code window is still a smell |
+| coverage | below 95% overall, or below 100% on lines the branch adds |
 
-## Layout of the repo
+Determinism is part of the contract: no clocks, no randomness, no locale-dependent sorting. A change that
+makes two runs differ is a bug even if the picture looks fine.
+
+## Layout
 
 ```
-src/types.ts          the frozen contract every stage speaks
-src/model.ts          validation, normalisation, drill paths
-src/metrics.ts        text measurement from the pinned font's advance table
-src/flow.ts           the linear narration order
-src/layout/           rank · order · place · route · labels · measure-node
-src/svg/              shapes · emit  ·  src/theme.ts
-src/audit.ts          the gates
-src/render.ts         the pipeline  ·  src/cli.ts  ·  src/server.ts  ·  src/png.ts
-public/               viewer.html · viewer.js · flow.js · viewer.css
-test/                 148 tests (units, the real corpus, the audit's own defects, install + prefs)
-fixtures/             the owner's real concepts, exported read-only from ~/.droid/concepts.db
-examples/             two hand-authored models: containers + drill, and two boundaries
-docs/                 LAYOUT-SPEC.md (normative) · HTTP-API.md · security/ · plans/ · launch/
-docs/design/          the viewer's UX guideline, Material 3 spec, and PARKED.md (decided, not started)
+src/            the pipeline: model → layout → svg → audit, plus the CLI and the HTTP server
+public/         the viewer: page, styles, pan/zoom, flow narration
+test/           480 tests: units, the real corpus, planted defects, install and prefs
+examples/       two hand-authored models to start from
+docs/c4/        this tool's own C4 model, one markdown doc per node and edge
+docs/           LAYOUT-SPEC.md (normative) · HTTP-API.md · security/ · design/
+skill/          SKILL.md — the document an agent reads
+fixtures/       real corpus models exported read-only from a running app
 ```
 
 ## Known ceilings
 
-- `direction: 'LR'` only; `TB` is rejected with a named error rather than drawn wrong.
-- A pure chain renders as a long strip (aspect > 8): add the real branches or split the level. The grid
-  thumbnail letterboxes the whole drawing, so such a level shows as a thin strip — that is the aspect
-  warning showing up in the preview, not a rendering bug.
-- Boundaries require contiguous members; the audit reports when they are not.
-- Self-loops are rejected (a self-relationship belongs in `tech`/`desc`).
-- PNG export needs a Chromium binary (`/usr/bin/chromium`, or `C4_CHROMIUM`).
-- SonarQube analysis needs a project token: `sonar-scanner -Dsonar.login=<token>`.
+- A pure chain renders as a long strip: add the real branches, or split the level. Auto-orientation turns a
+  >3:1 strip upright when it does not fit 1600 px, and keeps the strip when standing it up would cross more.
+- Boundaries need contiguous members; the audit reports when they are not.
+- Self-loops are rejected — a self-relationship belongs in `tech`/`desc`.
+- PNG export needs a Chromium binary.
+- SonarQube analysis needs a project token.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
