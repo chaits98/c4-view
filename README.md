@@ -182,8 +182,8 @@ Measured on a laptop, not estimated:
 | what | number |
 |---|---|
 | runtime dependencies | **0** |
-| package, unpacked | 425 kB (79 files) |
-| installed on disk | 652 kB |
+| package, unpacked | 758 kB (205 files) |
+| package, tarball | 239 kB |
 | RSS while serving | 95 MB (~42 MB of it is Node) |
 | render speed | 11 levels in **50 ms** |
 | skill, input tokens | ~4,200 tokens, instructions only, no bundled code |

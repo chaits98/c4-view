@@ -38,9 +38,12 @@
     "src/",
     "public/",
     "data/",
-    "docs/",
     "skill/",
     "examples/",
+    "docs/c4/",
+    "docs/readme/",
+    "docs/LAYOUT-SPEC.md",
+    "docs/HTTP-API.md",
     "README.md",
     "LICENSE"
   ],
