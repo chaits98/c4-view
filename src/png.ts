@@ -96,26 +96,26 @@ export function svgToPng(svg: string, out: string, scale = 2, find: () => string
     `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#0a111b;overflow:hidden}</style>${svg}`,
   )
 
+  // A container (or a locked-down kernel) cannot start Chromium with its sandbox, and root always can't.
+  // Try with the sandbox first — that is the default everywhere else — and retry once without it only when
+  // the browser itself refused to start. Anything else (a real crash, a timeout) is reported as it is.
+  const flags = ['--headless', '--disable-gpu', '--hide-scrollbars',
+    '--force-device-scale-factor=' + String(scale), `--window-size=${w},${h}`, `--screenshot=${target}`]
+  const launch = (sandbox: boolean): void => {
+    execFileSync(browser, [...flags.slice(0, 2), ...(sandbox ? [] : ['--no-sandbox']), ...flags.slice(2), `file://${html}`],
+      { stdio: 'pipe', timeout: 60_000 })
+  }
   try {
-    execFileSync(
-      browser,
-      [
-        '--headless',
-        '--disable-gpu',
-        /* node:coverage disable */
-        // A container running as root cannot start Chromium with its sandbox; everywhere else the
-        // sandbox stays ON. Unconditional --no-sandbox was a finding waiting to be written up.
-        // The root side cannot be exercised by a test that runs as the user running the suite.
-        ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
-        /* node:coverage enable */
-        '--hide-scrollbars',
-        '--force-device-scale-factor=' + String(scale),
-        `--window-size=${w},${h}`,
-        `--screenshot=${target}`,
-        `file://${html}`,
-      ],
-      { stdio: 'pipe', timeout: 60_000 },
-    )
+    try {
+      launch(process.getuid?.() !== 0)
+    } catch (error) {
+      /* node:coverage disable */
+      // Only a sandbox refusal is retried: the message is Chromium's own, and it is the one case where the
+      // remedy is a flag rather than a fix. Runs as root never take this path.
+      if (!/SUID sandbox|Failed to move to new namespace|No usable sandbox/i.test(String(error))) throw error
+      launch(false)
+      /* node:coverage enable */
+    }
   } finally {
     rmSync(html, { force: true })
   }
