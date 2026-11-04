@@ -20,7 +20,9 @@
     "install-skill": "bash scripts/install-skill.sh",
     "build": "tsc -p tsconfig.build.json",
     "prepack": "npm run build",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "report:security": "node scripts/security-report.mjs",
+    "version": "node scripts/security-report.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

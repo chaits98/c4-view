@@ -24,6 +24,14 @@ our own caret (11 px inside the pill edge instead of hanging on the border), arr
 with JavaScript off. The flow bar's buttons were being restyled square by `toolbar.css`, which also matched
 `.c4-flow-btn`; the hover now follows the pill.
 
+**The security report is written by the release, not by hand.** `npm version <patch>` runs `node
+scripts/security-report.mjs` through the `version` lifecycle script, so the section for the new version is
+written before the bump is committed and tagged. The script runs gitleaks, Semgrep, SonarQube (measures **and**
+the gate verdict), `npm audit` and the three skill scanners, prints what each one said, and is idempotent per
+version. A scanner that finds something exits non-zero and the version is not tagged. `npm run
+report:security` re-runs it on demand; `test/security-report.test.ts` fails the suite if the report has no
+section for the version in `package.json`.
+
 **The denial page takes a key.** A `Set-Cookie` without `Domain` is host-only, so a key that signs you in at
 `http://<host>:8788` leaves `http://localhost:8788` signed out — and the old 401 only said "open the link
 `c4v serve` printed", which by then had already had its `?t=` stripped by the clean redirect. The page now

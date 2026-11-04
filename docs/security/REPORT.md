@@ -1,9 +1,20 @@
 # Security report — c4-view
 
-Two audits are recorded here. The **first** (0.2.2, 2026-10-31) is the deep one: four skill scanners, a
-threat model, and the findings that were fixed. The **second** (0.12.3, 2026-11-03) is a re-run of every
-check that can be re-run, because ten minor versions had landed since — a scan that describes a version
-nobody runs is a decoration.
+One section per version, newest first. The **first** (0.2.2, 2026-10-31) is the deep audit: four skill
+scanners, a threat model, and the findings that were fixed. Every section after it is written by
+`node scripts/security-report.mjs`, which `npm version` runs before it commits and tags — so the report in
+the tree is always the report for the version in the tree. A scan that describes a version nobody runs is a
+decoration.
+
+## Re-run at 0.12.5 — 2026-11-04
+
+| layer | tool | result |
+|---|---|---|
+| repo + full history | gitleaks 8 (working tree + history) | **? leak(s)** — see the run output |
+| package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** over 53 files in `src/` |
+| package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.6% coverage**, 4928 ncloc, gate **OK** |
+| dependencies | `npm audit --omit=dev` | **0 vulnerabilities**; 0 runtime dependencies |
+| skill instructions | skillspector, cisco skill-scanner, skillfrisk | skillspector: clean; cisco skill-scanner: clean; skillfrisk: clean |
 
 ## Re-run at 0.12.3 — 2026-11-03
 

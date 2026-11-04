@@ -234,8 +234,14 @@ so the attack surface is the HTTP server you choose to run. What has actually be
 
 The full report — commands, versions, and the threats accepted on purpose — is
 [`docs/security/REPORT.md`](docs/security/REPORT.md), reproducible with the container in `security/`. CI re-runs
-the four keyless skill scanners and gitleaks on every push. Report a problem privately via
-[`SECURITY.md`](SECURITY.md).
+the four keyless skill scanners and gitleaks on every push.
+
+The report has one section per version and is regenerated, not remembered: `npm version <patch>` runs
+`node scripts/security-report.mjs` through the `version` lifecycle script, so the section is written *before*
+the bump is committed and tagged, and `npm run report:security` re-runs it on demand. A scanner that finds
+something exits non-zero and the version is not tagged.
+
+Report a problem privately via [`SECURITY.md`](SECURITY.md).
 
 ## Known ceilings
 
