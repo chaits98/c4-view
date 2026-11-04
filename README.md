@@ -4,7 +4,7 @@
 self-contained HTML page and a live viewer come out. There is no editing UI — the agent writes the model,
 the tool lays it out, and an audit decides whether it is fit to deliver.
 
-![tests](https://img.shields.io/badge/tests-493%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-506%20passing-brightgreen)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-0-blue)
 ![node](https://img.shields.io/badge/node-%E2%89%A522.18-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)

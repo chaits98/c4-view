@@ -161,6 +161,18 @@ if (start >= 0) {
 }
 writeFileSync(REPORT, next.endsWith('\n') ? next : `${next}\n`)
 
+// the README's test badge is a claim, and a claim nobody re-measures rots: count them here, where a release
+// already runs the suite
+const suite = run('node', ['--test'])
+const passed = /^# pass (\d+)$/m.exec(suite.out)?.[1] ?? (/ℹ pass (\d+)/.exec(suite.out)?.[1] ?? null)
+if (passed) {
+  const readme = join(ROOT, 'README.md')
+  const text = readFileSync(readme, 'utf8')
+  const next = text.replace(/tests-\d+%20passing/, `tests-${passed}%20passing`)
+  if (next !== text) writeFileSync(readme, next)
+  console.log(`readme: tests badge → ${passed} passing`)
+}
+
 console.log(`security report: ${version} — ${rows.length} layers`)
 for (const [layer, tool, result] of rows) console.log(`  ${layer.padEnd(20)} ${tool.slice(0, 42).padEnd(44)} ${result.replace(/\*\*/g, '')}`)
 if (bad.length) {
