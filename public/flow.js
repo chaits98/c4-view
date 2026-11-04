@@ -103,6 +103,12 @@ if (rootG) {
       const edge = edges[index]
       if (!edge) return
       const point = edge.el.getPointAtLength(length * frac)
+      // A nested picture draws its own levels inside a translated, independently-scaled <svg>, so a point
+      // on one of its edges is in that picture's coordinates. The dot lives in the root picture: map the
+      // point through both CTMs, or it animates correctly only on the level it started in.
+      const local = rootG.getScreenCTM() && edge.el.getScreenCTM()
+        ? new DOMPoint(point.x, point.y).matrixTransform(rootG.getScreenCTM().inverse().multiply(edge.el.getScreenCTM()))
+        : point
       if (!dot) {
         dot = document.createElementNS(NS, 'circle')
         dot.setAttribute('class', 'c4-dot')
@@ -113,8 +119,8 @@ if (rootG) {
       // dot appended last would sit on top of a label it crosses and hide the word
       const chips = rootG.querySelector('[data-chip]')
       if (dot.parentNode !== rootG || dot.nextElementSibling !== chips) rootG.insertBefore(dot, chips)
-      dot.setAttribute('cx', String(point.x))
-      dot.setAttribute('cy', String(point.y))
+      dot.setAttribute('cx', String(local.x))
+      dot.setAttribute('cy', String(local.y))
     }
 
     function stop() {

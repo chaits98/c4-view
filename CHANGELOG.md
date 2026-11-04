@@ -3,6 +3,17 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.4] — the flow dot follows nested edges
+
+The full view draws every level inside its own `<svg>`, translated into its host's box. The narration walked
+all of them — 27 steps on our own model — but read each point in that picture's coordinates and drew the dot
+in the root picture's, so the dot only sat on the wire for the root level's five edges and floated somewhere
+else for the other twenty-two.
+
+The point is now mapped through both CTMs (`rootG.getScreenCTM().inverse()` × the edge's own), which is the
+same rectangle the dot is drawn in. Measured after the fix: **27 of 27** steps land on the midpoint of their
+edge (0 px), and drill mode — one picture, identity transform — is unchanged at 5 of 5.
+
 ## [0.12.3] — a container's name sits above what it holds
 
 Every host box was drawn with its label **centred**, and a host box is sized to the drawing inside it — so a
