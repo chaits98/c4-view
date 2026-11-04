@@ -54,18 +54,99 @@
   font-weight: 500;
 }
 
+/* The level menu: a details element, so it opens with JavaScript off, and the panel is ours to draw —
+   a native <select> hangs its arrow on the border and its list is the browser's, not the app's. */
 #c4-levels {
+  position: relative;
   flex: 0 1 auto;
+  max-width: 320px;
+}
+
+#c4-levels > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   height: 40px;
-  max-width: 260px;
-  text-overflow: ellipsis;
-  padding: 0 var(--space-4);
+  max-width: 320px;
+  padding: 0 var(--space-2) 0 var(--space-4);
   color: var(--on-surface);
   background: var(--surface-container-high);
   border: 1px solid var(--outline);
   border-radius: var(--shape-full);
-  font: inherit;
   cursor: pointer;
+  list-style: none;
+}
+
+#c4-levels > summary::-webkit-details-marker {
+  display: none;
+}
+
+#c4-levels > summary:hover {
+  border-color: var(--on-surface-variant);
+}
+
+#c4-levels[open] > summary {
+  border-color: var(--primary);
+}
+
+#c4-levels-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* the caret is part of the control, so it keeps its own padding and turns when the menu opens */
+.c4-caret {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: var(--space-1);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--dur-short2) var(--ease-standard);
+}
+
+#c4-levels[open] .c4-caret {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.c4-select-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  min-width: 100%;
+  max-width: min(90vw, 460px);
+  max-height: min(60vh, 420px);
+  overflow: auto;
+  padding: var(--space-1);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-md);
+  box-shadow: var(--shadow-2);
+}
+
+.c4-select-menu a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  color: var(--on-surface);
+  border-radius: var(--shape-sm);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c4-select-menu a:hover,
+.c4-select-menu a:focus-visible {
+  background: color-mix(in srgb, var(--on-surface) 10%, transparent);
+}
+
+.c4-select-menu a[aria-current='true'] {
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+  font-weight: 500;
 }
 
 #c4-levels:focus-visible,
@@ -106,8 +187,7 @@
   border-left: 1px solid var(--outline-variant);
 }
 
-.c4-zoom-btn,
-.c4-flow-btn {
+.c4-zoom-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -125,13 +205,11 @@
   transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.c4-zoom-btn:hover,
-.c4-flow-btn:hover {
+.c4-zoom-btn:hover {
   background: color-mix(in srgb, var(--on-surface) 8%, transparent);
 }
 
-.c4-zoom-btn:active,
-.c4-flow-btn:active {
+.c4-zoom-btn:active {
   background: color-mix(in srgb, var(--on-surface) 10%, transparent);
 }
 

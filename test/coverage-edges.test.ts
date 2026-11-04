@@ -75,7 +75,7 @@ test('--scale below 1 is clamped, and the render still happens', async () => {
 })
 
 test('the grid puts failing diagrams first and breaks ties by recency', () => {
-  const base = { svg: '<svg></svg>', nodes: 1, flows: 0, wide: false, levels: [''] }
+  const base = { svg: '<svg></svg>', nodes: 1, flows: 0, wide: false, levels: [''], created: '2026-09-01T00:00:00.000Z', pinned: false }
   const html = indexPage(
     [
       { ...base, id: 'a', title: 'A', updated: '2026-11-01T00:00:00.000Z', ok: true },

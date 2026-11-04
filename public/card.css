@@ -1,0 +1,297 @@
+/* One diagram on the grid: its drawing, its facts, and the actions that live in the corner.
+   Loaded after index.css; every colour and size is a token. */
+/* ── a card ──────────────────────────────────────────────────────────────────── */
+/* No clipping: the actions menu hangs past the corner, and a clipped menu is a menu
+   that cannot be used. The thumbnail rounds its own top corners instead. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg);
+  transition:
+    border-color var(--dur-short2) var(--ease-standard),
+    background-color var(--dur-short2) var(--ease-standard);
+}
+
+/* a state layer, not a lift: M3 dropped the hover translate, and 30 of them is a fairground */
+.card:hover,
+.card:focus-within {
+  border-color: var(--outline);
+  background: var(--surface-container-high);
+}
+
+.card.is-pinned {
+  border-color: var(--secondary);
+}
+
+.card-open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+  border-radius: inherit;
+}
+
+.card-open:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ── the thumbnail ───────────────────────────────────────────────────────────── */
+/* it is the diagram's own SVG, on the document surface it was drawn for */
+.thumb {
+  position: relative;
+  display: block;
+  height: 168px;
+  padding: var(--space-3);
+  overflow: hidden;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg) var(--shape-lg) 0 0;
+}
+
+.thumb svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* a drawing wider than 3:1 would render its 12px labels at 1.3px, so crop the middle
+   instead of squeezing the whole thing, and fade both edges to say "this is a slice" */
+.thumb.is-wide {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.thumb.is-wide svg {
+  flex: none;
+  width: auto;
+  height: 100%;
+}
+
+.thumb.is-wide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to right, var(--canvas), transparent 12%, transparent 88%, var(--canvas));
+}
+
+/* A card too heavy to inline draws a placeholder — the grid stays one frame. */
+.thumb.is-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  color: var(--on-surface-variant);
+  background: var(--surface-container-low);
+}
+
+/* ── the card's actions ──────────────────────────────────────────────────────── */
+/* One kebab in the thumbnail's corner — the pattern every card view uses (PatternFly,
+   Episerver): the affordance is an icon, the words live inside the menu it opens. */
+.card-kebab {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--surface-container) 92%, transparent);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-full);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-short2) var(--ease-standard);
+}
+
+/* it appears on the tile you are on, and stays while its menu is open */
+.card:hover .card-kebab,
+.card:focus-within .card-kebab,
+.card-kebab[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.card-kebab:hover {
+  background: var(--surface-container-high);
+  border-color: var(--outline);
+}
+
+.card-kebab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.card-kebab svg {
+  fill: currentColor;
+}
+
+/* placed by the script at the button's corner in viewport space, so no card can clip it */
+.card-menu-sheet {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  min-width: 184px;
+  padding: var(--space-1);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-md);
+  box-shadow: var(--shadow-2);
+}
+
+.card-menu-sheet[hidden] {
+  display: none;
+}
+
+.card-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-3);
+  color: var(--on-surface);
+  background: transparent;
+  border: 0;
+  border-radius: var(--shape-sm);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.card-action:hover,
+.card-action:focus-visible {
+  background: color-mix(in srgb, var(--on-surface) 10%, transparent);
+  outline: none;
+}
+
+.card-action svg {
+  flex: none;
+}
+
+.card-action--bad {
+  color: var(--error);
+}
+
+.card-action--bad:hover {
+  background: var(--error-container);
+}
+
+/* ── the card's text ─────────────────────────────────────────────────────────── */
+.meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.meta h2,
+.meta p {
+  margin: 0;
+}
+
+/* a title is an identifier, not a paragraph: two lines, then an ellipsis, and the space for
+   two lines is always reserved, so every card's facts and dates start on the same line */
+.meta h2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: 2.6em;
+  overflow: hidden;
+}
+
+.meta p {
+  color: var(--on-surface-variant);
+}
+
+.card-dates {
+  font-variant-numeric: tabular-nums;
+}
+
+/* the badges sit on the card's floor, so a row of cards shows one line of badges, not a jagged one */
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid;
+  border-radius: var(--shape-full);
+}
+
+.badge.ok {
+  color: var(--on-success-container);
+  background: var(--success-container);
+  border-color: var(--success);
+}
+
+.badge.bad {
+  color: var(--on-error-container);
+  background: var(--error-container);
+  border-color: var(--error);
+}
+
+/* pinned is a stated fact, not a decoration */
+.badge.pinned {
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+  border-color: var(--secondary);
+}
+
+/* ── empty states ────────────────────────────────────────────────────────────── */
+.empty {
+  grid-column: 1 / -1;
+  padding: var(--space-16) var(--space-3);
+  text-align: center;
+  color: var(--on-surface-variant);
+}
+
+.empty code {
+  padding: 2px var(--space-2);
+  color: var(--on-surface);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-xs);
+}
+
+/* no hover to reveal it on a touch screen: the action must always be there */
+@media (hover: none) {
+  .card-kebab {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card-kebab {
+    transition: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  .idx-bar h1 {
+    font-size: 1.25rem;
+  }
+
+  #grid {
+    grid-template-columns: 1fr;
+  }
+}

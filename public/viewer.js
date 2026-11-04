@@ -200,10 +200,38 @@
     e.preventDefault()
   })
 
+  /* The level menu is a <details>: the browser opens and closes it, and this makes it behave like a menu —
+   * Escape closes it, a click anywhere else closes it, and the arrow keys walk the rows. The rows are links,
+   * so picking one is a navigation that starts at Fit: the drawing has a new shape. */
   if (levels) {
-    levels.addEventListener('change', () => {
-      // a level change is a full navigation and starts at Fit: the drawing has a new shape
-      location.href = levels.value ? `${root()}/${levels.value}` : root()
+    const items = () => [...levels.querySelectorAll('.c4-select-menu a')]
+    const first = () => items().find((a) => a.getAttribute('aria-current') === 'true') || items()[0]
+    levels.addEventListener('toggle', () => {
+      if (levels.open) first()?.focus()
+    })
+    levels.addEventListener('keydown', (e) => {
+      const rows = items()
+      const at = rows.indexOf(document.activeElement)
+      if (e.key === 'Escape') {
+        levels.open = false
+        levels.querySelector('summary')?.focus()
+        e.preventDefault()
+      } else if (e.key === 'ArrowDown' && rows.length) {
+        rows[(at + 1 + rows.length) % rows.length].focus()
+        e.preventDefault()
+      } else if (e.key === 'ArrowUp' && rows.length) {
+        rows[(at - 1 + rows.length) % rows.length].focus()
+        e.preventDefault()
+      } else if (e.key === 'Home' && rows.length) {
+        rows[0].focus()
+        e.preventDefault()
+      } else if (e.key === 'End' && rows.length) {
+        rows[rows.length - 1].focus()
+        e.preventDefault()
+      }
+    })
+    document.addEventListener('click', (e) => {
+      if (levels.open && !levels.contains(e.target)) levels.open = false
     })
   }
 

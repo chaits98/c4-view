@@ -187,7 +187,7 @@ test('every route shape answers in its own content type', async () => {
 
   const deep = await fetch(`${base}/d/nested/app/db`)
   assert.equal(deep.status, 200, 'a multi-segment level is one page')
-  assert.match(await deep.text(), /<option value="app\/db" title="app\/db" selected>/, 'and the level control knows it')
+  assert.match(await deep.text(), /<a role="menuitem" href="[^"]*\/app\/db" title="app\/db" aria-current="true">/, 'and the level control knows it')
 
   const audit = await fetch(`${base}/api/diagrams/nested/audit?level=app`)
   assert.equal(audit.status, 200)

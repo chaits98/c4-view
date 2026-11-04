@@ -45,7 +45,7 @@ for (const shape of shapes) {
 
     const html = viewerPage(model, '')
     assert.ok(html.includes(`Containers (${shape.nodes.length})`), 'the text version lists them all')
-    const card = indexPage([{ id: shape.name, title: shape.name, levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: level.svg, ok: level.audit.ok, nodes: level.audit.nodes, flows: level.audit.edges, wide: false }])
+    const card = indexPage([{ id: shape.name, title: shape.name, levels: [''], created: '2026-01-01T00:00:00Z', pinned: false, updated: '2026-11-01T00:00:00.000Z', svg: level.svg, ok: level.audit.ok, nodes: level.audit.nodes, flows: level.audit.edges, wide: false }])
     assert.ok(card.includes('audit clean'), 'and the card agrees')
   })
 }

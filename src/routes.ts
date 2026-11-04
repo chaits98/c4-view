@@ -12,6 +12,7 @@ export const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 export type Route =
   | { kind: 'health' | 'diagrams' | 'index' }
   | { kind: 'model' | 'audit'; id: string }
+  | { kind: 'pin'; id: string }
   | { kind: 'page'; id: string; level: string }
   | { kind: 'export'; format: 'svg' | 'png' | 'html' | 'layers'; id: string }
   | { kind: 'asset'; name: string }
@@ -25,11 +26,14 @@ export function fixedRoute(pathname: string): Route | null {
   return asset ? { kind: 'asset', name: asset[1] } : null
 }
 
-/** `/api/diagrams/<id>[/audit]`. */
+/** The suffixes an api path can carry, and what each one means. */
+const SUFFIX: Record<string, 'audit' | 'pin'> = { '/audit': 'audit', '/pin': 'pin' }
+
+/** `/api/diagrams/<id>[/audit|/pin]`. */
 export function apiRoute(pathname: string): Route | null {
-  const api = /^\/api\/diagrams\/([^/]+)(\/audit)?$/.exec(pathname)
+  const api = /^\/api\/diagrams\/([^/]+)(\/audit|\/pin)?$/.exec(pathname)
   if (!api || !ID.test(api[1])) return null
-  return { kind: api[2] ? 'audit' : 'model', id: api[1] }
+  return { kind: api[2] ? SUFFIX[api[2]] : 'model', id: api[1] }
 }
 
 /** `/d/<id>.svg`, `/d/<id>.png`, and `/d/<id>[/<level…>]`. */

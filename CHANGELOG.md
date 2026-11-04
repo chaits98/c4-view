@@ -3,6 +3,31 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.5] — the grid manages itself
+
+**Pin and delete, where a card view puts them.** Every card carries a kebab in its corner (the overflow-menu
+pattern: PatternFly card guidance, Episerver), opening a menu with **Pin to front** / **Unpin** and **Delete**.
+A pinned card moves to the front of every order, states "Pinned" as a chip, and keeps a secondary border.
+Deleting one diagram removes its directory; both actions re-render from the server, so the page never shows a
+state the store does not have.
+
+**Every card shows when it was made and when it changed.** `created … · updated …`, or a single `updated …`
+when both agree. `created` comes from the file's birth time, falling back to mtime on a filesystem that does
+not record one.
+
+**The sort/filter chips left the app bar for the grid's own toolbar** — sorting is a property of the
+collection, so it sits with the collection, on the cards' first column. A rule now separates the three orders
+from the one filter.
+
+**The viewer's level picker is no longer a `<select>`.** It is a `<details>` menu of links: our own panel,
+our own caret (11 px inside the pill edge instead of hanging on the border), arrow keys, Escape, and it opens
+with JavaScript off. The flow bar's buttons were being restyled square by `toolbar.css`, which also matched
+`.c4-flow-btn`; the hover now follows the pill.
+
+Also fixed: **the test suite deleted the developer's own systemd unit.** `test/cli.test.ts` ran
+`service uninstall` through `run`, which has no home seam, so every full run removed
+`~/.config/systemd/user/c4-view.service`. That case now drives only a read-only verb.
+
 ## [0.12.4] — the flow dot follows nested edges
 
 The full view draws every level inside its own `<svg>`, translated into its host's box. The narration walked

@@ -202,7 +202,7 @@ test('the index grid lists every diagram with a live thumbnail, and "/" never 40
 })
 
 test('a narrow drawing is letterboxed, not cropped and chipped', () => {
-  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, nodes: 1, flows: 0, wide: false }])
+  const page = indexPage([{ id: 'narrow', title: 'Narrow', levels: [''], created: '2026-01-01T00:00:00Z', pinned: false, updated: '2026-01-01T00:00:00Z', svg: '<svg/>', ok: true, nodes: 1, flows: 0, wide: false }])
   assert.match(page, /class="thumb" aria-hidden="true"/)
   assert.match(page, /1 level · 1 node · 0 flows/, 'singulars stay singular')
 })

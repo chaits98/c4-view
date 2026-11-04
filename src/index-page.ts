@@ -31,7 +31,10 @@ export interface IndexEntry {
   id: string
   title: string
   levels: string[]
+  created: string
   updated: string
+  /** the reader pinned this to the front of the grid; the model knows nothing about it */
+  pinned: boolean
   /** the root level's drawing, and whether every gate passed */
   svg: string
   ok: boolean
@@ -43,7 +46,7 @@ export interface IndexEntry {
 
 /** One row of the store's listing, turned into a card (root level rendered for the thumb). */
 export function indexEntries(
-  rows: ReadonlyArray<{ id: string; title: string; levels: string[]; updated: string }>,
+  rows: ReadonlyArray<{ id: string; title: string; levels: string[]; created: string; updated: string; pinned: boolean }>,
   load: (id: string) => Model | null,
   theme: Theme = 'auto',
   limit = 60, // ponytail: the whole grid renders every root level per request; page it past a few dozen
@@ -78,6 +81,11 @@ function byUpdated(a: IndexEntry, b: IndexEntry): number {
 
 const count = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
+/** Icons, because a row of words floating over every drawing is a wall, not a control. */
+const KEBAB = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>'
+const PIN_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 4 3v2H6v-2l4-3z"/><path d="M12 14v7"/></svg>'
+const TRASH_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>'
+
 /** Above this the card is a placeholder: inlining the drawing costs the whole grid a frame. */
 const HEAVY_NODES = 400
 const HEAVY_BYTES = 200_000
@@ -90,16 +98,31 @@ function card(entry: IndexEntry): string {
   const thumb = heavy
     ? `<span class="thumb is-placeholder" aria-hidden="true"><span class="t-label-m">${facts} — open to draw</span></span>`
     : `<span class="thumb${crop}" aria-hidden="true">${entry.svg}</span>`
-  // the whole card is the link, so middle-click and cmd-click work without a handler
+  // the drawing is the link, so middle-click and cmd-click work without a handler; the actions live in a
+  // kebab in the corner (PatternFly card guidance: several actions on a card go in an overflow menu)
+  const pinWord = entry.pinned ? 'Unpin' : 'Pin to front'
+  // one date when there is only one story: "created X · updated X" is noise on a fresh diagram
+  const dates = entry.created.slice(0, 10) === entry.updated.slice(0, 10)
+    ? `updated ${esc(entry.updated.slice(0, 10))}`
+    : `created ${esc(entry.created.slice(0, 10))} · updated ${esc(entry.updated.slice(0, 10))}`
+  const pinChip = entry.pinned ? `<span class="badge pinned t-label-m">${PIN_ICON}<span>Pinned</span></span>` : ''
   return (
-    `<a class="card" href="/d/${encodeURIComponent(entry.id)}">` +
+    `<article class="card${entry.pinned ? ' is-pinned' : ''}">` +
+    `<button type="button" class="card-kebab" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ${esc(entry.title)}">${KEBAB}</button>` +
+    `<div class="card-menu-sheet" role="menu" hidden>` +
+    `<button type="button" role="menuitem" class="card-action" data-pin="${esc(entry.id)}" aria-pressed="${entry.pinned}">` +
+    `${PIN_ICON}<span>${pinWord}</span></button>` +
+    `<button type="button" role="menuitem" class="card-action card-action--bad" data-del="${esc(entry.id)}">` +
+    `${TRASH_ICON}<span>Delete</span></button></div>` +
     // the drawing is the emitter's own escaped output — never re-escape it. A crop is
-    // declared in text ("wide · 3000 px") rather than passed off as the whole drawing.
-    // A crop is shown by cropping — the card does not print its own diagnostics at the reader
+    // shown by cropping — the card does not print its own diagnostics at the reader
+    `<a class="card-open" href="/d/${encodeURIComponent(entry.id)}">` +
     thumb +
     `<span class="meta"><h2 class="t-title-m">${esc(entry.title)}</h2>` +
     `<p class="t-body-s">${esc(entry.id)} · ${facts}</p>` +
-    `<span class="badge t-label-m ${entry.ok ? 'ok' : 'bad'}"><span aria-hidden="true">${entry.ok ? '✓' : '!'}</span>${state}</span></span></a>`
+    `<p class="t-body-s card-dates">${dates}</p>` +
+    `<span class="meta-row"><span class="badge ${entry.ok ? 'ok' : 'bad'} t-label-m"><span aria-hidden="true">${entry.ok ? '✓' : '!'}</span>${state}</span>${pinChip}</span>` +
+    `</span></a></article>`
   )
 }
 
@@ -132,7 +155,9 @@ function gridControl(sort: Sort, filter: Filter): string {
     })
     .join('')
   const failing = filter === 'fail'
-  const filterLink = `<a class="idx-sort" href="/?sort=${sort}${failing ? '' : '&amp;audit=fail'}"${failing ? ' aria-current="true"' : ''}>${failing ? 'showing failures' : 'failures only'}</a>`
+  const filterLink =
+    `<span class="idx-sort-sep" aria-hidden="true"></span>` +
+    `<a class="idx-sort" href="/?sort=${sort}${failing ? '' : '&amp;audit=fail'}"${failing ? ' aria-current="true"' : ''}>${failing ? 'showing failures' : 'failures only'}</a>`
   return `${sorts}${filterLink}`
 }
 
@@ -157,7 +182,8 @@ function emptyState(filter: Filter, total: number): string {
 
 export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto', sort: Sort = 'updated', filter: Filter = 'all'): string {
   const kept = filter === 'fail' ? entries.filter((entry) => !entry.ok) : [...entries]
-  const sorted = [...kept].sort(COMPARE[sort])
+  // pin means the front: it is a promise the button makes, so it outranks the chosen order
+  const sorted = [...kept].sort(COMPARE[sort]).sort((a, b) => Number(b.pinned) - Number(a.pinned))
   const cards = sorted.length ? sorted.map(card).join('') : emptyState(filter, entries.length)
   const diagramCount = sorted.length === 1 ? '1 diagram' : `${sorted.length} diagrams`
   return readFileSync(`${PUBLIC}index.html`, 'utf8')

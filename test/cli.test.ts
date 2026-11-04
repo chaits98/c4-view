@@ -146,8 +146,10 @@ test('--no-token is refused off loopback', async () => {
   assert.equal(await run(['serve', '--host', '0.0.0.0', '--no-token']), 2)
 })
 
-test('service uninstall on a machine with no unit is not an error', async () => {
-  assert.equal(await run(['service', 'uninstall']), 0)
+test('no test drives a mutating service verb through run, which carries the real home', async () => {
+  // `run` has no home seam, so `service uninstall` here deleted the developer's own unit every time the
+  // suite ran. The verb's behaviour is covered in cli-service.test.ts, where home is a temp directory.
+  assert.equal(await run(['service', 'bogus']), 2, 'the verb is wired; nothing mutating is called')
 })
 
 test('the skill and prefs verbs are reachable from the one dispatch', async () => {

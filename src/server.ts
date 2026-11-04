@@ -3,14 +3,14 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ModelError, levelOf, parseModel } from './model.ts'
+import { levelOf } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { docsDir, levelDocs } from './docs.ts'
 import { pictureAudits, renderExpanded, renderModel } from './render.ts'
 import { nestedLevel } from './nest.ts'
 import { paletteOf } from './theme.ts'
-import { lensReport } from './lens.ts'
-import { list, loadModel, modelFile, save } from './store.ts'
+import { list, loadModel, modelFile } from './store.ts'
+import { create, drop, pin } from './server-write.ts'
 import { viewerPage } from './viewer-page.ts'
 import { sendExport } from './server-export.ts'
 import { buildStamp } from './build.ts'
@@ -20,7 +20,6 @@ import { broken, denied, json, missing, noLevel, redirectClean, send } from './h
 import { diagramRoute, routeOf, validLevel, type Route } from './routes.ts'
 import type { LevelSpec, Model } from './types.ts'
 
-const MAX_BODY = 2 * 1024 * 1024
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
 
 /** Bind and resolve once listening, so a test can pass port 0. */
@@ -139,12 +138,45 @@ function sortOf(url: URL): Sort {
 
 const filterOf = (url: URL): Filter => (url.searchParams.get('audit') === 'fail' ? 'fail' : 'all')
 
+/** What each route answers to. One table, so a new route cannot quietly inherit "GET only" or forget it. */
+const ALLOW: Record<Route['kind'], string> = {
+  index: 'GET',
+  health: 'GET',
+  diagrams: 'GET, POST',
+  model: 'GET, DELETE',
+  audit: 'GET',
+  pin: 'POST',
+  page: 'GET',
+  export: 'GET',
+  asset: 'GET',
+}
+
 /** 405 with the right Allow header, or true when the method is fine. */
 function methodAllowed(route: Route, method: string, res: ServerResponse): boolean {
-  const allow = route.kind === 'diagrams' ? 'GET, POST' : 'GET'
+  const allow = ALLOW[route.kind]
   if (allow.split(', ').includes(method)) return true
   res.setHeader('Allow', allow)
   json(res, 405, { error: `${method} is not allowed here` })
+  return false
+}
+
+/**
+ * A mutation must come from this page, not from another site that borrowed the reader's cookie.
+ * A browser sends Origin on every non-GET; curl sends none, and that is the agent's path.
+ */
+function sameOrigin(req: IncomingMessage, res: ServerResponse): boolean {
+  const origin = req.headers.origin
+  if (!origin) return true
+  let host: string | null = null
+  try {
+    host = new URL(origin).host
+  } catch {
+    // coverage:invariant — a browser only ever sends an absolute origin; a value that does not parse is
+    // already not us, and the check below refuses it exactly like a foreign origin
+    host = null
+  }
+  if (host !== null && host === req.headers.host) return true
+  json(res, 403, { error: 'cross-origin request refused' })
   return false
 }
 
@@ -160,6 +192,7 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
   const method = req.method ?? 'GET'
   /* node:coverage enable */
   if (!methodAllowed(route, method, res)) return
+  if (method !== 'GET' && !sameOrigin(req, res)) return
   const level = url.searchParams.get('level')
   // the scheme: URL → cookie; append, so the guard's token cookie survives this one
   const theme = themeOf(url.searchParams.get('theme'), req.headers.cookie)
@@ -181,7 +214,9 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
     case 'diagrams':
       return method === 'POST' ? create(root, req, res) : json(res, 200, list(root))
     case 'model':
-      return sendModel(root, req, res, route.id, theme)
+      return method === 'DELETE' ? drop(root, res, route.id) : sendModel(root, req, res, route.id, theme)
+    case 'pin':
+      return pin(root, req, res, route.id)
     case 'audit':
       return sendAudit(root, req, res, route.id, level, theme)
     case 'page':
@@ -195,71 +230,4 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
 
 function findLevel(model: Model, path: string) {
   return validLevel(path) ? levelOf(model, path) : undefined
-}
-
-
-async function create(root: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const raw = await readBody(req, res)
-  if (raw === null) return
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return json(res, 400, { problems: ['body: not valid JSON'] })
-  }
-  let model: Model
-  try {
-    model = parseModel(parsed)
-  } catch (error) {
-    if (error instanceof ModelError) return json(res, 400, { problems: error.problems })
-    throw error
-  }
-  save(root, model.id, raw)
-  const failures = lensReport(model).problems
-  return json(res, 201, {
-    id: model.id,
-    url: `/d/${model.id}`,
-    audit: pictureAudits(model),
-    // what a badge can trust: geometry per picture, plus the modelling checks
-    ok: pictureAudits(model).every((a) => a.ok) && failures.length === 0,
-    lens: failures,
-  })
-}
-
-/** The body as text, or null once a 413 has been answered and the socket closed. */
-function readBody(req: IncomingMessage, res: ServerResponse): Promise<string | null> {
-  return new Promise((done) => {
-    let settled = false
-    let size = 0
-    const chunks: Buffer[] = []
-    const stop = (): void => {
-      if (settled) return
-      settled = true
-      res.writeHead(413, { 'Content-Type': 'text/plain; charset=utf-8', Connection: 'close' })
-      res.end('body exceeds 2 MB', () => req.destroy())
-      done(null)
-    }
-    const declared = Number(req.headers['content-length'])
-    if (Number.isFinite(declared) && declared > MAX_BODY) return stop()
-    req.on('data', (chunk: Buffer) => {
-      /* node:coverage disable */
-      // Damage guard: data arriving after the body was settled means the client kept writing past a
-      // refusal — the socket is already closing, so there is nothing to test but the guard itself.
-      if (settled) return
-      /* node:coverage enable */
-      size += chunk.length
-      if (size > MAX_BODY) return stop()
-      chunks.push(chunk)
-    })
-    req.on('end', () => {
-      if (settled) return
-      settled = true
-      done(Buffer.concat(chunks).toString('utf8'))
-    })
-    req.on('error', () => {
-      if (settled) return
-      settled = true
-      done(null)
-    })
-  })
 }

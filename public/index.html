@@ -6,15 +6,24 @@
 <title>c4-view — diagrams</title>
 <link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/index.css">
+<link rel="stylesheet" href="/card.css">
 </head>
-<!-- The server fills data-count and the CARD grid. One template: this file. -->
+<!-- The server fills the COUNT, the grid's toolbar and the CARD grid. One template: this file. -->
 <body>
 <header class="idx-bar">
-  <h1 class="t-title-l">c4-view</h1>
-  <span id="idx-count" class="t-body-m"><!--COUNT--></span>
-  <nav class="idx-sort-group" aria-label="Sort and filter"><!--GRIDCONTROL--></nav>
+  <div class="idx-brand">
+    <h1 class="t-title-l">c4-view</h1>
+    <span id="idx-count" class="t-body-m"><!--COUNT--></span>
+  </div>
   <nav class="idx-scheme-group" aria-label="Colour scheme"><!--THEMELINKS--></nav>
 </header>
-<main id="grid" aria-label="Diagrams"><!--CARDS--></main>
+<main>
+  <!-- the grid's own toolbar: sorting and filtering belong to the card view, not to the app bar -->
+  <div class="grid-toolbar">
+    <nav class="idx-sort-group" aria-label="Sort and filter"><!--GRIDCONTROL--></nav>
+  </div>
+  <div id="grid" aria-label="Diagrams"><!--CARDS--></div>
+</main>
+<script src="/index.js" defer></script>
 </body>
 </html>

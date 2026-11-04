@@ -22,7 +22,10 @@
   <nav id="c4-crumbs" aria-label="Breadcrumb"><!--CRUMBS--></nav>
   <div id="c4-view" role="group" aria-label="View mode"><!--VIEWMODE--></div>
   <span class="c4-div" aria-hidden="true"></span>
-  <select id="c4-levels" class="t-label-l" aria-label="Level"><!--LEVELS--></select>
+  <details id="c4-levels" class="t-label-l">
+    <summary aria-label="Level"><span id="c4-levels-label"><!--LEVELCURRENT--></span><span class="c4-caret" aria-hidden="true"></span></summary>
+    <div class="c4-select-menu" role="menu"><!--LEVELS--></div>
+  </details>
   <span class="c4-div" aria-hidden="true"></span>
   <div id="c4-zoom" role="group" aria-label="Zoom"><!--ZOOM--></div>
   <span class="c4-div" aria-hidden="true"></span>

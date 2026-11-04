@@ -69,3 +69,30 @@ export function composed(model: Model, spec: LevelSpec, theme: Theme): { level: 
 export function fullSpec(model: Model): LevelSpec {
   return model.levels.find((l) => l.path === '') ?? { path: '', nodes: [], edges: [] }
 }
+
+/** A level's C4 tag: the root is C1, one step in is C2, and past C4 it stays C4. */
+export const levelTag = (depth: number): string => `C${Math.min(4, depth + 1)}`
+
+/** The label a level wears: its C4 tag, then its title, or its path when the model has no title. */
+function levelLabel(depth: number, title: string | undefined, path: string): string {
+  return `${levelTag(depth)} · ${title ?? (path || 'context')}` // coverage:invariant — parseModel fills a title; the arm exists for a level built by hand
+}
+
+/**
+ * The level menu: one link per level, indented by depth, the current one marked. Links, not a <select>,
+ * so the panel is ours to draw and the picker opens without a script.
+ */
+export function levelMenu(levels: ReadonlyArray<LevelSpec>, level: string, root: string): { current: string; rows: string } {
+  const depthOf = (path: string): number => (path === '' ? 0 : path.split('/').length)
+  const rows = levels
+    .map((entry) => {
+      const depth = depthOf(entry.path)
+      const href = entry.path === '' ? root : `${root}/${entry.path}`
+      const here = entry.path === level ? ' aria-current="true"' : ''
+      const indent = '&#160;&#160;&#160;'.repeat(depth)
+      return `<a role="menuitem" href="${esc(href)}" title="${esc(entry.path || 'context')}"${here}>${indent}${esc(levelLabel(depth, entry.title, entry.path))}</a>`
+    })
+    .join('')
+  const here = levels.find((entry) => entry.path === level)
+  return { current: levelLabel(depthOf(level), here?.title, level), rows }
+}

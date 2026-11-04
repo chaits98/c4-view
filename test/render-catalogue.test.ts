@@ -63,7 +63,7 @@ test('a node with no tech and no desc keeps its line clean', () => {
 
 test('the grid escapes a title that contains markup', () => {
   const html = indexPage([
-    { id: 'catalogue', title: 'Catalogue <&>', levels: ['', 'svc'], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 3, flows: 2, wide: false },
+    { id: 'catalogue', title: 'Catalogue <&>', levels: ['', 'svc'], created: '2026-11-01T00:00:00.000Z', updated: '2026-11-01T00:00:00.000Z', pinned: false, svg: '<svg></svg>', ok: true, nodes: 3, flows: 2, wide: false },
   ])
   assert.match(html, /Catalogue &lt;&amp;&gt;/, 'escaped, not injected')
   assert.match(html, /1 diagram</, 'one diagram is not "1 diagrams"')
@@ -104,12 +104,12 @@ test('a level with no title still gets one in the svg', () => {
 })
 
 test('the grid shows a failing card, a wide card and a single card correctly', () => {
-  const entry = (over: Record<string, unknown>) => ({ id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false, ...over })
+  const entry = (over: Record<string, unknown>) => ({ id: 'x', title: 'X', levels: [''], created: '2026-11-01T00:00:00.000Z', updated: '2026-11-01T00:00:00.000Z', pinned: false, svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false, ...over })
   const one = indexPage([entry({})])
   assert.match(one, /1 diagram</, 'singular')
   const bad = indexPage([entry({ id: 'bad', ok: false })])
   assert.match(bad, /audit failed/, 'a failing diagram says failed, not clean')
-  assert.match(bad, /class="badge t-label-m bad"/, 'and the badge carries the state as a class')
+  assert.match(bad, /class="badge [^"]*bad/, 'and the badge carries the state as a class')
   const wide = indexPage([entry({ wide: true })])
   assert.match(wide, /class="thumb is-wide"/, 'a cropped card is marked')
   for (const theme of ['auto', 'light', 'dark'] as const) {
@@ -129,7 +129,7 @@ test('a breadcrumb skips a level segment the model does not have', () => {
 })
 
 test('a card whose svg has no viewBox is not called wide', () => {
-  const flat = indexPage([{ id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }])
+  const flat = indexPage([{ id: 'x', title: 'X', levels: [''], created: '2026-01-01T00:00:00Z', pinned: false, updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }])
   assert.ok(!flat.includes('is-wide'), 'no width, no ratio, no crop')
 })
 
@@ -140,7 +140,7 @@ test('a level with a path but no title is named by its path, in the crumbs and t
   ] })
   const html = viewerPage(bare, 'api/v1')
   // the select is a tree now: indented by depth, prefixed with the C4 level, path in the tooltip
-  assert.ok(/<option value="api\/v1" title="api\/v1" selected>/.test(html), 'the select names the level')
+  assert.ok(/<a role="menuitem" href="\/d\/[^"]*\/api\/v1" title="api\/v1" aria-current="true">/.test(html), 'the menu marks the level')
   assert.ok(html.includes('&#160;&#160;&#160;&#160;&#160;&#160;'), 'indented by depth')
   assert.ok(html.includes('C3 ·'), 'the C4 level is part of the label')
   assert.ok(
@@ -170,13 +170,13 @@ test('identity and tech are drawn independently', () => {
 })
 
 test('sorting by title falls back to the id when two titles match', () => {
-  const base = { levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
+  const base = { levels: [''], created: '2026-01-01T00:00:00Z', pinned: false, updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
   const html = indexPage([{ ...base, id: 'b', title: 'Same' }, { ...base, id: 'a', title: 'Same' }], 'auto', 'title')
   assert.ok(html.indexOf('/d/a"') < html.indexOf('/d/b"'), 'the id decides, so the order is stable')
 })
 
 test('the fail filter has two empty states: nothing failing, and nothing at all', () => {
-  const clean = { id: 'x', title: 'X', levels: [''], updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
+  const clean = { id: 'x', title: 'X', levels: [''], created: '2026-01-01T00:00:00Z', pinned: false, updated: '2026-11-01T00:00:00.000Z', svg: '<svg></svg>', ok: true, nodes: 1, flows: 0, wide: false }
   const nothing = indexPage([clean], 'auto', 'updated', 'fail')
   assert.match(nothing, /Nothing is failing/, 'a clean store says so instead of looking broken')
   assert.match(nothing, /All 1 diagrams audit clean/, 'and counts them')

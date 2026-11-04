@@ -21,7 +21,7 @@ import type { LevelDocs } from './docs.ts'
 import { paletteOf } from './theme.ts'
 import { themeAttribute, type Theme } from './theme-choice.ts'
 import { zoomBar, zoomClass, zoomOf } from './viewer-zoom.ts'
-import { composed, downloads, fullSpec, viewMode } from './viewer-controls.ts'
+import { composed, downloads, fullSpec, levelMenu, viewMode } from './viewer-controls.ts'
 import type { AuditReport, EdgeSpec, LevelSpec, Model, NodeSpec } from './types.ts'
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url))
@@ -176,7 +176,6 @@ function drillFor(model: Model, path: string): Map<string, string> {
 }
 
 /** The C4 level a path depth belongs to: 0 → C1, 1 → C2, and never past C4. */
-const levelTag = (depth: number): string => `C${Math.min(4, depth + 1)}`
 
 /** Width and height of the drawing, from the viewBox the renderer just emitted. */
 function svgSize(svg: string): { w: number; h: number } {
@@ -236,15 +235,7 @@ export function viewerPage(
   const drawn = pickDrawn(model, level, theme, spec, full)
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
-  // indented by depth: the list is a tree, and a flat list of paths makes a reader work out the nesting
-  const options = levelOrder(model)
-    .map((l) => {
-      const depth = l.path === '' ? 0 : l.path.split('/').length
-      const indent = '&#160;&#160;&#160;'.repeat(depth)
-      const label = `${levelTag(depth)} · ${l.title ?? l.path}` // coverage:invariant — parseModel fills a title
-      return `<option value="${esc(l.path)}" title="${esc(l.path || 'context')}"${l.path === level ? ' selected' : ''}>${indent}${esc(label)}</option>`
-    })
-    .join('')
+  const menu = levelMenu(levelOrder(model), level, root)
   // The opening view is the COMPLETE drawing: the fit that shows all of it, which is fit-v for a column and
   // fit-h for a strip. A reader who wants detail picks 100% and scrolls; the reverse — opening at 100% on a
   // drawing four screens wide — showed a corner and called it the diagram. Explicit `?zoom=` always wins.
@@ -260,7 +251,8 @@ export function viewerPage(
     .replace('<title>C4 viewer</title>', () => `<title>${esc(drawn.level.title)} — ${esc(model.title)}</title>`)
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
-    .replace('<!--LEVELS-->', () => options)
+    .replace('<!--LEVELCURRENT-->', () => esc(menu.current))
+    .replace('<!--LEVELS-->', () => menu.rows)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
     .replace('<!--VIEWMODE-->', () => viewMode(levelRoot, spec || full ? 'full' : 'drill'))
     .replace('<!--DOWNLOAD-->', () => downloads(model.id, level, Boolean(spec || full), theme))
