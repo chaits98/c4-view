@@ -24,8 +24,15 @@ export function deniedPage(theme: Theme = 'auto'): string {
 <main class="c4-denied">
   <h1 class="t-headline-s">This viewer needs its token</h1>
   <p>The link you opened has no token, or the token does not match the one this server is using.</p>
-  <p>Open the link <code>c4v serve</code> printed — it looks like <code>http://&lt;host&gt;:8788/?t=…</code>. The
-  page remembers it after the first visit. An agent sends <code>Authorization: Bearer …</code> instead.</p>
+  <form class="c4-denied-form" method="get" action="/">
+    <input class="c4-denied-key" type="password" name="t" autocomplete="off" spellcheck="false"
+           aria-label="Viewer token" placeholder="paste the token" required>
+    <button class="c4-denied-go" type="submit">Open</button>
+  </form>
+  <p>The token is in <code>~/.config/c4-view/open-url</code> on the machine running the viewer, or in the line
+  <code>c4v serve</code> printed. A cookie only covers the host name it was set on, so a page opened as
+  <code>http://&lt;host&gt;:8788</code> is not signed in on <code>http://localhost:8788</code>. An agent sends
+  <code>Authorization: Bearer &lt;token&gt;</code> instead.</p>
 </main>
 </body>
 </html>

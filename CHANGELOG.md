@@ -24,6 +24,12 @@ our own caret (11 px inside the pill edge instead of hanging on the border), arr
 with JavaScript off. The flow bar's buttons were being restyled square by `toolbar.css`, which also matched
 `.c4-flow-btn`; the hover now follows the pill.
 
+**The denial page takes a key.** A `Set-Cookie` without `Domain` is host-only, so a key that signs you in at
+`http://<host>:8788` leaves `http://localhost:8788` signed out — and the old 401 only said "open the link
+`c4v serve` printed", which by then had already had its `?t=` stripped by the clean redirect. The page now
+carries one field: paste the token, and it becomes `?t=` for that host. 401s also send `Cache-Control:
+no-store`, so a cached refusal cannot outlive the mistake that caused it.
+
 Also fixed: **the test suite deleted the developer's own systemd unit.** `test/cli.test.ts` ran
 `service uninstall` through `run`, which has no home seam, so every full run removed
 `~/.config/systemd/user/c4-view.service`. That case now drives only a read-only verb.

@@ -81,7 +81,9 @@ export function applyHeaders(res: ServerResponse): void {
   // stylesheet, so `style-src 'self'` needs no 'unsafe-inline' (checked by the page tests)
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    // form-action 'self': the denial page carries one GET form, and that form is how a key reaches the
+    // server from a browser whose cookie belongs to another host name
+    "default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   )
 }
 

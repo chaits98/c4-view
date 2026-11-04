@@ -68,3 +68,41 @@
 .c4-text li {
   margin-block: var(--space-1);
 }
+
+/* the denial page's one control: a place to paste the key, so it never has to ride in a URL */
+.c4-denied-form {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+}
+
+.c4-denied-key {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0 var(--space-3);
+  color: var(--c4-fg);
+  background: var(--c4-chip-bg);
+  border: 1px solid var(--c4-line);
+  border-radius: var(--shape-full);
+  font: inherit;
+  font-family: var(--font-mono);
+}
+
+.c4-denied-key:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.c4-denied-go {
+  flex: none;
+  height: 40px;
+  padding: 0 var(--space-4);
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 1px solid transparent;
+  border-radius: var(--shape-full);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}

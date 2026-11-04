@@ -63,6 +63,9 @@ export function broken(req: IncomingMessage, res: ServerResponse, id: string, th
 /** The 401: a browser gets a page that states one cause, an agent gets JSON. */
 export function denied(req: IncomingMessage, res: ServerResponse, theme: Theme = 'auto'): void {
   res.setHeader('WWW-Authenticate', 'Bearer realm="c4-view"')
+  // a cached 401 outlives the mistake that caused it: the tab keeps showing "token required" after a
+  // correct key has been supplied
+  res.setHeader('Cache-Control', 'no-store')
   if (acceptsHtml(req)) return send(res, 401, 'text/html; charset=utf-8', deniedPage(theme))
   json(res, 401, { error: 'token required', hint: 'append ?t=<token> or send Authorization: Bearer ***' })
 }
