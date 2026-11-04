@@ -10,7 +10,7 @@ decoration.
 
 | layer | tool | result |
 |---|---|---|
-| repo + full history | gitleaks 8 (working tree + history) | **? leak(s)** — see the run output |
+| repo + full history | gitleaks 8 (working tree + history) | **no leaks** — 127 commits scanned |
 | package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** over 53 files in `src/` |
 | package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.6% coverage**, 4928 ncloc, gate **OK** |
 | dependencies | `npm audit --omit=dev` | **0 vulnerabilities**; 0 runtime dependencies |
