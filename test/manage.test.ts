@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pinnedIds, remove, setPinned, list } from '../src/store.ts'
+import { pinnedIds, remove, setPinned, list, unreadable } from '../src/store.ts'
 import { serve } from '../src/server.ts'
 import { indexPage } from '../src/index-page.ts'
 
@@ -135,6 +135,41 @@ test('a mutation from another origin is refused; curl, which sends none, is not'
     assert.equal(opaque.status, 403, 'an origin that cannot be parsed is not this origin')
     const get = await fetch(`http://127.0.0.1:${port}/api/diagrams/shop`, { method: 'PUT' })
     assert.equal(get.status, 405, 'the model endpoint takes GET and DELETE, nothing else')
+  } finally {
+    server.close()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a store that is absent reads as nothing unreadable, and broken JSON is not a rule problem', () => {
+  assert.deepEqual(unreadable(join(store(), 'no-such-store')), [], 'no store, nothing to report')
+  const r = store()
+  mkdirSync(join(r, 'junk'), { recursive: true })
+  writeFileSync(join(r, 'junk', 'model.json'), '{not json')
+  assert.equal(unreadable(r)[0]?.id, 'junk')
+  rmSync(r, { recursive: true, force: true })
+})
+
+test('a stored diagram the current rules refuse is named on the page, not hidden', async () => {
+  const root = store()
+  put(root, 'shop')
+  // a model the current rules refuse: an edge to a node that does not exist
+  mkdirSync(join(root, 'old'), { recursive: true })
+  writeFileSync(join(root, 'old', 'model.json'), JSON.stringify({
+    ...MODEL,
+    id: 'old',
+    levels: [{ ...MODEL.levels[0], edges: [{ from: 'api', to: 'ghost', desc: 'x' }] }],
+  }))
+  assert.deepEqual(unreadable(root).map((b) => b.id), ['old'], 'only the out-of-date one')
+  assert.match(unreadable(root)[0].reason, /unknown node/)
+  const server = await serve({ port: 0, root, host: '127.0.0.1' })
+  const port = (server.address() as { port: number }).port
+  try {
+    const page = await (await fetch(`http://127.0.0.1:${port}/`)).text()
+    assert.match(page, /class="idx-note"/, 'the grid says so')
+    assert.match(page, /<code>old<\/code>/, 'by id')
+    assert.match(page, /unknown node/, 'with the reason')
+    assert.match(page, /href="\/d\/shop"/, 'and still draws the one that is valid')
   } finally {
     server.close()
     rmSync(root, { recursive: true, force: true })

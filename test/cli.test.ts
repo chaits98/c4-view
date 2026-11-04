@@ -35,7 +35,7 @@ function brokenModel(dir: string): string {
             { id: 'a', label: 'A', subtype: 'system' },
             { id: 'b', label: 'B', subtype: 'system' },
           ],
-          edges: [{ from: 'a', to: 'b' }],
+          edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }],
           groups: [{ id: 'g', label: 'edge', members: ['a'] }],
         },
       ],
@@ -76,7 +76,7 @@ test('a model with an unknown node exits 2', async () => {
   const file = join(dir, 'ghost.json')
   writeFileSync(
     file,
-    JSON.stringify({ id: 'g', title: 'G', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'nope' }] }] }),
+    JSON.stringify({ id: 'g', title: 'G', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'nope' }] }] }),
   )
   assert.equal(await run(['audit', file, '--strict']), 2)
 })
@@ -203,7 +203,7 @@ test('a lens problem is a strict failure with its own line', async () => {
       id: 'flat',
       title: 'Flat',
       levels: [
-        { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ from: 'user', to: 'host' }] },
+        { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'user', to: 'host' }] },
         // a drill level that declares no ports, while the parent has an edge that needs one
         { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [] },
       ],

@@ -51,30 +51,35 @@
         {
           "from": "agent",
           "to": "c4view",
+          "desc": "The agent hands over model.json: nodes, edges and their levels, and nothing else.",
           "label": "model.json",
           "style": "flow"
         },
         {
           "from": "repo",
           "to": "c4view",
+          "desc": "The committed model and its per-element docs, read so a render never disagrees with the repo.",
           "label": "model + docs",
           "style": "dep"
         },
         {
           "from": "c4view",
           "to": "repo",
+          "desc": "The drawn SVG and the gate verdict, written back so a reviewer sees the picture in the diff.",
           "label": "SVG + gate",
           "style": "flow"
         },
         {
           "from": "c4view",
           "to": "harness",
+          "desc": "The skill package an agent loads, so it writes models that survive the audit.",
           "label": "skill package",
           "style": "flow"
         },
         {
           "from": "c4view",
           "to": "browser",
+          "desc": "Self-contained HTML and SVG pages that open with no server and no network.",
           "label": "SVG pages",
           "style": "flow"
         }
@@ -136,30 +141,35 @@
         {
           "from": "hook",
           "to": "cli",
+          "desc": "A pre-commit check asks the CLI whether the staged model is still clean.",
           "label": "gate check",
           "style": "flow"
         },
         {
           "from": "cli",
           "to": "store",
+          "desc": "A finished diagram is published into the store as one directory per model.",
           "label": "publishes",
           "style": "flow"
         },
         {
           "from": "cli",
           "to": "server",
+          "desc": "The same binary starts the viewer, bound to the name and port it was given.",
           "label": "starts",
           "style": "flow"
         },
         {
           "from": "server",
           "to": "store",
+          "desc": "Every request reads one model directory: the server holds no state of its own between them.",
           "label": "reads",
           "style": "flow"
         },
         {
           "from": "server",
           "to": "viewer",
+          "desc": "The HTML shell, its stylesheets and the flow driver, served as files rather than built.",
           "label": "HTML + JS",
           "style": "flow"
         }
@@ -268,60 +278,70 @@
         {
           "from": "args",
           "to": "parse",
+          "desc": "The model path and the flags, handed to the parser that either accepts the model or names what is wrong.",
           "label": "model.json",
           "style": "flow"
         },
         {
           "from": "args",
           "to": "repo-gate",
+          "desc": "The staged files, checked before anything is drawn so a bad commit fails early.",
           "label": "gate check",
           "style": "flow"
         },
         {
           "from": "parse",
           "to": "rank",
+          "desc": "A validated level: nodes with their subtypes, edges with their descriptions, groups.",
           "label": "LevelSpec",
           "style": "flow"
         },
         {
           "from": "rank",
           "to": "order",
+          "desc": "Ranked layers, so a box never lands left of something it depends on.",
           "label": "Ranked",
           "style": "flow"
         },
         {
           "from": "order",
           "to": "place",
+          "desc": "A stable order inside each rank, which is what keeps two runs byte-identical.",
           "label": "Ordered",
           "style": "flow"
         },
         {
           "from": "place",
           "to": "route",
+          "desc": "Measured boxes: every node sized to its text before a single line is drawn.",
           "label": "Placed",
           "style": "flow"
         },
         {
           "from": "route",
           "to": "emit",
+          "desc": "Routed edges with their lanes, jogs and label boxes, ready to be written as paths.",
           "label": "Routed",
           "style": "flow"
         },
         {
           "from": "route",
           "to": "audit",
+          "desc": "The same routed geometry, measured for overlaps and crossings rather than drawn.",
           "label": "Routed",
           "style": "flow"
         },
         {
           "from": "emit",
           "to": "publish",
+          "desc": "The finished SVG, one picture per level, written into the output directory.",
           "label": "SVG",
           "style": "flow"
         },
         {
           "from": "args",
           "to": "publish",
+          "desc": "Where the files go and in which format, decided before the layout starts.",
           "label": "publish",
           "style": "flow"
         }
@@ -409,42 +429,49 @@
         {
           "from": "guard",
           "to": "routes",
+          "desc": "An admitted request: the token matched, or the bind is loopback and needs none.",
           "label": "allowed",
           "style": "flow"
         },
         {
           "from": "routes",
           "to": "pages",
+          "desc": "A level path from the URL, resolved against the model before a page is built.",
           "label": "level",
           "style": "flow"
         },
         {
           "from": "pages",
           "to": "docs",
+          "desc": "The authored doc for each node and edge on this level, embedded for hover.",
           "label": "hover",
           "style": "flow"
         },
         {
           "from": "routes",
           "to": "api",
+          "desc": "A JSON request, answered with the model or the audit rather than a page.",
           "label": "JSON",
           "style": "flow"
         },
         {
           "from": "api",
           "to": "reader",
+          "desc": "The stored models, listed so an agent can see what the viewer already holds.",
           "label": "models",
           "style": "flow"
         },
         {
           "from": "pages",
           "to": "reader",
+          "desc": "The one model this page draws, read fresh on every request.",
           "label": "model",
           "style": "flow"
         },
         {
           "from": "pages",
           "to": "client",
+          "desc": "HTML, CSS and the flow driver, sending the whole picture on first paint.",
           "label": "HTML + JS",
           "style": "flow"
         }

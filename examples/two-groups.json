@@ -14,11 +14,11 @@
         { "id": "db", "label": "Database", "subtype": "database" }
       ],
       "edges": [
-        { "from": "user", "to": "ui", "label": "uses", "style": "flow" },
-        { "from": "ui", "to": "bff", "label": "GraphQL", "style": "flow" },
-        { "from": "bff", "to": "svc", "label": "calls", "style": "flow" },
-        { "from": "svc", "to": "repo", "label": "reads", "style": "flow" },
-        { "from": "repo", "to": "db", "label": "SQL", "style": "flow" }
+        { "from": "user", "to": "ui", "desc": "A browser session, loading the interface over HTTPS.", "label": "uses", "style": "flow" },
+        { "from": "ui", "to": "bff", "desc": "A GraphQL query or mutation, batched by the client.", "label": "GraphQL", "style": "flow" },
+        { "from": "bff", "to": "svc", "desc": "A resolved field request, one call per resolver that needs data.", "label": "calls", "style": "flow" },
+        { "from": "svc", "to": "repo", "desc": "A lookup by id or a filtered list, never a raw query from the service.", "label": "reads", "style": "flow" },
+        { "from": "repo", "to": "db", "desc": "Parameterised SQL, with no value from the request interpolated into it.", "label": "SQL", "style": "flow" }
       ],
       "groups": [
         { "id": "front", "label": "browser", "members": ["ui", "bff"] },

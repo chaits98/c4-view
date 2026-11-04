@@ -20,7 +20,7 @@ const node = (id: string, extra: Partial<NodeSpec> = {}): NodeSpec => ({
 const lvl = (nodes: NodeSpec[], edges: Array<[string, string]>): LevelSpec => ({
   path: '',
   nodes,
-  edges: edges.map(([from, to]): EdgeSpec => ({ from, to })),
+  edges: edges.map(([from, to]): EdgeSpec => ({ from, to, desc: 'the payload this edge carries' })),
 })
 
 test('a chain gives one column per hop', () => {
@@ -108,8 +108,8 @@ test('a repeated edge is one edge, and its label rides the chain', () => {
     path: '',
     nodes: [node('a'), node('b')],
     edges: [
-      { from: 'a', to: 'b', label: 'writes' },
-      { from: 'a', to: 'b', label: 'ignored: duplicate' },
+      { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'writes' },
+      { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'ignored: duplicate' },
     ],
   }
   const r = rank(level, cfg)

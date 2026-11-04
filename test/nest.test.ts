@@ -13,12 +13,12 @@ const deep = (): ReturnType<typeof parseModel> =>
       {
         path: '',
         nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }],
-        edges: [{ from: 'out', to: 'box', label: 'in' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }],
       },
       {
         path: 'box',
         nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }],
-        edges: [{ from: 'stage', to: 'inner', label: 'next' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }],
         ports: { 'out->box': 'stage' },
       },
       {

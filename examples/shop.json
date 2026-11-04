@@ -76,48 +76,56 @@
         {
           "from": "browser",
           "to": "web",
+          "desc": "A customer loads the storefront over HTTPS, with no credential beyond the session cookie.",
           "label": "https",
           "style": "flow"
         },
         {
           "from": "web",
           "to": "api",
+          "desc": "The storefront calls the REST API; the browser never talks to the API directly.",
           "label": "REST",
           "style": "flow"
         },
         {
           "from": "api",
           "to": "db",
+          "desc": "A confirmed order is written, with its line items, inside one transaction.",
           "label": "writes orders",
           "style": "flow"
         },
         {
           "from": "api",
           "to": "queue",
+          "desc": "The order id is enqueued so fulfilment happens after the customer is answered.",
           "label": "enqueues",
           "style": "flow"
         },
         {
           "from": "queue",
           "to": "worker",
+          "desc": "The worker takes one job at a time and retries a failed one three times.",
           "label": "delivers",
           "style": "dep"
         },
         {
           "from": "worker",
           "to": "db",
+          "desc": "The worker marks the order shipped and stamps it with the carrier reference.",
           "label": "marks shipped",
           "style": "flow"
         },
         {
           "from": "api",
           "to": "stripe",
+          "desc": "The card is charged for the basket total, idempotency-keyed by order id.",
           "label": "charges",
           "style": "tent"
         },
         {
           "from": "stripe",
           "to": "api",
+          "desc": "Stripe reports the outcome as a signed webhook the API verifies before trusting.",
           "label": "webhook",
           "style": "dep"
         }
@@ -167,18 +175,21 @@
         {
           "from": "routes",
           "to": "service",
+          "desc": "A request body, checked against the schema before any business rule runs.",
           "label": "validate",
           "style": "flow"
         },
         {
           "from": "service",
           "to": "repo",
+          "desc": "The order entity, persisted through the repository rather than by the service.",
           "label": "persist",
           "style": "flow"
         },
         {
           "from": "service",
           "to": "pay",
+          "desc": "Amount, currency and idempotency key, handed to the payment client.",
           "label": "authorise",
           "style": "flow"
         }

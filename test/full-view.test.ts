@@ -17,12 +17,12 @@ const nested = (): ReturnType<typeof parseModel> =>
       {
         path: '',
         nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }],
-        edges: [{ from: 'out', to: 'box', label: 'in' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }],
       },
       {
         path: 'box',
         nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }],
-        edges: [{ from: 'stage', to: 'inner', label: 'next' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }],
         ports: { 'out->box': 'stage' },
         flow: ['stage->inner'],
       },
@@ -111,7 +111,7 @@ test('a port is matched by its far side when the outside end has been composed',
   const parent = {
     path: '',
     nodes: [{ id: 'cli/args', label: 'Args', subtype: 'service-logic' }, { id: 'server', label: 'Server', subtype: 'microservice' }],
-    edges: [{ from: 'cli/args', to: 'server', label: 'starts' }],
+    edges: [{ desc: 'the payload this edge carries', from: 'cli/args', to: 'server', label: 'starts' }],
   }
   const child = {
     path: 'c4view/server',

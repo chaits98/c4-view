@@ -27,7 +27,7 @@ function flowScript(): string {
 const FLOW_CSS = `
 #c4-stage{position:relative}
 #c4-flow-caption{position:fixed;left:50%;bottom:12px;z-index:12;display:flex;align-items:center;gap:8px;
-  max-width:min(70vw,720px);padding:4px 12px 4px 4px;background:var(--c4-bar);color:var(--c4-ink);
+  max-width:min(80vw,900px);padding:4px 12px 4px 4px;background:var(--c4-bar);color:var(--c4-ink);
   border:1px solid rgba(128,128,128,.35);border-radius:9999px;box-shadow:0 6px 20px rgb(0 0 0 / .35);
   transform:translateX(-50%);font:13px/1.2 system-ui,sans-serif}
 .c4-flow-btn{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;
@@ -36,7 +36,10 @@ const FLOW_CSS = `
 .c4-flow-btn:hover{background:rgba(128,128,128,.16)}
 .c4-flow-btn[aria-disabled='true']{opacity:.38;cursor:default}
 #c4-flow-play{gap:4px;padding:0 16px;font-weight:600}
+#c4-flow-text-wrap{display:flex;flex-direction:column;gap:2px;min-width:0}
 #c4-flow-text{margin:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#c4-flow-desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin:0;overflow:hidden;white-space:normal}
+#c4-flow-desc{opacity:.72}
 .c4-dot{fill:#7cc4ff;stroke:#0a111b;stroke-width:2}
 `
 

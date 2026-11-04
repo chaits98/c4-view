@@ -12,7 +12,7 @@ import type { Box, LevelSpec, Placed, Route, Routed } from '../src/types.ts'
 const level = (nodes: number, edges = 0): LevelSpec => ({
   path: '',
   nodes: Array.from({ length: nodes }, (_, i) => ({ id: `n${i}`, label: `N${i}`, subtype: 'system' as const })),
-  edges: Array.from({ length: edges }, (_, i) => ({ from: `n${i % nodes}`, to: `n${(i + 1) % nodes}`, style: 'flow' as const })),
+  edges: Array.from({ length: edges }, (_, i) => ({ desc: 'the payload this edge carries', from: `n${i % nodes}`, to: `n${(i + 1) % nodes}`, style: 'flow' as const })),
 })
 
 const placed = (boxes: Record<string, Box>): Placed => ({
@@ -141,7 +141,7 @@ test('a boundary box over a non-member is a gate, not a note', () => {
       { id: 'b', label: 'B', subtype: 'system' },
       { id: 'x', label: 'X', subtype: 'system' },
     ],
-    edges: [{ from: 'a', to: 'b', style: 'flow' }],
+    edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' }],
     groups: [{ id: 'g', label: 'edge', members: ['a'] }],
   }
   const p = placed({ a: { x: 0, y: 0, w: 100, h: 40 }, b: { x: 300, y: 0, w: 100, h: 40 }, x: { x: 110, y: 60, w: 100, h: 40 } })
@@ -164,7 +164,7 @@ test('a rank hint that sits level with its predecessor is reported as backward',
           { id: 'b', label: 'B', subtype: 'system', rank: 0 },
           { id: 'c', label: 'C', subtype: 'system' },
         ],
-        edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }, { desc: 'the payload this edge carries', from: 'b', to: 'c' }],
       },
     ],
   })
@@ -183,7 +183,7 @@ test('a plain chain has no backward edges', () => {
           { id: 'a', label: 'A', subtype: 'system' },
           { id: 'b', label: 'B', subtype: 'system' },
         ],
-        edges: [{ from: 'a', to: 'b' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }],
       },
     ],
   })

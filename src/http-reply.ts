@@ -55,9 +55,16 @@ export function noLevel(req: IncomingMessage, res: ServerResponse, level: string
 }
 
 /** A model on disk that will not parse: 500, and a page that says which file to fix. */
-export function broken(req: IncomingMessage, res: ServerResponse, id: string, theme: Theme = 'auto'): void {
-  if (acceptsHtml(req)) return send(res, 500, 'text/html; charset=utf-8', brokenModel(id, theme))
-  json(res, 500, { error: `model "${id}" is not valid JSON or does not validate` })
+export function broken(
+  req: IncomingMessage,
+  res: ServerResponse,
+  id: string,
+  theme: Theme = 'auto',
+  reason = '',
+  file = `${id}/model.json`,
+): void {
+  if (acceptsHtml(req)) return send(res, 500, 'text/html; charset=utf-8', brokenModel(id, theme, reason, file))
+  json(res, 500, { error: `model "${id}" does not validate`, problem: reason })
 }
 
 /** The 401: a browser gets a page that states one cause, an agent gets JSON. */

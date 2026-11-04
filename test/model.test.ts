@@ -17,7 +17,7 @@ const base = (over: Record<string, unknown> = {}) => ({
         { id: 'a', label: 'A', subtype: 'system' },
         { id: 'b', label: 'B', subtype: 'database', tech: 'sqlite' },
       ],
-      edges: [{ from: 'a', to: 'b', label: 'writes' }],
+      edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'writes' }],
     },
   ],
   ...over,
@@ -32,7 +32,7 @@ test('parses a valid model and normalises the edge style', () => {
 
 test('rejects an unknown edge target with the exact path', () => {
   const bad = base({
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'ghost' }] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }],
   })
   assert.throws(() => parseModel(bad), (e: unknown) => {
     assert.ok(e instanceof ModelError)
@@ -47,7 +47,7 @@ test('rejects a self-loop instead of drawing an unreadable edge', () => {
       {
         path: '',
         nodes: [{ id: 'a', label: 'A', subtype: 'system' }],
-        edges: [{ from: 'a', to: 'a' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a' }],
       },
     ],
   })
@@ -65,8 +65,8 @@ test('drops a duplicate edge but keeps the first label', () => {
             { id: 'b', label: 'B', subtype: 'system' },
           ],
           edges: [
-            { from: 'a', to: 'b', label: 'first' },
-            { from: 'a', to: 'b', label: 'second' },
+            { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'first' },
+            { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'second' },
           ],
         },
       ],
@@ -127,10 +127,10 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['non-string identity', node({ identity: [] }), /nodes\[0\]\.identity: must be a string when present/],
     ['non-string group', node({ group: {} }), /nodes\[0\]\.group: must be a string when present/],
     ['edge not an object', withLevel({ edges: ['a→b'] }), /edges\[0\]: must be an object/],
-    ['edge with an unknown from', withLevel({ edges: [{ from: 'ghost', to: 'a' }] }), /edges\[0\]\.from: unknown node "ghost"/],
-    ['edge with an unknown to', withLevel({ edges: [{ from: 'a', to: 'ghost' }] }), /edges\[0\]\.to: unknown node "ghost"/],
-    ['edge label of the wrong type', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', label: 3 }] }), /label: must be a string when present/],
-    ['unknown edge style', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', style: 'dotted' }] }), /style: one of flow\\|dep\\|tent\\|dir/],
+    ['edge with an unknown from', withLevel({ edges: [{ desc: 'the payload this edge carries', from: 'ghost', to: 'a' }] }), /edges\[0\]\.from: unknown node "ghost"/],
+    ['edge with an unknown to', withLevel({ edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }), /edges\[0\]\.to: unknown node "ghost"/],
+    ['edge label of the wrong type', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', label: 3 }] }), /label: must be a string when present/],
+    ['unknown edge style', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', style: 'dotted' }] }), /style: one of flow\\|dep\\|tent\\|dir/],
     ['group not an object', withLevel({ groups: [1] }), /groups\[0\]: must be an object/],
     ['group with no label', withLevel({ groups: [{ id: 'g' }] }), /groups\[0\]\.label: required/],
     ['flow naming a missing edge', withLevel({ flow: ['a->b'] }), /flow\[0\]: "a->b" is not an edge of this level/],
@@ -142,7 +142,7 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['no levels at all', { ...base(), levels: [] }, /at least one level/],
     ['group with non-string members', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: [1, 2] }] }), /groups\[0\]/],
     ['group naming a node that is not in the level', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: ['ghost'] }] }), /groups\[0\]/],
-    ['edge style that is not a string', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ from: 'a', to: 'a', style: 5 }] }), /style/],
+    ['edge style that is not a string', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', style: 5 }] }), /style/],
   ]
   for (const [name, model, expected] of cases) {
     assert.throws(
@@ -158,7 +158,7 @@ test('an optional field is normalised, and a bare level gets a name', () => {
     ...base(),
     levels: [
       { nodes: [{ id: 'a', label: 'A', subtype: 'system', tech: 'x', desc: 'y', identity: 'z', group: 'g' }], edges: [] },
-      { path: 'a', title: '', nodes: [{ id: 'b', label: 'B', subtype: 'system' }, { id: 'c', label: 'C', subtype: 'system' }], edges: [{ from: 'b', to: 'c' }] },
+      { path: 'a', title: '', nodes: [{ id: 'b', label: 'B', subtype: 'system' }, { id: 'c', label: 'C', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'b', to: 'c' }] },
     ],
   })
   const [overview, child] = model.levels
@@ -202,7 +202,7 @@ test('a fully specified model keeps every field it was given', () => {
           { id: 'a', label: 'A', subtype: 'system', tech: 'Node', desc: 'd', identity: 'i', group: 'g', rank: 0 },
           { id: 'b', label: 'B', subtype: 'microservice', tech: '', desc: '', identity: '', group: '' },
         ],
-        edges: [{ from: 'a', to: 'b', label: 'calls', style: 'dep' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'calls', style: 'dep' }],
         groups: [{ id: 'g', label: 'Group', members: ['a', 7, null, 'b'] }],
         flow: ['a->b'],
       },
@@ -216,4 +216,46 @@ test('a fully specified model keeps every field it was given', () => {
   assert.deepEqual(level.groups?.[0].members, ['a', 'b'], 'non-strings in members are dropped')
   assert.deepEqual(level.flow, ['a->b'])
   assert.equal(level.edges[0].style, 'dep')
+})
+
+test('an edge without a description still parses, with an empty one', () => {
+  const raw = {
+    id: 'nodesc',
+    title: 'No desc',
+    levels: [
+      {
+        path: '',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system' },
+          { id: 'b', label: 'B', subtype: 'system' },
+        ],
+        edges: [{ from: 'a', to: 'b' }],
+      },
+    ],
+  }
+  // a model written before descriptions existed keeps drawing: the viewer asks for one on the page instead
+  const model = parseModel(raw)
+  assert.equal(model.levels[0].edges[0].desc, '', 'defaulted, never the string "undefined"')
+})
+
+test('a desc that is not a string is refused, by position', () => {
+  const raw = {
+    id: 'baddesc',
+    title: 'Bad desc',
+    levels: [
+      {
+        path: '',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system' },
+          { id: 'b', label: 'B', subtype: 'system' },
+        ],
+        edges: [{ from: 'a', to: 'b', desc: 42 }],
+      },
+    ],
+  }
+  assert.throws(() => parseModel(raw), (error: unknown) => {
+    assert.ok(error instanceof ModelError)
+    assert.ok(error.problems.some((p) => p.includes('edges[0].desc: must be a string')))
+    return true
+  })
 })

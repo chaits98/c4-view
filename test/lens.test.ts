@@ -119,7 +119,7 @@ test('a child level that repeats a parent box with the same identity is composin
       {
         path: '',
         nodes: [{ id: 'host', label: 'Host', subtype: 'system' }, { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' }, { id: 'sink', label: 'Sink', subtype: 'file-storage' }],
-        edges: [{ from: 'ext', to: 'host' }, { from: 'host', to: 'sink' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'ext', to: 'host' }, { desc: 'the payload this edge carries', from: 'host', to: 'sink' }],
       },
       {
         path: 'host', ports: { 'ext->host': 'a', 'host->sink': 'a' },
@@ -127,7 +127,7 @@ test('a child level that repeats a parent box with the same identity is composin
           { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' },
           { id: 'a', label: 'A', subtype: 'service-logic' },
         ],
-        edges: [{ from: 'ext', to: 'a' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'ext', to: 'a' }],
       },
     ],
   }
@@ -148,7 +148,7 @@ const pair = (): Record<string, any> => ({
     {
       path: '',
       nodes: [{ id: 'a', identity: 'A-1', label: 'A', subtype: 'person' }, { id: 'host', identity: 'H-1', label: 'Host', subtype: 'system' }, { id: 'b', identity: 'B-1', label: 'B', subtype: 'external-system' }],
-      edges: [{ from: 'a', to: 'host' }, { from: 'host', to: 'b' }],
+      edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'host' }, { desc: 'the payload this edge carries', from: 'host', to: 'b' }],
       flow: ['a->host', 'host->b'],
     },
     {
@@ -189,4 +189,28 @@ test('an id repeated with no identity on one side is still a clash', () => {
   raw.levels[1].nodes.push({ id: 'b', identity: 'X-9', label: 'B again', subtype: 'external-system' })
   const report = lensReport(parseModel(raw as never))
   assert.ok(report.problems.some((p) => /different identities \(none vs X-9\)/.test(p)), report.problems.join('\n'))
+})
+
+test('an edge with no description is a lens problem, named per level', async () => {
+  const { lensReport, parseModel } = await import('../src/lens.ts').then(async (m) => ({
+    lensReport: m.lensReport,
+    parseModel: (await import('../src/model.ts')).parseModel,
+  }))
+  const model = parseModel({
+    id: 'nodesc',
+    title: 'No desc',
+    levels: [
+      {
+        path: '',
+        nodes: [
+          { id: 'a', label: 'A', subtype: 'system' },
+          { id: 'b', label: 'B', subtype: 'system' },
+        ],
+        edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a', desc: 'answers' }],
+      },
+    ],
+  })
+  const problems = lensReport(model).problems.filter((p) => p.includes('desc'))
+  assert.equal(problems.length, 1, 'four eyes: a level with one undescribed edge says so once')
+  assert.match(problems[0], /1 edge\(s\) with no desc — a->b/)
 })

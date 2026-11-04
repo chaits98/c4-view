@@ -11,6 +11,7 @@ import { DEFAULT_LAYOUT, SUBTYPE_KIND, type Box, type LayoutConfig, type LevelSp
 import { DARK } from '../src/theme.ts'
 import { shapeOf, shapePath, shapeTextInset, type ShapeId } from '../src/svg/shapes.ts'
 import { emit } from '../src/svg/emit.ts'
+import { renderModel } from '../src/render.ts'
 
 const cfg: LayoutConfig = DEFAULT_LAYOUT
 const EVIL = `<script>alert(1)</script>&"'`
@@ -27,8 +28,8 @@ const LEVEL: LevelSpec = {
   title: 'Store & <view>',
   nodes: NODES,
   edges: [
-    { from: 'web', to: 'api', label: 'calls', style: 'flow' },
-    { from: 'api', to: 'db', label: EVIL, style: 'dep' },
+    { desc: 'the payload this edge carries', from: 'web', to: 'api', label: 'calls', style: 'flow' },
+    { desc: 'the payload this edge carries', from: 'api', to: 'db', label: EVIL, style: 'dep' },
   ],
   groups: [{ id: 'g1', label: EVIL, members: ['db'] }],
 }
@@ -194,4 +195,21 @@ test('a label that will not fit three lines is truncated with an ellipsis, not c
   assert.equal(t.lines.length, 3, 'never more than three lines')
   assert.ok(t.lines[2].endsWith('…'), `the last line is marked as cut: ${t.lines[2]}`)
   assert.ok(t.identity?.endsWith('…') !== false, 'and so are the small lines when they are long')
+})
+
+test('the edge carries its description, and an undescribed edge carries none', () => {
+  const level = {
+    path: '',
+    nodes: [
+      { id: 'a', label: 'A', subtype: 'system' as const },
+      { id: 'b', label: 'B', subtype: 'system' as const },
+    ],
+    edges: [
+      { from: 'a', to: 'b', label: 'calls', desc: 'A asks B for the answer', style: 'flow' as const },
+      { from: 'b', to: 'a', label: 'answers', style: 'flow' as const },
+    ],
+  }
+  const svg = renderModel({ id: 'x', title: 'X', levels: [level] } as never, '').levels[0].svg
+  assert.match(svg, /data-desc="A asks B for the answer"/)
+  assert.equal((svg.match(/data-desc=/g) ?? []).length, 1, 'one described edge, one attribute')
 })

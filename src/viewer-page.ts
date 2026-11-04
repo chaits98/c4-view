@@ -236,6 +236,9 @@ export function viewerPage(
   const root = `/d/${model.id}`
   const crumbs = crumbsFor(model, level, root)
   const menu = levelMenu(levelOrder(model), level, root)
+  // one line under the bar while the model still has edges nobody described: the feature is only visible if
+  // someone says what to ask for, and it stops appearing once every edge has a sentence
+  const undescribed = model.levels.reduce((n, l) => n + l.edges.filter((e) => !e.desc).length, 0)
   // The opening view is the COMPLETE drawing: the fit that shows all of it, which is fit-v for a column and
   // fit-h for a strip. A reader who wants detail picks 100% and scrolls; the reverse — opening at 100% on a
   // drawing four screens wide — showed a corner and called it the diagram. Explicit `?zoom=` always wins.
@@ -251,6 +254,7 @@ export function viewerPage(
     .replace('<title>C4 viewer</title>', () => `<title>${esc(drawn.level.title)} — ${esc(model.title)}</title>`)
     .replace('<!--THEMEATTR-->', () => themeAttribute(theme))
     .replace('<!--CRUMBS-->', () => crumbs.join(' / '))
+    .replace('<!--NOTICE-->', () => noticeBanner(undescribed))
     .replace('<!--LEVELCURRENT-->', () => esc(menu.current))
     .replace('<!--LEVELS-->', () => menu.rows)
     .replace('<!--ZOOM-->', () => zoomBar(zoomHref, zoom))
@@ -266,4 +270,16 @@ export function viewerPage(
       ' data-diagram="" data-level="" data-root=""',
       () => ` data-diagram="${esc(model.id)}" data-level="${esc(level)}" data-root="${esc(root)}"`,
     )
+}
+
+/** The one-line announcement, shown only while the model still has edges with nothing to say. */
+export function noticeBanner(undescribed: number): string {
+  if (undescribed <= 0) return ''
+  const edges = undescribed === 1 ? '1 edge has' : `${undescribed} edges have`
+  return (
+    `<p class="c4-notice" role="status">` +
+    `<strong>New:</strong> an edge can say what crosses it — ${edges} no description yet. ` +
+    'Ask your agent to describe the flow and watch it play out.' +
+    '</p>'
+  )
 }

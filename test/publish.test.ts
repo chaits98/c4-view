@@ -19,7 +19,7 @@ function repo(): { file: string; root: string } {
   writeFileSync(file, JSON.stringify({
     id: 'shop',
     title: 'Shop',
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ from: 'a', to: 'b' }] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }],
   }))
   writeFileSync(join(c4, 'shop', 'nodes', 'a.md'), '# A\n\nThe first box.')
   writeFileSync(join(c4, 'shop', 'edges', 'a__b.md'), '# a to b\n\nThe call.')

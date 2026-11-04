@@ -46,7 +46,8 @@ Two halves, installed separately:
 
 Without the skill, "draw me a C4 of this repo" gets mermaid soup. With it, the agent surveys the manifests,
 picks the right level for the repo's shape, writes the model, runs the audit, fixes the **model** until every
-geometry gate is zero, and hands over a receipt: the audit line per level, the rendered files, and a link.
+geometry gate is zero, writes the one-sentence `desc` every edge needs for the narration, and hands over a
+receipt: the audit line per level, the rendered files, and a link.
 
 ## Install
 
@@ -103,6 +104,17 @@ deliberate defect per gate: a grader that only ever prints zeroes proves nothing
 Both come from the same pipeline; the full view lays each level out in its own space and nests the finished
 drawings, which is why a container's chain stays readable instead of competing for columns with the rest.
 
+**The flow is narrated, one edge at a time.** Every edge carries a `desc`; the bar at the bottom plays it as a
+second line under the caption (`Git repository → c4-view · model + docs · 2 / 5`), the same sentence appears when
+you hover the edge, and **its length sets the pace** — `900 ms + 55 ms per character`, capped at 7 s, so a
+sentence is not rushed past at a fixed beat. While it plays, the two nodes the edge joins and the edge itself
+stay at full strength and everything else drops to 40%: the packet is the only thing moving at contrast.
+
+A model written before `desc` existed still opens — the field defaults to `''` — and the page says so under the
+bar: *"12 edges have no description yet. Ask your agent to describe the flow and watch it play out."*
+`c4v audit --strict` names every one of them by level (`level "(root)": 5 edge(s) with no desc — agent->repo, …`),
+so an agent that promised a narrated flow gets told what is missing rather than shipping a mime.
+
 ## Exports
 
 `Download` in the viewer, or the CLI:
@@ -146,15 +158,17 @@ without telling anyone. That is the trade, stated up front: one line per commit,
       { "id": "web", "label": "Storefront", "subtype": "web-application", "tech": "React 19", "identity": "SHP-2" },
       { "id": "api", "label": "API", "subtype": "microservice", "tech": "FastAPI", "identity": "SHP-3" }
     ],
-    "edges": [{ "from": "web", "to": "api", "label": "REST" }],
+    "edges": [{ "from": "web", "to": "api", "label": "REST",
+                "desc": "The storefront posts the basket; the API answers with a priced order." }],
     "ports": { "user->shop/web": "router" },
     "flow": ["web->api"]
   }]
 }
 ```
 
-`subtype` is one of 49 C4 types and decides shape and colour. A node is drillable when a level exists at
-`<parent path>/<node id>`. `ports` says where an outside edge enters a drilled box. `flow` declares the
+An edge has two things to say: `label`, the headline word on the wire (`REST`, `writes`), and `desc`, the one
+sentence on what crosses — 60–140 characters, played in the narration and shown on hover. `subtype` is one of
+49 C4 types and decides shape and colour. A node is drillable when a level exists at `<parent path>/<node id>`. `ports` says where an outside edge enters a drilled box. `flow` declares the
 narration order; without it, one is derived deterministically.
 
 The authoring rules, the delivery contract and the troubleshooting table live in

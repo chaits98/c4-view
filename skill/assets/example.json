@@ -30,12 +30,12 @@
       "edges": [
         {
           "from": "user",
-          "to": "app",
+          "to": "app", "desc": "The person asks for a page; the app is the only thing they touch.",
           "label": "requests"
         },
         {
           "from": "app",
-          "to": "ext",
+          "to": "ext", "desc": "A read against a third party, made by the app on the user\u2019s behalf.",
           "label": "reads"
         }
       ],
@@ -74,12 +74,12 @@
       "edges": [
         {
           "from": "api",
-          "to": "core",
+          "to": "core", "desc": "A validated request, handed to the domain code that decides what happens.",
           "label": "calls"
         },
         {
           "from": "core",
-          "to": "store",
+          "to": "store", "desc": "The state the core owns, written so a restart does not lose it.",
           "label": "writes"
         }
       ],

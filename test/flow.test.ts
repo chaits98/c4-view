@@ -16,9 +16,9 @@ const level = (over: Partial<LevelSpec> = {}): LevelSpec => ({
     { id: 'c', label: 'C', subtype: 'system' },
   ],
   edges: [
-    { from: 'a', to: 'b', style: 'flow' },
-    { from: 'b', to: 'c', style: 'flow' },
-    { from: 'a', to: 'c', style: 'dep' },
+    { desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' },
+    { desc: 'the payload this edge carries', from: 'b', to: 'c', style: 'flow' },
+    { desc: 'the payload this edge carries', from: 'a', to: 'c', style: 'dep' },
   ],
   ...over,
 })
@@ -44,8 +44,8 @@ test('a cycle still yields every edge exactly once', () => {
       { id: 'b', label: 'B', subtype: 'system' },
     ],
     edges: [
-      { from: 'a', to: 'b', style: 'flow' },
-      { from: 'b', to: 'a', style: 'flow' },
+      { desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' },
+      { desc: 'the payload this edge carries', from: 'b', to: 'a', style: 'flow' },
     ],
   })
   assert.deepEqual(flowOrder(cyclic), ['a->b', 'b->a'])
@@ -70,7 +70,7 @@ test('the model validator rejects a flow key that is not an edge', () => {
           {
             path: '',
             nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }],
-            edges: [{ from: 'a', to: 'b' }],
+            edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }],
             flow: ['a->b', 'b->ghost'],
           },
         ],

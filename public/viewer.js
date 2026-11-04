@@ -87,6 +87,11 @@
       .join(' ')
   }
 
+  /** A doc opens with its own <h1> naming the same thing the card's title already names: drop it. */
+  function withoutHeading(html) {
+    return html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>/, '').trim()
+  }
+
   // The authored doc for this node, when the repo has one; the model's one-line desc otherwise.
   function docFor(node) {
     const docs = docPayload()
@@ -111,16 +116,50 @@
     if (!card) return
     cardTitle.textContent = labelOfNode(node)
     const html = docFor(node)
-    if (html) cardDesc.innerHTML = html
+    if (html) cardDesc.innerHTML = withoutHeading(html)
     else cardDesc.textContent = node.dataset.desc || ''
     card.hidden = false
     placeCard(node)
   }
 
+  /** An edge's name is its chip; the sentence that explains it rides on the path. */
+  function showEdge(el) {
+    if (!card) return
+    const key = el.dataset.key || ''
+    const [from, to] = key.split('->')
+    const chip = svg.querySelector(`g[data-chip][data-key="${CSS.escape(key)}"]`)
+    const path = svg.querySelector(`path[data-key="${CSS.escape(key)}"][data-desc]`)
+    const desc = (path && path.dataset.desc) || ''
+    const docs = docPayload()
+    const html = docs && docs.edges ? docs.edges[key] : undefined
+    if (!desc && !html) return hideHover()
+    const name = (chip && chip.textContent.trim()) || ''
+    // the ends are named the way the drawing names them, not by their ids
+    const nameOf = (id) => {
+      const node = svg.querySelector(`g[data-id="${CSS.escape(id ?? '')}"]`)
+      return node ? labelOfNode(node) : (id ?? '')
+    }
+    cardTitle.textContent = `${nameOf(from)} → ${nameOf(to)}${name ? ` · ${name}` : ''}`
+    // the edge has two things to say: its label (already the title) and its description. The description is
+    // the sentence the caption plays; a doc is where that sentence is written down, so its own heading is
+    // dropped rather than repeated under the title
+    if (desc) cardDesc.textContent = desc
+    else cardDesc.innerHTML = withoutHeading(html || '')
+    card.hidden = false
+    placeCard(el)
+  }
+
   function onHover(e) {
-    const node = e.target.closest ? e.target.closest('g[data-id]') : null
-    if (!node || (!node.dataset.desc && !docFor(node))) return hideHover()
-    showHover(node)
+    if (!(e.target instanceof Element)) return hideHover()
+    const node = e.target.closest('g[data-id]')
+    if (node) {
+      if (!node.dataset.desc && !docFor(node)) return hideHover()
+      return showHover(node)
+    }
+    // the chip is painted above the routes, so it is what a pointer usually lands on
+    const edge = e.target.closest('g[data-chip], path[data-key]')
+    if (edge) return showEdge(edge)
+    hideHover()
   }
 
   /** The server embeds every doc for this level as one JSON block; parse it once, lazily. */

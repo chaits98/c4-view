@@ -8,7 +8,7 @@
  *   - keys are scoped to this bar, never the document;
  *   - at the last edge the dot and the caption stay and the button reads Replay — no loop.
  */
-import { actionOf, caption, face, live } from './flow-model.js'
+import { actionOf, caption, face, live, travel } from './flow-model.js'
 
 const stage = document.getElementById('c4-stage')
 const svg = stage && stage.querySelector('svg')
@@ -16,11 +16,9 @@ const rootG = svg && (svg.querySelector('g.c4-root') || svg.querySelector('g'))
 if (rootG) {
   const NS = 'http://www.w3.org/2000/svg'
   const reduce = matchMedia('(prefers-reduced-motion: reduce)')
-  /** ux-guideline §4.1: ~1.1 s per step — 900 ms of travel, then the caption holds. */
-  const TRAVEL = 900
   const DWELL = 200
-  /** reduced motion still advances, as a slide deck: no interpolation at all. */
-  const STEPPED = 1600
+  /** reduced motion still advances, as a slide deck: no interpolation at all, but still time to read. */
+  const stepped = (edge) => travel(edge.desc) + 500
 
   // the whole stage, not just the first svg: a nested picture holds one svg per level, and each numbers its
   // own steps from 1 — so an edge sorts by which picture it lives in first, then by its step inside it
@@ -43,6 +41,8 @@ if (rootG) {
       step: Number(el.dataset.flow),
       key: el.dataset.key || '',
       label: byKey.get(el.dataset.key) ?? positional.get(el.dataset.key) ?? '',
+      // the sentence the model wrote for this edge: shown under the caption, and it sets the step's length
+      desc: el.dataset.desc || '',
     }))
     .filter((e) => Number.isFinite(e.step))
     .sort((a, b) => (a.picture - b.picture) || (a.step - b.step))
@@ -87,7 +87,16 @@ if (rootG) {
     text.className = 't-label-m'
     text.setAttribute('aria-live', 'polite')
     text.setAttribute('aria-atomic', 'true')
-    bar.append(play, prev, next, replay, text)
+    // the description is a second line of the same caption: `aria-hidden`, because the line above already
+    // names the step and a live region that reads both is a live region that never stops talking
+    const desc = document.createElement('p')
+    desc.id = 'c4-flow-desc'
+    desc.className = 't-body-s'
+    desc.setAttribute('aria-hidden', 'true')
+    const words = document.createElement('p')
+    words.id = 'c4-flow-text-wrap'
+    words.append(text, desc)
+    bar.append(play, prev, next, replay, words)
     document.body.append(bar)
 
     let index = 0
@@ -123,6 +132,26 @@ if (rootG) {
       dot.setAttribute('cy', String(local.y))
     }
 
+    /** Only this step: the two nodes it joins and the edge itself stay at full strength, the rest steps back. */
+    function focus(edge) {
+      for (const el of rootG.querySelectorAll('[data-active]')) el.removeAttribute('data-active')
+      const [from, to] = edge.key.split('->')
+      for (const id of [from, to]) {
+        const node = nodeById.get(id)
+        if (node) node.setAttribute('data-active', 'true')
+      }
+      edge.el.setAttribute('data-active', 'true')
+      const chip = rootG.querySelector(`g[data-chip][data-key="${edge.key.replace(/"/g, '\\"')}"]`)
+      if (chip) chip.setAttribute('data-active', 'true')
+      rootG.classList.add('c4-focus')
+    }
+
+    /** Back to the whole picture: a paused page is not narrating a single step any more. */
+    function unfocus() {
+      for (const el of rootG.querySelectorAll('[data-active]')) el.removeAttribute('data-active')
+      rootG.classList.remove('c4-focus')
+    }
+
     function stop() {
       playing = false
       if (raf) cancelAnimationFrame(raf)
@@ -136,6 +165,8 @@ if (rootG) {
       const [from, to] = edge.key.split('->')
       text.setAttribute('aria-live', live(playing))
       text.textContent = caption(labelOf(from || ''), to ? labelOf(to) : '', edge.label, index, edges.length)
+      desc.textContent = edge.desc
+      desc.hidden = !edge.desc
     }
 
     function paint() {
@@ -150,6 +181,7 @@ if (rootG) {
     /** One step, drawn and nothing else: dot at the midpoint, caption, buttons. */
     function show(i) {
       stop()
+      unfocus()
       index = Math.max(0, Math.min(edges.length - 1, i))
       length = edges[index].el.getTotalLength()
       place(0.5)
@@ -162,15 +194,17 @@ if (rootG) {
       index = i
       length = edges[index].el.getTotalLength()
       say(edges[index])
+      focus(edges[index])
       const after = () => (atEnd() ? end() : begin(index + 1))
       if (reduce.matches) {
         place(0.5)
-        timer = setTimeout(after, STEPPED)
+        timer = setTimeout(after, stepped(edges[index]))
         return
       }
       const start = performance.now()
+      const span = travel(edges[index].desc)
       const tick = (now) => {
-        const t = Math.min(1, (now - start) / TRAVEL)
+        const t = Math.min(1, (now - start) / span)
         place(t)
         if (t < 1) {
           raf = requestAnimationFrame(tick)
@@ -184,6 +218,7 @@ if (rootG) {
 
     function end() {
       stop()
+      unfocus()
       index = edges.length - 1
       length = edges[index].el.getTotalLength()
       place(1)
@@ -253,6 +288,7 @@ if (rootG) {
         playing,
         live: text.getAttribute('aria-live'),
         caption: text.textContent,
+        description: desc.textContent,
         button: play.dataset.state,
         replay: replay.getAttribute('aria-disabled'),
       }),

@@ -111,7 +111,7 @@ test('a level with no docs yields an empty set, and one doc renders and the othe
   const dir = mkdtempSync(join(tmpdir(), 'c4v-leveldocs-'))
   mkdirSync(join(dir, 'nodes'), { recursive: true })
   writeFileSync(join(dir, 'nodes', 'a.md'), '# A\n\nDoes a thing.')
-  const level = { path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice' }, { id: 'b', label: 'B', subtype: 'microservice' }], edges: [{ from: 'a', to: 'b' }] }
+  const level = { path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice' }, { id: 'b', label: 'B', subtype: 'microservice' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }
   const docs = levelDocs(dir, level as never)
   assert.match(docs.nodes.a, /Does a thing/)
   assert.equal(docs.nodes.b, undefined, 'no file, no doc')
@@ -135,7 +135,7 @@ test('an edge doc is rendered when it exists, and skipped when it does not', () 
   mkdirSync(join(dir, 'edges'), { recursive: true })
   writeFileSync(join(dir, 'nodes', 'a.md'), '# A\n\nDoes a thing.')
   writeFileSync(join(dir, 'edges', 'a__b.md'), '# a to b\n\nThe hop.')
-  const level = { path: '', title: 'Root', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }] }
+  const level = { path: '', title: 'Root', nodes: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }, { desc: 'the payload this edge carries', from: 'b', to: 'a' }] }
   const docs = levelDocs(dir, level as never)
   assert.match(docs.edges['a->b'], /The hop/)
   assert.equal(docs.edges['b->a'], undefined, 'the other direction has no file')
@@ -150,7 +150,7 @@ test('a parent with no groups still expands, with the frame as the only group', 
 
 test('a parent flow that never touches the host puts the child flow at the end', () => {
   const raw = lens()
-  raw.levels[0].edges.push({ from: 'user', to: 'context2', label: 'ask' })
+  raw.levels[0].edges.push({ desc: 'the payload this edge carries', from: 'user', to: 'context2', label: 'ask' })
   raw.levels[0].flow = ['user->context2']
   raw.levels[1].flow = ['a->b']
   const { level } = expandLevel(parseModel(raw), 'context1')
@@ -167,7 +167,7 @@ test('a child flow only composes to the child flow', () => {
 
 test('a parent flow edge that does not cross into the host survives verbatim', () => {
   const raw = lens()
-  raw.levels[0].edges.push({ from: 'context2', to: 'context3', label: 'side' })
+  raw.levels[0].edges.push({ from: 'context2', to: 'context3', label: 'side', desc: 'a side channel between two externals' })
   raw.levels[0].flow = ['context2->context3', 'user->context1']
   raw.levels[1].flow = ['a->b']
   const { level } = expandLevel(parseModel(raw), 'context1')
@@ -182,7 +182,7 @@ test('a hand-built model with no groups and no flow still expands', () => {
     id: 'hand',
     title: 'Hand',
     levels: [
-      { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ from: 'user', to: 'host' }] },
+      { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'user', to: 'host' }] },
       { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [], ports: { 'user->host': 'a' } },
     ],
   } as unknown as Parameters<typeof expandLevel>[0]
@@ -227,11 +227,11 @@ test('a box that appears on two levels is drawn once: identity is the merge key'
   // parent's copy as if it were a second box
   const raw = lens()
   raw.levels[0].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system' })
-  raw.levels[0].edges.push({ from: 'ext', to: 'context1', label: 'calls' })
+  raw.levels[0].edges.push({ from: 'ext', to: 'context1', label: 'calls', desc: 'calls in' })
   // the port lives on the child level: it names which interior node the parent edge lands on
   raw.levels[1].ports = { ...(raw.levels[1].ports ?? {}), 'ext->context1': 'a' }
   raw.levels[1].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system' })
-  raw.levels[1].edges.push({ from: 'ext', to: 'a', label: 'asks' })
+  raw.levels[1].edges.push({ from: 'ext', to: 'a', label: 'asks', desc: 'asks a question' })
   const { level } = expandLevel(parseModel(raw), 'context1')
   const ids = level.nodes.map((n) => n.id)
   assert.equal(ids.filter((id) => id === 'ext').length, 1, 'one box, not two')

@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { actionOf, caption, face, live } from '../public/flow-model.js'
+import { actionOf, caption, face, live, travel } from '../public/flow-model.js'
 
 test('caption is `{from} → {to} · {label} · {n} / {total}`', () => {
   const line = caption('Application core', 'Native telemetry', 'ASGI scope', 0, 9)
@@ -52,4 +52,12 @@ test('the primary button is Play, then Pause, then Replay at the last edge', () 
 test('the live region is quiet while playing and polite when stepping', () => {
   assert.equal(live(true), 'off')
   assert.equal(live(false), 'polite')
+})
+
+test('a step lasts as long as its description takes to read', () => {
+  assert.equal(travel(''), 900, 'an edge with nothing to say still gets the floor')
+  assert.equal(travel(undefined), 900)
+  assert.equal(travel('x'.repeat(20)), 2000, '900 ms + 55 ms per character')
+  assert.ok(travel('x'.repeat(80)) > travel('x'.repeat(40)), 'a longer sentence gets more time')
+  assert.equal(travel('x'.repeat(500)), 7000, 'capped: past seven seconds the reader can step by hand')
 })

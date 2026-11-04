@@ -36,8 +36,22 @@ export function lensReport(model: Model): LensReport {
     ...model.levels.flatMap((level) => levelProblems(model, level)),
     ...flowProblems(model),
     ...identityProblems(model),
+    ...descProblems(model),
   ]
   return { problems }
+}
+
+/**
+ * An edge with no description still draws and still animates — it just has nothing to say while it does. The
+ * narration is the product here, so this is a problem worth failing `--strict` over, not a parse error: an old
+ * model keeps opening, and the agent that promised a narrated flow is told what is missing.
+ */
+function descProblems(model: Model): string[] {
+  return model.levels.flatMap((level) => {
+    const missing = level.edges.filter((edge) => !edge.desc).map((edge) => `${edge.from}->${edge.to}`)
+    if (!missing.length) return []
+    return [`level "${level.path || '(root)'}": ${missing.length} edge(s) with no desc — ${missing.join(', ')}`]
+  })
 }
 
 /**

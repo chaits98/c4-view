@@ -60,6 +60,12 @@ export interface EdgeSpec {
   from: string
   to: string
   label?: string
+  /**
+   * One sentence on what crosses this edge: shown on hover and under the flow caption.
+   * `parseModel` refuses a model where it is missing, so every model that reached this type has one; the
+   * field is optional here because a hand-built fixture (a layout test, a probe) has nothing to say.
+   */
+  desc?: string
   /** default 'flow' */
   style?: EdgeStyle
 }

@@ -13,7 +13,7 @@ function chain(n: number): LevelSpec {
     path: 'chain',
     title: 'Chain',
     nodes: Array.from({ length: n }, (_, i) => ({ id: `n${i}`, label: `Node ${i}`, subtype: 'service-logic', tech: 'ts' })),
-    edges: Array.from({ length: n - 1 }, (_, i) => ({ from: `n${i}`, to: `n${i + 1}`, label: `step${i}`, style: 'flow' })),
+    edges: Array.from({ length: n - 1 }, (_, i) => ({ desc: 'the payload this edge carries', from: `n${i}`, to: `n${i + 1}`, label: `step${i}`, style: 'flow' })),
     flow: Array.from({ length: n - 1 }, (_, i) => `n${i}->n${i + 1}`),
   } as LevelSpec
 }
@@ -65,8 +65,8 @@ test('the full view composes every level into one picture, and it audits clean',
     id: 'deep',
     title: 'Deep',
     levels: [
-      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }], edges: [{ from: 'out', to: 'box', label: 'in' }] },
-      { path: 'box', nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }], edges: [{ from: 'stage', to: 'inner', label: 'next' }], ports: { 'out->box': 'stage' } },
+      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }], edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }] },
+      { path: 'box', nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }], edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }], ports: { 'out->box': 'stage' } },
       { path: 'box/inner', nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic' }], edges: [], ports: { 'stage->inner': 'leaf' } },
     ],
   } as never)
@@ -85,7 +85,7 @@ test('a port that named a drilled host lands on the entry of its frame', async (
   const parent = {
     path: '',
     nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'host', label: 'Host', subtype: 'system' }],
-    edges: [{ from: 'a', to: 'host', label: 'in' }],
+    edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'host', label: 'in' }],
     ports: { 'up->root': 'host' },
   }
   const child = {

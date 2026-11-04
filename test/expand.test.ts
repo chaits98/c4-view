@@ -73,7 +73,7 @@ test('a node inside the frame still knows where its own drill goes', () => {
           { id: 'one', label: 'One', subtype: 'service-logic' },
           { id: 'two', label: 'Two', subtype: 'service-logic' },
         ],
-        edges: [{ from: 'one', to: 'two', label: 'calls' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'one', to: 'two', label: 'calls' }],
       },
       {
         path: 'box/one',

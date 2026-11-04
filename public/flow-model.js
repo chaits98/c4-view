@@ -15,6 +15,15 @@
 export const caption = (from, to, label, index, total) =>
   `${from} → ${to || ''} · ${label || 'unnamed'} · ${index + 1} / ${total}`
 
+/**
+ * How long one step travels, from the sentence it asks the reader to read.
+ *
+ * A description is the point of the step, so a long one is not rushed past at a fixed 900 ms: the dot takes
+ * ~55 ms per character on top of a 900 ms floor, and never more than 7 s — past that the animation is a
+ * hostage situation, and the reader can step by hand.
+ */
+export const travel = (desc) => Math.min(7000, Math.max(900, 900 + String(desc || '').length * 55))
+
 /** The keys the bar answers, and what they do. Scope is the caller's job. */
 const ACTIONS = {
   ' ': 'toggle',

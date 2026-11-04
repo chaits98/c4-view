@@ -94,6 +94,9 @@ function checkEdge(raw: Record<string, unknown>, at: string, ids: Set<string>, b
   if (!str(raw.to) || !ids.has(raw.to)) bad.push(`${at}.to: unknown node "${String(raw.to)}"`)
   if (raw.from === raw.to) bad.push(`${at}: self-loop on "${String(raw.from)}" — draw it as a node property, not an edge`)
   if (raw.label !== undefined && !str(raw.label)) bad.push(`${at}.label: must be a string when present`)
+  // desc is optional so a model written before it existed still draws: the viewer says on the page that the
+  // edge can carry one, and the caption has a line waiting for it
+  if (raw.desc !== undefined && !str(raw.desc)) bad.push(`${at}.desc: must be a string when present`)
   const style = raw.style
   if (style !== undefined && (!str(style) || !EDGE_STYLES.includes(style as EdgeStyle))) {
     bad.push(`${at}.style: one of ${EDGE_STYLES.join('|')}`)
@@ -118,6 +121,7 @@ function parseEdges(raw: unknown, at: string, ids: Set<string>, bad: string[]): 
     edges.push({
       from: String(edge.from),
       to: String(edge.to),
+      desc: typeof edge.desc === 'string' ? edge.desc.trim() : '',
       style: (edge.style as EdgeStyle | undefined) ?? 'flow',
       ...(edge.label !== undefined ? { label: String(edge.label) } : {}),
     })

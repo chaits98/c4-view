@@ -101,6 +101,18 @@ model lives in your answer; the rule "inside the repo" applies to the repo you a
 cannot label with cargo or a verb is not an edge — delete it. This is the difference between a diagram and a
 drawing.
 
+**Write the `desc` for every edge — it is the sentence, the label is only the headline.** One line, 60–140
+characters, saying what crosses, in which direction, and what the far side does with it:
+
+```json
+{ "from": "cli", "to": "store", "label": "publishes", "style": "flow",
+  "desc": "A finished diagram is written into the store as one directory per model, model.json and its docs." }
+```
+
+The viewer plays this: it is the second line of the flow caption, it is what an edge shows on hover, and **its
+length sets how long that step travels** (900 ms + 55 ms per character, capped at 7 s). Write the flow as a
+sequence of such sentences and the animation reads as a narration; leave it empty and the step is a mime.
+
 ## Commands
 
 Audit judges the picture a page draws: a level with a parent is reported **composed** and the line says so

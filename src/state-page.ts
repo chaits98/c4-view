@@ -57,14 +57,24 @@ export function missingLevel(level: string, levels: string[], theme: Theme = 'au
   )
 }
 
-/** The file is there and is not a model — a crashed writer, a half-written upload, a bad edit. */
-export function brokenModel(id: string, theme: Theme = 'auto'): string {
+/** The file is there and is not a model — a crashed writer, a half-written upload, an out-of-date rule. */
+export function brokenModel(id: string, theme: Theme = 'auto', reason = '', file = `${id}/model.json`): string {
+  // two different failures deserve two different sentences: JSON that does not parse is a broken write, a
+  // model that breaks a rule is a diagram from before the rule and can be repaired
+  const rules = /^levels\[|^model|^layout|^nodes|^edges/.test(reason)
+  const cause = rules
+    ? 'It is valid JSON, but it does not pass the model rules any more — so drawing it would be a guess.'
+    : 'The file exists and its JSON does not parse, so drawing it would be a guess.'
+  const problem = reason ? `<p><strong>First problem:</strong> <code>${escape(reason)}</code></p>` : ''
+  const fix = rules
+    ? `<p>See every problem it has: <code>c4v audit ${escape(file)}</code>. Then add what it names, or delete it from the store to take the card away.</p>`
+    : `<p>Re-render it with <code>c4v render</code>, or delete <code>${escape(file)}</code> from the store to take the card away.</p>`
   return shell(
     'model will not parse',
-    `<h1 class="t-headline-s">“${escape(id)}” is on disk but will not parse</h1>
-<p>The file exists and its JSON does not validate, so drawing it would be a guess.</p>
-<p>Re-render it with <code>c4v render</code>, or delete <code>${escape(id)}/model.json</code> from the
-store to take the card away.</p>`,
+    `<h1 class="t-headline-s">“${escape(id)}” is on disk but will not draw</h1>
+<p>${cause}</p>
+${problem}
+${fix}`,
     theme,
   )
 }

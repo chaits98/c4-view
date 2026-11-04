@@ -16,11 +16,11 @@ const RAW = JSON.stringify({
   id: 'ship',
   title: 'Ship',
   levels: [
-    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'box', label: 'Box', subtype: 'system' }], edges: [{ from: 'a', to: 'box', label: 'in' }] },
+    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'box', label: 'Box', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'box', label: 'in' }] },
     {
       path: 'box',
       nodes: [{ id: 'in', label: 'In', subtype: 'service-logic' }, { id: 'out', label: 'Out', subtype: 'service-logic' }],
-      edges: [{ from: 'in', to: 'out', label: 'next' }],
+      edges: [{ desc: 'the payload this edge carries', from: 'in', to: 'out', label: 'next' }],
       ports: { 'a->box': 'in' },
     },
   ],

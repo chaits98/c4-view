@@ -17,7 +17,7 @@ const model = (id: string, title: string, count: number): Record<string, unknown
   levels: [{
     path: '',
     nodes: Array.from({ length: count }, (_, i) => ({ id: `n${i}`, label: `Service ${i}`, subtype: 'system' })),
-    edges: Array.from({ length: Math.max(0, count - 1) }, (_, i) => ({ from: `n${i}`, to: `n${i + 1}` })),
+    edges: Array.from({ length: Math.max(0, count - 1) }, (_, i) => ({ desc: 'the payload this edge carries', from: `n${i}`, to: `n${i + 1}` })),
   }],
 })
 
@@ -68,7 +68,7 @@ test('a card that had to crop says so with a class, not a badge', async () => {
     levels: [{
       path: '',
       nodes: Array.from({ length: 10 }, (_, i) => ({ id: `n${i}`, label: `Service ${i}`, subtype: 'system' })),
-      edges: Array.from({ length: 9 }, (_, i) => ({ from: `n${i}`, to: `n${i + 1}` })),
+      edges: Array.from({ length: 9 }, (_, i) => ({ desc: 'the payload this edge carries', from: `n${i}`, to: `n${i + 1}` })),
     }],
   }
   assert.equal((await fetch(`${base}/api/diagrams`, { method: 'POST', body: JSON.stringify(wide) })).status, 201)

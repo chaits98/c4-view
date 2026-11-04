@@ -13,9 +13,9 @@
         { "id": "context3", "label": "Context 3", "subtype": "external-system", "tech": "shared store" }
       ],
       "edges": [
-        { "from": "user", "to": "context1", "label": "uses" },
-        { "from": "context1", "to": "context2", "label": "sends" },
-        { "from": "context1", "to": "context3", "label": "writes" }
+        { "from": "user", "to": "context1", "desc": "A user drives the first context; nothing else calls it.", "label": "uses" },
+        { "from": "context1", "to": "context2", "desc": "An event the first context publishes for the second to consume.", "label": "sends" },
+        { "from": "context1", "to": "context3", "desc": "A record the first context owns and the third only reads.", "label": "writes" }
       ],
       "flow": ["user->context1", "context1->context2", "context1->context3"]
     },
@@ -34,9 +34,9 @@
         { "id": "d", "label": "d", "subtype": "adapter", "desc": "talks to Context 2" }
       ],
       "edges": [
-        { "from": "a", "to": "b", "label": "calls" },
-        { "from": "b", "to": "d", "label": "emits" },
-        { "from": "b", "to": "c", "label": "stores" }
+        { "from": "a", "to": "b", "desc": "A synchronous call with a request body and a typed response.", "label": "calls" },
+        { "from": "b", "to": "d", "desc": "A domain event, published after the write commits.", "label": "emits" },
+        { "from": "b", "to": "c", "desc": "The state b keeps, stored so a restart does not lose it.", "label": "stores" }
       ],
       "flow": ["a->b", "b->d", "b->c"]
     }

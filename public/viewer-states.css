@@ -106,3 +106,17 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* the announcement under the bar: one line, and it disappears once every edge has a description */
+.c4-notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  color: var(--c4-fg);
+  background: var(--surface-container-low, #1d1b20);
+  border-bottom: 1px solid var(--c4-line);
+  font-size: 0.875rem;
+}
+
+.c4-notice strong {
+  color: var(--primary);
+}

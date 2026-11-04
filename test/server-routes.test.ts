@@ -20,7 +20,7 @@ const STORED = {
   id: 'routes',
   title: 'Routes',
   levels: [
-    { path: '', title: 'Overview', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ from: 'a', to: 'b' }] },
+    { path: '', title: 'Overview', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] },
   ],
 }
 const ID = STORED.id
@@ -149,7 +149,7 @@ test('the states a first-time reader meets are pages, not JSON', async () => {
   writeFileSync(join(root, 'torn', 'model.json'), '{"id": "torn", "levels": [')
   const broken = await fetch(`${base}/d/torn`, { headers: html })
   assert.equal(broken.status, 500)
-  assert.match(await broken.text(), /will not parse/, 'and says which file to fix')
+  assert.match(await broken.text(), /is on disk but will not draw/, 'and says what is wrong')
 
   const agent = await fetch(`${base}/d/no-such-diagram`)
   assert.match(await agent.text(), /"error"/, 'an agent still gets JSON')

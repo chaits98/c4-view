@@ -92,7 +92,7 @@ test('levelDocs reads nodes and edges from beside the model, and skips what is m
           { id: 'a', label: 'A', subtype: 'system' },
           { id: 'b', label: 'B', subtype: 'system' },
         ],
-        edges: [{ from: 'a', to: 'b', label: 'calls' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'calls' }],
       },
     ],
   })
@@ -116,7 +116,7 @@ test('docsProblems names every node and edge without a doc, with the path it sho
           { id: 'inner', label: 'I', subtype: 'function' },
           { id: 'other', label: 'O', subtype: 'function' },
         ],
-        edges: [{ from: 'inner', to: 'other', label: 'calls' }],
+        edges: [{ desc: 'the payload this edge carries', from: 'inner', to: 'other', label: 'calls' }],
       },
     ],
   })

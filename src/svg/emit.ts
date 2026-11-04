@@ -62,7 +62,7 @@ function pathD(r: Route): string {
   return r.pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${n(p.x)} ${n(p.y)}`).join('')
 }
 
-function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<string, number>): string[] {
+function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<string, number>, descOf: Map<string, string>): string[] {
   const styleOf = new Map(placed.chains.map((c) => [c.key, c.style]))
   return routed.routes.map((r) => {
     const style = styleOf.get(r.key) ?? 'flow'
@@ -73,7 +73,10 @@ function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<stri
     // exactly one edge at a time, in this order.
     const step = flow.get(r.key)
     const flowAttr = step === undefined ? '' : ` data-flow="${step}"`
-    return `<path data-key="${esc(r.key)}"${flowAttr} d="${pathD(r)}" stroke="${e.stroke}" stroke-width="${n(e.width)}"${dash} ` +
+    // data-desc is the edge's own sentence: the hover card and the flow caption read it
+    const desc = descOf.get(r.key)
+    const descAttr = desc ? ` data-desc="${esc(desc)}"` : ''
+    return `<path data-key="${esc(r.key)}"${descAttr}${flowAttr} d="${pathD(r)}" stroke="${e.stroke}" stroke-width="${n(e.width)}"${dash} ` +
       `fill="none" marker-end="url(#arrow-${style})"/>`
   })
 }
@@ -157,13 +160,14 @@ export function emit(
 ): string {
   const drill = options.drill ?? new Map<string, string>()
   const flow = options.flow ?? new Map<string, number>()
+  const descOf = new Map(level.edges.flatMap((e) => (e.desc ? [[`${e.from}->${e.to}`, e.desc] as [string, string]] : [])))
   const linkBase = options.linkBase
   // drawn size never below the boxes it must contain, even if a route stage underpays
   const w = Math.max(placed.size.w, routed.size.w) + 16
   const h = Math.max(placed.size.h, routed.size.h) + 16
   const body = [
     ...groupLayer(placed, theme),
-    ...routeLayer(routed, placed, theme, flow),
+    ...routeLayer(routed, placed, theme, flow, descOf),
     ...nodeLayer(level, placed, cfg, theme, drill, linkBase, options.hosts),
     ...chipLayer(routed, cfg, theme),
     ...groupLabelLayer(placed, theme),
@@ -171,7 +175,10 @@ export function emit(
   const canvas = options.background
     ? `<rect class="c4-canvas" x="0" y="0" width="${n(w)}" height="${n(h)}" fill="${options.background}"/>`
     : ''
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img">` +
-    `<title>${esc(level.title ?? (level.path || 'C4 diagram'))}</title>${defs(theme)}${canvas}` +
+  // the accessible name is an aria-label, not a <title> child: a <title> is also the browser's own tooltip,
+  // and it floated a second, identical-to-nothing bubble beside the hover card the viewer draws
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(w)} ${n(h)}" width="${n(w)}" height="${n(h)}" role="img"` +
+    ` aria-label="${esc(level.title ?? (level.path || 'C4 diagram'))}">` +
+    `${defs(theme)}${canvas}` +
     `<g class="c4-root" transform="translate(8,8)">${body.join('')}</g></svg>`
 }

@@ -61,8 +61,8 @@ test('a rank hint that leaves empty ranks still routes inside the drawing', () =
           { id: 'c', label: 'Other', subtype: 'microservice', rank: 5 },
         ],
         edges: [
-          { from: 'a', to: 'b', label: 'long haul' },
-          { from: 'a', to: 'c', label: 'other haul' },
+          { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'long haul' },
+          { desc: 'the payload this edge carries', from: 'a', to: 'c', label: 'other haul' },
         ],
       },
     ],

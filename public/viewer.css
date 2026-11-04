@@ -132,7 +132,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  max-width: min(70vw, 720px);
+  max-width: min(80vw, 900px);
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
@@ -159,11 +159,46 @@ body {
   font-weight: 600;
 }
 
+/* the caption is two lines: what the step is, then the sentence the model wrote for it */
+#c4-flow-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 #c4-flow-text {
   margin: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* the description is a sentence, not a title: it wraps to two lines rather than losing its end */
+#c4-flow-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin: 0;
+  overflow: hidden;
+  color: var(--on-surface-variant);
+}
+
+/* while the flow plays, the step IS the picture: the two nodes it joins and the edge itself keep full
+   strength, everything else steps back so the packet is the only thing moving at full contrast */
+.c4-focus g[data-id],
+.c4-focus path[data-key],
+.c4-focus g[data-chip] {
+  opacity: 0.4;
+  transition: opacity var(--dur-short3) var(--ease-standard);
+}
+
+/* spelled out, not a bare [data-active]: the dim rule above is class+attribute+element, and a shorter
+   selector loses to it however specific it looks */
+.c4-focus g[data-id][data-active='true'],
+.c4-focus path[data-key][data-active='true'],
+.c4-focus g[data-chip][data-active='true'] {
+  opacity: 1;
 }
 
 .c4-dot {

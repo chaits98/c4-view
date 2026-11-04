@@ -3,13 +3,13 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { levelOf } from './model.ts'
+import { ModelError, levelOf } from './model.ts'
 import { indexEntries, indexPage, type Filter, type Sort } from './index-page.ts'
 import { docsDir, levelDocs } from './docs.ts'
 import { pictureAudits, renderExpanded, renderModel } from './render.ts'
 import { nestedLevel } from './nest.ts'
 import { paletteOf } from './theme.ts'
-import { list, loadModel, modelFile } from './store.ts'
+import { list, loadModel, modelFile, unreadable } from './store.ts'
 import { create, drop, pin } from './server-write.ts'
 import { viewerPage } from './viewer-page.ts'
 import { sendExport } from './server-export.ts'
@@ -40,7 +40,11 @@ export async function serve(opts: { port: number; root: string; host?: string; t
       /* node:coverage enable */
       // a route that names a diagram can say which file is broken; anything else can only say 500
       const asked = pathname ? diagramRoute(pathname) : null
-      if (asked && 'id' in asked) return broken(req, res, asked.id)
+      if (asked && 'id' in asked) {
+        // the first problem is the useful part, and the file path is how the reader fixes it
+        const first = error instanceof ModelError ? (error.problems[0] ?? '') /* coverage:invariant — parseModel throws only with at least one problem */ : message
+        return broken(req, res, asked.id, 'auto', first, modelFile(root, asked.id))
+      }
       json(res, 500, { error: message })
     })
   })
@@ -204,7 +208,7 @@ async function handle(root: string, guard: Guard, req: IncomingMessage, res: Ser
         res,
         200,
         'text/html; charset=utf-8',
-        indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sortOf(url), filterOf(url)),
+        indexPage(indexEntries(list(root), (id) => loadModel(root, id), theme), theme, sortOf(url), filterOf(url), unreadable(root)),
       )
     }
     case 'health':

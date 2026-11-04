@@ -126,6 +126,16 @@ function card(entry: IndexEntry): string {
   )
 }
 
+/** The store is not empty, it is out of date: say which models, and how to see what they need. */
+function brokenNote(broken: ReadonlyArray<{ id: string; reason: string }>): string {
+  if (!broken.length) return ''
+  const names = broken.map((b) => `<code>${esc(b.id)}</code>`).join(', ')
+  const count = broken.length === 1 ? 'One stored diagram is' : `${broken.length} stored diagrams are`
+  const reason = esc(broken[0].reason)
+  const hint = 'Run <code>c4v audit &lt;id&gt;</code> for the full list.'
+  return `<p class="idx-note">${count} not shown — ${names}. First problem: ${reason}. ${hint}</p>`
+}
+
 export type Sort = 'updated' | 'title' | 'audit'
 export type Filter = 'all' | 'fail'
 
@@ -180,7 +190,14 @@ function emptyState(filter: Filter, total: number): string {
   )
 }
 
-export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto', sort: Sort = 'updated', filter: Filter = 'all'): string {
+export function indexPage(
+  entries: readonly IndexEntry[],
+  theme: Theme = 'auto',
+  sort: Sort = 'updated',
+  filter: Filter = 'all',
+  /** stored diagrams the current rules refuse, named rather than hidden */
+  broken: ReadonlyArray<{ id: string; reason: string }> = [],
+): string {
   const kept = filter === 'fail' ? entries.filter((entry) => !entry.ok) : [...entries]
   // pin means the front: it is a promise the button makes, so it outranks the chosen order
   const sorted = [...kept].sort(COMPARE[sort]).sort((a, b) => Number(b.pinned) - Number(a.pinned))
@@ -191,5 +208,5 @@ export function indexPage(entries: readonly IndexEntry[], theme: Theme = 'auto',
     .replace('<!--THEMELINKS-->', () => schemeControl(theme))
     .replace('<!--GRIDCONTROL-->', () => gridControl(sort, filter))
     .replace('<!--COUNT-->', () => esc(diagramCount))
-    .replace('<!--CARDS-->', () => cards)
+    .replace('<!--CARDS-->', () => cards + brokenNote(broken))
 }

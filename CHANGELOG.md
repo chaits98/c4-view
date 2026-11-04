@@ -1,7 +1,33 @@
-# Changelog
+## [0.12.7] — the flow says what it means
 
-All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
-JSON model is a breaking change to this tool, and is called out as such.
+**An edge now carries a description, and the viewer plays it.** `desc` sits beside `label` in the model: one
+sentence, 60–140 characters, on what crosses and what the far side does with it.
+
+- **The flow caption is two lines.** `Git repository → c4-view · model + docs · 2 / 5`, then the sentence,
+  wrapped rather than truncated.
+- **The step lasts as long as the sentence takes to read.** `900 ms + 55 ms per character`, floor 900 ms, cap
+  7 s — a long description is not rushed past at a fixed beat. Reduced motion keeps the timing, drops the
+  interpolation.
+- **Hovering an edge shows that sentence,** under a title naming both ends the way the drawing names them. The
+  edge's doc is the fallback for a model written before the field, and its own heading is dropped — repeating
+  the title under the title is what made every hover look like the same card.
+- **While it plays, only the step is at full contrast.** The two nodes the edge joins and the edge itself stay
+  at 100%; everything else drops to 40%.
+
+**A model written before this still opens.** `desc` defaults to `''` rather than failing the parse, and the page
+says what is missing in a line under the bar — *"12 edges have no description yet. Ask your agent to describe the
+flow and watch it play out."* `c4v audit --strict` fails and names every undescribed edge by level, so the miss
+is visible to a pipeline without a store being emptied by a new rule.
+
+Also fixed along the way:
+
+- the drawing's name moved from an SVG `<title>` to `aria-label`: a `<title>` child is also the browser's native
+  tooltip, and it floated a second bubble beside the hover card
+- the viewer's level `<select>` was replaced by a `<details>` menu of links: our own caret, arrow keys, Escape,
+  and it opens with JavaScript off
+- a stored diagram the current rules refuse is **named on the grid** (`N stored diagrams are not shown — …`)
+  instead of disappearing from it, and the 500 page states the first problem and the exact `c4v audit` command
+- the release script writes the security report section for each version
 
 ## [0.12.6] — what shipped, and what the registry actually holds
 

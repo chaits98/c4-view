@@ -5,7 +5,7 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { levelOrder, parseModel } from './model.ts'
+import { ModelError, levelOrder, parseModel } from './model.ts'
 import type { Model } from './types.ts'
 
 const ID = /^[a-z0-9][a-z0-9-]{0,63}$/
@@ -76,6 +76,29 @@ export function remove(root: string, id: string): boolean {
   const ids = pinnedIds(root)
   if (ids.delete(id)) writeFileSync(join(root, PINS), JSON.stringify({ pinned: [...ids].sort() }, null, 2) + '\n')
   return true
+}
+
+/**
+ * Diagrams the store holds that cannot be read under the current rules.
+ *
+ * A model that parses but breaks a rule (an edge with no `desc`, a subtype that was removed) is not corrupt —
+ * it is out of date — and hiding it is the worst answer: the grid looks like the data is gone. The page says
+ * which ones are excluded and why, and `c4v audit <id>` names the exact edges.
+ */
+export function unreadable(root: string): Array<{ id: string; reason: string }> {
+  if (!existsSync(root)) return []
+  const out: Array<{ id: string; reason: string }> = []
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const file = modelFile(root, entry.name)
+    if (!entry.isDirectory() || !ID.test(entry.name) || !existsSync(file)) continue
+    try {
+      parseModel(JSON.parse(readFileSync(file, 'utf8')))
+    } catch (error) {
+      const first = error instanceof ModelError ? error.problems[0] : 'not readable'
+      out.push({ id: entry.name, reason: first ?? 'not readable' })
+    }
+  }
+  return out
 }
 
 export function list(root: string): Summary[] {

@@ -27,8 +27,8 @@ const model = parseModel({
         { id: 'db', label: 'Db', subtype: 'database', tech: 'Postgres' },
       ],
       edges: [
-        { from: 'svc', to: 'db', label: 'writes', style: 'flow' },
-        { from: 'plain', to: 'svc', style: 'dep' },
+        { desc: 'the payload this edge carries', from: 'svc', to: 'db', label: 'writes', style: 'flow' },
+        { desc: 'the payload this edge carries', from: 'plain', to: 'svc', style: 'dep' },
       ],
       groups: [{ id: 'g', label: 'Backend', members: ['svc', 'db'] }],
       flow: ['svc->db'],
@@ -86,8 +86,8 @@ test('every edge style draws its own stroke, and a model with no flow carries no
       path: '',
       nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }],
       edges: [
-        { from: 'a', to: 'b', style: 'flow' },
-        { from: 'b', to: 'a', style: 'dep' },
+        { desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' },
+        { desc: 'the payload this edge carries', from: 'b', to: 'a', style: 'dep' },
       ],
     }],
   })
@@ -100,7 +100,7 @@ test('every edge style draws its own stroke, and a model with no flow carries no
 
 test('a level with no title still gets one in the svg', () => {
   const untitled = parseModel({ id: 'untitled', title: 'Untitled', levels: [{ path: 'x', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
-  assert.match(renderModel(untitled, 'x').levels[0].svg, /<title>x<\/title>/, 'the path names it when the title is blank')
+  assert.match(renderModel(untitled, 'x').levels[0].svg, /aria-label="x"/, 'the path names it when the title is blank')
 })
 
 test('the grid shows a failing card, a wide card and a single card correctly', () => {
@@ -155,7 +155,7 @@ test('a node with a desc but no tech keeps the desc line', () => {
 })
 
 test('an edge with no label still appears in the text version, without a dash', () => {
-  const one = parseModel({ id: 'unlabelled', title: 'U', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ from: 'a', to: 'b' }] }] })
+  const one = parseModel({ id: 'unlabelled', title: 'U', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }] })
   assert.ok(viewerPage(one, '').includes('<li>A → B</li>'), 'the flow is listed with no trailing dash')
 })
 
@@ -163,7 +163,7 @@ test('identity and tech are drawn independently', () => {
   const model2 = parseModel({ id: 'halves', title: 'Halves', levels: [{ path: '', nodes: [
     { id: 'a', label: 'Tech only', subtype: 'system', tech: 'Node 22' },
     { id: 'b', label: 'Owner only', subtype: 'system', identity: 'team-payments' },
-  ], edges: [{ from: 'a', to: 'b' }] }] })
+  ], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }] })
   const svg = renderModel(model2).levels[0].svg
   assert.match(svg, /Node 22/, 'tech is drawn when it is the only small line')
   assert.match(svg, /team-payments/, 'identity is drawn when it is the only small line')
@@ -182,4 +182,24 @@ test('the fail filter has two empty states: nothing failing, and nothing at all'
   assert.match(nothing, /All 1 diagrams audit clean/, 'and counts them')
   const empty = indexPage([], 'auto', 'updated', 'fail')
   assert.match(empty, /No diagrams yet/, 'an empty store gets the other state')
+})
+
+test('the notice appears only while some edge has nothing to say', async () => {
+  const { noticeBanner } = await import('../src/viewer-page.ts')
+  assert.equal(noticeBanner(0), '', 'a described model says nothing')
+  assert.match(noticeBanner(1), /1 edge has no description yet/)
+  assert.match(noticeBanner(3), /3 edges have no description yet/)
+  assert.match(noticeBanner(3), /Ask your agent to describe the flow/)
+})
+
+test('the broken-model page states which failure it is, and needs no reason to do it', async () => {
+  const { brokenModel } = await import('../src/state-page.ts')
+  const rules = brokenModel('old', 'auto', 'levels[0].edges[0].desc: ...', '/store/old/model.json')
+  assert.match(rules, /does not pass the model rules any more/, 'a rule failure is a repairable one')
+  assert.match(rules, /c4v audit \/store\/old\/model.json/, 'and names the file to audit')
+  assert.match(rules, /First problem:/, 'with the first problem quoted')
+  const corrupt = brokenModel('torn')
+  assert.match(corrupt, /its JSON does not parse/, 'a broken write is the other cause')
+  assert.match(corrupt, /c4v render/, 'and gets the other fix')
+  assert.ok(!corrupt.includes('First problem:'), 'no problem named, no line for it')
 })

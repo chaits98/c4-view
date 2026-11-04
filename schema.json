@@ -155,6 +155,10 @@
         "to": {
           "type": "string"
         },
+        "desc": {
+          "type": "string",
+          "description": "one sentence on what crosses this edge; shown on hover and under the flow caption"
+        },
         "label": {
           "type": "string"
         },
