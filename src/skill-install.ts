@@ -11,7 +11,7 @@
  *
  * @module c4-view/skill-install
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -53,8 +53,14 @@ export const installed = (harness: Harness, home = homedir(), cwd = process.cwd(
 export const detected = (harness: Harness, home = homedir()): boolean =>
   harness.detect ? existsSync(expand(harness.detect, home)) : false
 
+/** The version an installed copy was written from: a copy is text, so an upgrade does not touch it. */
+export const installedVersion = (harness: Harness, home = homedir(), cwd = process.cwd()): string | null => {
+  const file = join(expand(harness.dir, home, cwd), 'VERSION')
+  return existsSync(file) ? readFileSync(file, 'utf8').trim() : null
+}
+
 /** Copy the skill (SKILL.md + assets/ + preferences.jsonl) into one target, replacing a previous version. */
-export function installInto(harness: Harness, home = homedir(), cwd = process.cwd()): string {
+export function installInto(harness: Harness, home = homedir(), cwd = process.cwd(), version?: string): string {
   const target = expand(harness.dir, home, cwd)
   rmSync(target, { recursive: true, force: true })
   mkdirSync(dirname(target), { recursive: true })
@@ -63,6 +69,8 @@ export function installInto(harness: Harness, home = homedir(), cwd = process.cw
     if (entry === 'SMOKE-PROMPT.md') continue // a test harness document, not part of the shipped skill
     cpSync(join(ROOT, entry), join(target, entry), { recursive: true })
   }
+  // a copy does not follow the package: stamp what wrote it, so `skill list` can say it is behind
+  if (version) writeFileSync(join(target, 'VERSION'), `${version}\n`)
   return target
 }
 
@@ -94,13 +102,19 @@ export function plan(all: Harness[], opts: { global?: boolean; named?: string[];
 }
 
 /** One line per harness, for `c4v skill list`. */
-export function describe(all: Harness[], opts: { home?: string; cwd?: string } = {}): string[] {
+export function describe(all: Harness[], opts: { home?: string; cwd?: string; version?: string } = {}): string[] {
   const home = opts.home ?? homedir()
   const cwd = opts.cwd ?? process.cwd()
   return all.map((harness) => {
     const here = detected(harness, home) ? 'present' : 'absent '
-    const done = installed(harness, home, cwd) ? 'installed' : '—        '
-    return `  ${harness.id.padEnd(12)} ${here}  ${done}  ${harness.label}`
+    let done = installed(harness, home, cwd) ? 'installed' : '—        '
+    // the installed copy is a copy: after an upgrade it keeps the instructions it was written with
+    if (done === 'installed' && opts.version) {
+      const at = installedVersion(harness, home, cwd)
+      if (!at) done = 'unversioned'
+      else if (at !== opts.version) done = `stale ${at}`
+    }
+    return `  ${harness.id.padEnd(12)} ${here}  ${done.padEnd(9)}  ${harness.label}`
   })
 }
 

@@ -61,8 +61,9 @@ export function skillCommand(
   }
   if (action === 'list' || action === undefined) {
     console.log('  id           harness    state      label')
-    for (const line of describe(all)) console.log(line)
+    for (const line of describe(all, { home, version: currentVersion() })) console.log(line)
     console.log('\n  global installs write a user-level directory; add --harness <id> for a target that is not detected')
+    console.log('  stale means the copy was written by an older package: run  c4v skill install --global  after an upgrade')
     return 0
   }
   if (action !== 'install') {
@@ -80,7 +81,7 @@ export function skillCommand(
     return 1
   }
   for (const item of chosen) {
-    const target = installInto(item.harness, home)
+    const target = installInto(item.harness, home, process.cwd(), currentVersion())
     console.log(`  ${item.harness.id.padEnd(12)} ${item.reason.padEnd(8)} ${target}`)
   }
   console.log(`\n  ${chosen.length} harness(es) installed. Next: c4v prefs pending`)

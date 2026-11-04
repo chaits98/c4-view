@@ -28,6 +28,8 @@ Also fixed along the way:
 - a stored diagram the current rules refuse is **named on the grid** (`N stored diagrams are not shown — …`)
   instead of disappearing from it, and the 500 page states the first problem and the exact `c4v audit` command
 - the release script writes the security report section for each version
+- an installed skill copy records the version that wrote it, so `c4v skill list` says `stale <version>` after an
+  upgrade instead of pretending the copy is current
 
 ## [0.12.6] — what shipped, and what the registry actually holds
 

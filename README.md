@@ -44,6 +44,11 @@ Two halves, installed separately:
 | **The CLI** (`c4v`) | validates, lays out, routes, audits, renders, serves. Zero runtime dependencies, no config file, nothing downloaded at install time. |
 | **The skill** (`skill/SKILL.md`) | teaches a coding agent how to write a model that survives the audit: survey first, decide what kind of system you are looking at, one box per thing, a door in and a door out. Installed into every harness it can find. |
 
+The skill is **copied** into each harness directory, not linked, so it keeps working when the package moves —
+and it does not follow an upgrade by itself. After `npm i -g c4-view@latest`, run `c4v skill install --global`
+once: `c4v skill list` prints `stale <version>` for a copy written by an older package, `installed` when it is
+current.
+
 Without the skill, "draw me a C4 of this repo" gets mermaid soup. With it, the agent surveys the manifests,
 picks the right level for the repo's shape, writes the model, runs the audit, fixes the **model** until every
 geometry gate is zero, writes the one-sentence `desc` every edge needs for the narration, and hands over a

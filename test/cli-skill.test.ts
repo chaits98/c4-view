@@ -63,3 +63,19 @@ test('a flag with no value, and a greeting with no version, are both handled', (
   // a flag with no value is the same as no flag: the install falls back to the global default
   assert.equal(skillCommand(['skill', 'install', '--harness'], home), 0)
 })
+
+test('an installed copy records the version that wrote it, so an upgrade can be seen', async () => {
+  const { installInto, installedVersion, describe, harnesses } = await import('../src/skill-install.ts')
+  const { mkdtempSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const home = mkdtempSync(join(tmpdir(), 'c4v-skill-'))
+  const harness = harnesses().find((h) => h.scope === 'global')
+  assert.ok(harness, 'the package ships at least one global harness')
+  installInto(harness, home, process.cwd(), '9.9.9')
+  assert.equal(installedVersion(harness, home, process.cwd()), '9.9.9', 'the stamp is the package version')
+  const fresh = describe([harness], { home, version: '9.9.9' })[0]
+  assert.match(fresh, /installed/, 'same version: installed')
+  const behind = describe([harness], { home, version: '0.12.7' })[0]
+  assert.match(behind, /stale 9\.9\.9/, 'a newer package reports the copy as stale')
+})
