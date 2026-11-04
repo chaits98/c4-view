@@ -3,6 +3,17 @@
 All notable changes. The **model format** and the CLI are versioned together: a breaking change to the
 JSON model is a breaking change to this tool, and is called out as such.
 
+## [0.12.6] — what shipped, and what the registry actually holds
+
+The 0.12.5 tarball on npm was built from a tree **behind** the tag: it carried the grid work but not the denial
+page, not the security report generator, and not the README as pushed. Version 0.12.6 is that same code with
+the release pipeline proven end to end.
+
+- `docs/security/REPORT.md` is now **in the package** — the README has always linked to it, and the file was
+  not shipped, so the link resolved to nothing on npm
+- the README's security badge and line point at the file on GitHub, which works on both surfaces
+- the 0.12.6 section is written by `scripts/security-report.mjs`, the first one produced by `npm version`
+
 ## [0.12.5] — the grid manages itself
 
 **Pin and delete, where a card view puts them.** Every card carries a kebab in its corner (the overflow-menu
