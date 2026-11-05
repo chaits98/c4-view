@@ -4,7 +4,7 @@
 self-contained HTML page and a live viewer come out. There is no editing UI — the agent writes the model,
 the tool lays it out, and an audit decides whether it is fit to deliver.
 
-![tests](https://img.shields.io/badge/tests-512%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-522%20passing-brightgreen)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-0-blue)
 ![node](https://img.shields.io/badge/node-%E2%89%A522.18-informational)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -222,7 +222,7 @@ Measured on a laptop, not estimated:
 |---|---|
 | `node tools/gate.mjs` | any file over 300 lines, impure layout code, `any`, placeholders |
 | `npx tsc --noEmit` | non-strict types |
-| `node --test` | any failing test (506 of them, including the audit's own defects) |
+| `node --test` | any failing test (522 of them, including the audit's own defects) |
 | goldens | any change to the corpus output that was not intended |
 | `sonar-scanner` | any **unresolved** issue, not merely any new one — a smell that ages out of the new-code window is still a smell |
 | coverage | below 95% overall, or below 100% on lines the branch adds |
@@ -235,7 +235,7 @@ makes two runs differ is a bug even if the picture looks fine.
 ```
 src/            the pipeline: model → layout → svg → audit, plus the CLI and the HTTP server
 public/         the viewer: page, styles, pan/zoom, flow narration
-test/           506 tests: units, the real corpus, planted defects, install and prefs
+test/           522 tests: units, the real corpus, planted defects, install and prefs
 examples/       three hand-authored models: containers + drill, boundaries, and a nested three-level model
 docs/c4/        this tool's own C4 model, one markdown doc per node and edge
 docs/           LAYOUT-SPEC.md (normative) · HTTP-API.md · security/ · design/

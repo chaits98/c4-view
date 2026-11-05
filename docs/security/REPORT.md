@@ -10,9 +10,9 @@ decoration.
 
 | layer | tool | result |
 |---|---|---|
-| repo + full history | gitleaks 8 (working tree + history) | **no leaks** — 133 commits scanned |
+| repo + full history | gitleaks 8 (working tree + history) | **no leaks** — 134 commits scanned |
 | package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** over 54 files in `src/` |
-| package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.1% coverage**, 5137 ncloc, gate **OK** |
+| package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.6% coverage**, 5152 ncloc, gate **OK** |
 | dependencies | `npm audit --omit=dev` | **0 vulnerabilities**; 0 runtime dependencies |
 | skill instructions | skillspector, cisco skill-scanner, skillfrisk | skillspector: clean; cisco skill-scanner: clean; skillfrisk: clean |
 
