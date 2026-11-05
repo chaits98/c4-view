@@ -16,19 +16,19 @@ const nested = (): ReturnType<typeof parseModel> =>
     levels: [
       {
         path: '',
-        nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }],
+        nodes: [{ id: 'box', label: 'Box', subtype: 'system', state: 'built' as const }, { id: 'out', label: 'Out', subtype: 'external-system', state: 'built' as const }],
         edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }],
       },
       {
         path: 'box',
-        nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }],
+        nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic', state: 'built' as const }, { id: 'inner', label: 'Inner', subtype: 'service-logic', state: 'built' as const }],
         edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }],
         ports: { 'out->box': 'stage' },
         flow: ['stage->inner'],
       },
       {
         path: 'box/inner',
-        nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic' }],
+        nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic', state: 'built' as const }],
         edges: [],
         ports: { 'stage->inner': 'leaf' },
         flow: [],
@@ -61,11 +61,11 @@ test('nesting survives the fold: an outer frame encloses its own nested frames',
 test('a host with no flow still gives its frame an entry', () => {
   const parent = {
     path: '',
-    nodes: [{ id: 'host', label: 'Host', subtype: 'system' }, { id: 'sib', label: 'Sib', subtype: 'system' }],
+    nodes: [{ id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }, { id: 'sib', label: 'Sib', subtype: 'system', state: 'built' as const }],
     edges: [],
     ports: { 'up->root': 'host' },
   }
-  const child = { path: 'host', nodes: [{ id: 'only', label: 'Only', subtype: 'service-logic' }], edges: [] }
+  const child = { path: 'host', nodes: [{ id: 'only', label: 'Only', subtype: 'service-logic', state: 'built' as const }], edges: [] }
   const out = composeInto(parent as never, child as never, 'host', true)
   assert.equal(out.level.ports?.['up->root'], 'host/only', 'the first node is the entry')
 })
@@ -97,7 +97,7 @@ test('the CLI can render the whole model in one file', async () => {
   writeFileSync(file, JSON.stringify({
     id: 'cli-all',
     title: 'CLI all',
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }],
   }))
   const out = join(dir, 'out')
   assert.equal(await run(['render', file, '--all', '--out', out]), 0)
@@ -110,12 +110,12 @@ test('a port is matched by its far side when the outside end has been composed',
   // the parent's edge already ends in `cli/args`; the child's port still says `cli->server`
   const parent = {
     path: '',
-    nodes: [{ id: 'cli/args', label: 'Args', subtype: 'service-logic' }, { id: 'server', label: 'Server', subtype: 'microservice' }],
+    nodes: [{ id: 'cli/args', label: 'Args', subtype: 'service-logic', state: 'built' as const }, { id: 'server', label: 'Server', subtype: 'microservice', state: 'built' as const }],
     edges: [{ desc: 'the payload this edge carries', from: 'cli/args', to: 'server', label: 'starts' }],
   }
   const child = {
     path: 'c4view/server',
-    nodes: [{ id: 'routes', label: 'Routes', subtype: 'service-logic' }],
+    nodes: [{ id: 'routes', label: 'Routes', subtype: 'service-logic', state: 'built' as const }],
     edges: [],
     // the host is the SECOND end here, and one port names the host at neither end
     ports: { 'nobody->anyone': 'routes', 'cli->server': 'routes' },

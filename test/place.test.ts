@@ -9,7 +9,7 @@ import { place } from '../src/layout/place.ts'
 const cfg: LayoutConfig = { ...DEFAULT_LAYOUT }
 const EPS = 0.1001
 
-const node = (id: string, label = id): NodeSpec => ({ id, label, subtype: 'system' })
+const node = (id: string, label = id): NodeSpec => ({ id, label, subtype: 'system', state: 'built' as const })
 
 const chainOf = (from: string, to: string, items: string[]): Chain =>
   ({ key: `${from}->${to}`, from, to, items, style: 'flow', backward: false })

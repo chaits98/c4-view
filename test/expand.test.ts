@@ -65,20 +65,20 @@ test('a node inside the frame still knows where its own drill goes', () => {
     id: 'deep',
     title: 'deep',
     levels: [
-      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system' }], edges: [] },
+      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system', state: 'built' as const }], edges: [] },
       {
         path: 'box',
         ports: {},
         nodes: [
-          { id: 'one', label: 'One', subtype: 'service-logic' },
-          { id: 'two', label: 'Two', subtype: 'service-logic' },
+          { id: 'one', label: 'One', subtype: 'service-logic', state: 'built' as const },
+          { id: 'two', label: 'Two', subtype: 'service-logic', state: 'built' as const },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'one', to: 'two', label: 'calls' }],
       },
       {
         path: 'box/one',
         ports: { 'one->two': 'inner' },
-        nodes: [{ id: 'inner', label: 'Inner', subtype: 'function' }],
+        nodes: [{ id: 'inner', label: 'Inner', subtype: 'function', state: 'built' as const }],
         edges: [],
       },
     ],
@@ -98,8 +98,8 @@ test('expanding something that is not a lens fails with a named reason', () => {
     id: 'solo',
     title: 'solo',
     levels: [
-      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system' }], edges: [] },
-      { path: 'box', nodes: [{ id: 'part', label: 'Part', subtype: 'function' }], edges: [] },
+      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'box', nodes: [{ id: 'part', label: 'Part', subtype: 'function', state: 'built' as const }], edges: [] },
     ],
   })
   assert.equal(expandLevel(isolated, 'box').level.nodes.length, 1)

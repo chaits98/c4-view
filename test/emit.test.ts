@@ -17,10 +17,10 @@ const cfg: LayoutConfig = DEFAULT_LAYOUT
 const EVIL = `<script>alert(1)</script>&"'`
 
 const NODES: NodeSpec[] = [
-  { id: 'web', label: 'Web app', subtype: 'system', identity: 'C4-1', tech: 'React' },
-  { id: 'api', label: 'Orders API', subtype: 'api-gateway', desc: 'gateway for <orders> & "billing"' },
-  { id: 'db', label: 'Orders DB', subtype: 'database', identity: 'C4-2' },
-  { id: 'evil', label: EVIL, subtype: 'function' },
+  { id: 'web', label: 'Web app', subtype: 'system', state: 'built' as const, identity: 'C4-1', tech: 'React' },
+  { id: 'api', label: 'Orders API', subtype: 'api-gateway', state: 'built' as const, desc: 'gateway for <orders> & "billing"' },
+  { id: 'db', label: 'Orders DB', subtype: 'database', state: 'built' as const, identity: 'C4-2' },
+  { id: 'evil', label: EVIL, subtype: 'function', state: 'built' as const },
 ]
 
 const LEVEL: LevelSpec = {
@@ -182,7 +182,7 @@ test('every shape\'s box is big enough for the text band it declares', () => {
 test('actor and diamond text stays inside the shape silhouette', () => {
   // measured defect: a `person` node wrote its id on the head circle and the label across
   // the neck notch, 58.9px outside the filled silhouette
-  const actor = measureNode({ id: 'p', label: 'Customer browser', subtype: 'person', tech: 'mobile' }, cfg, measure)
+  const actor = measureNode({ id: 'p', label: 'Customer browser', subtype: 'person', state: 'built' as const, tech: 'mobile' }, cfg, measure)
   const inset = shapeTextInset('actor', { x: 0, y: 0, w: actor.w, h: actor.h })
   assert.ok(inset.top >= 24, `actor text inset too small: ${inset.top}`)
   const diamond = shapeTextInset('diamond', { x: 0, y: 0, w: 200, h: 100 })
@@ -191,7 +191,7 @@ test('actor and diamond text stays inside the shape silhouette', () => {
 
 test('a label that will not fit three lines is truncated with an ellipsis, not clipped', () => {
   const long = 'an extraordinarily long service name that keeps going past every limit'
-  const t = measureNode({ id: 'x', label: `${long} ${long}`, subtype: 'system', identity: `owner ${long}`, tech: long }, DEFAULT_LAYOUT, measure)
+  const t = measureNode({ id: 'x', label: `${long} ${long}`, subtype: 'system', state: 'built' as const, identity: `owner ${long}`, tech: long }, DEFAULT_LAYOUT, measure)
   assert.equal(t.lines.length, 3, 'never more than three lines')
   assert.ok(t.lines[2].endsWith('…'), `the last line is marked as cut: ${t.lines[2]}`)
   assert.ok(t.identity?.endsWith('…') !== false, 'and so are the small lines when they are long')
@@ -201,8 +201,8 @@ test('the edge carries its description, and an undescribed edge carries none', (
   const level = {
     path: '',
     nodes: [
-      { id: 'a', label: 'A', subtype: 'system' as const },
-      { id: 'b', label: 'B', subtype: 'system' as const },
+      { id: 'a', label: 'A', subtype: 'system' as const, state: 'built' as const },
+      { id: 'b', label: 'B', subtype: 'system' as const, state: 'built' as const },
     ],
     edges: [
       { from: 'a', to: 'b', label: 'calls', desc: 'A asks B for the answer', style: 'flow' as const },

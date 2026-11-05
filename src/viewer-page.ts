@@ -113,8 +113,19 @@ const GATES: Array<{ key: keyof AuditReport; says: string }> = [
  */
 export function auditBanner(report: AuditReport): string {
   const failing = GATES.filter((gate) => (report[gate.key] as number) > 0)
-  if (!failing.length) return ''
-  const named = failing.slice(0, 3).map((gate) => `<li>${gate.says} (${String(report[gate.key])})</li>`)
+  // The state checks are lists of node ids, not counts: a box that is not built — or that never says
+  // what it is — has to appear in this banner, or a roadmap renders in the app exactly like the system.
+  const unstated = report.unstated ?? []
+  const unbuilt = report.unbuilt ?? []
+  const ids = (arr: string[]) => `${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ', …' : ''}`
+  const stateRows: string[] = []
+  if (unstated.length) stateRows.push(`${unstated.length} node(s) declare no state (${ids(unstated)})`)
+  if (unbuilt.length) stateRows.push(`${unbuilt.length} node(s) are not built (${ids(unbuilt)})`)
+  if (!failing.length && !stateRows.length) return ''
+  const named = [
+    ...stateRows.map((row) => `<li>${row}</li>`),
+    ...failing.slice(0, 3).map((gate) => `<li>${gate.says} (${String(report[gate.key])})</li>`),
+  ]
   const rest = failing.length - 3
   const word = rest === 1 ? 'check' : 'checks'
   const more = rest > 0 ? `<li>and ${rest} more ${word}</li>` : ''

@@ -12,18 +12,18 @@ const deep = (): ReturnType<typeof parseModel> =>
     levels: [
       {
         path: '',
-        nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }],
+        nodes: [{ id: 'box', label: 'Box', subtype: 'system', state: 'built' as const }, { id: 'out', label: 'Out', subtype: 'external-system', state: 'built' as const }],
         edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }],
       },
       {
         path: 'box',
-        nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }],
+        nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic', state: 'built' as const }, { id: 'inner', label: 'Inner', subtype: 'service-logic', state: 'built' as const }],
         edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }],
         ports: { 'out->box': 'stage' },
       },
       {
         path: 'box/inner',
-        nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic' }],
+        nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic', state: 'built' as const }],
         edges: [],
         ports: { 'stage->inner': 'leaf' },
       },

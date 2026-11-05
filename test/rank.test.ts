@@ -13,7 +13,7 @@ const cfg = DEFAULT_LAYOUT
 const node = (id: string, extra: Partial<NodeSpec> = {}): NodeSpec => ({
   id,
   label: id.toUpperCase(),
-  subtype: 'system',
+  subtype: 'system', state: 'built' as const,
   ...extra,
 })
 

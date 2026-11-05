@@ -1,113 +1,123 @@
 {
-  "id": "example",
-  "title": "Example \u2014 a two-level model in the smallest honest shape",
-  "levels": [
+ "id": "example",
+ "title": "Example \u2014 a two-level model in the smallest honest shape",
+ "levels": [
+  {
+   "path": "",
+   "title": "Context",
+   "nodes": [
     {
-      "path": "",
-      "title": "Context",
-      "nodes": [
-        {
-          "id": "user",
-          "label": "User",
-          "subtype": "person",
-          "tech": "browser",
-          "identity": "EX-1"
-        },
-        {
-          "id": "app",
-          "label": "The app",
-          "subtype": "system",
-          "tech": "Node 22",
-          "desc": "what this repo does, in one sentence"
-        },
-        {
-          "id": "ext",
-          "label": "Third-party API",
-          "subtype": "external-system",
-          "tech": "HTTPS"
-        }
-      ],
-      "edges": [
-        {
-          "from": "user",
-          "to": "app", "desc": "The person asks for a page; the app is the only thing they touch.",
-          "label": "requests"
-        },
-        {
-          "from": "app",
-          "to": "ext", "desc": "A read against a third party, made by the app on the user\u2019s behalf.",
-          "label": "reads"
-        }
-      ],
-      "flow": [
-        "user->app",
-        "app->ext"
-      ]
+     "id": "user",
+     "label": "User",
+     "subtype": "person",
+     "tech": "browser",
+     "identity": "EX-1",
+     "state": "built"
     },
     {
-      "path": "app",
-      "title": "Inside the app",
-      "nodes": [
-        {
-          "id": "api",
-          "label": "HTTP layer",
-          "subtype": "api-gateway",
-          "tech": "express",
-          "group": "process"
-        },
-        {
-          "id": "core",
-          "label": "Core",
-          "subtype": "service-logic",
-          "tech": "TypeScript",
-          "group": "process",
-          "desc": "the rules that make this app worth running"
-        },
-        {
-          "id": "store",
-          "label": "Store",
-          "subtype": "database",
-          "tech": "Postgres",
-          "group": "data"
-        }
-      ],
-      "edges": [
-        {
-          "from": "api",
-          "to": "core", "desc": "A validated request, handed to the domain code that decides what happens.",
-          "label": "calls"
-        },
-        {
-          "from": "core",
-          "to": "store", "desc": "The state the core owns, written so a restart does not lose it.",
-          "label": "writes"
-        }
-      ],
-      "groups": [
-        {
-          "id": "process",
-          "label": "in-process",
-          "members": [
-            "api",
-            "core"
-          ]
-        },
-        {
-          "id": "data",
-          "label": "durable",
-          "members": [
-            "store"
-          ]
-        }
-      ],
-      "flow": [
-        "api->core",
-        "core->store"
-      ],
-      "ports": {
-        "user->app": "api",
-        "app->ext": "core"
-      }
+     "id": "app",
+     "label": "The app",
+     "subtype": "system",
+     "tech": "Node 22",
+     "desc": "what this repo does, in one sentence",
+     "state": "built"
+    },
+    {
+     "id": "ext",
+     "label": "Third-party API",
+     "subtype": "external-system",
+     "tech": "HTTPS",
+     "state": "built"
     }
-  ]
+   ],
+   "edges": [
+    {
+     "from": "user",
+     "to": "app",
+     "desc": "The person asks for a page; the app is the only thing they touch.",
+     "label": "requests"
+    },
+    {
+     "from": "app",
+     "to": "ext",
+     "desc": "A read against a third party, made by the app on the user\u2019s behalf.",
+     "label": "reads"
+    }
+   ],
+   "flow": [
+    "user->app",
+    "app->ext"
+   ]
+  },
+  {
+   "path": "app",
+   "title": "Inside the app",
+   "nodes": [
+    {
+     "id": "api",
+     "label": "HTTP layer",
+     "subtype": "api-gateway",
+     "tech": "express",
+     "group": "process",
+     "state": "built"
+    },
+    {
+     "id": "core",
+     "label": "Core",
+     "subtype": "service-logic",
+     "tech": "TypeScript",
+     "group": "process",
+     "desc": "the rules that make this app worth running",
+     "state": "built"
+    },
+    {
+     "id": "store",
+     "label": "Store",
+     "subtype": "database",
+     "tech": "Postgres",
+     "group": "data",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "api",
+     "to": "core",
+     "desc": "A validated request, handed to the domain code that decides what happens.",
+     "label": "calls"
+    },
+    {
+     "from": "core",
+     "to": "store",
+     "desc": "The state the core owns, written so a restart does not lose it.",
+     "label": "writes"
+    }
+   ],
+   "groups": [
+    {
+     "id": "process",
+     "label": "in-process",
+     "members": [
+      "api",
+      "core"
+     ]
+    },
+    {
+     "id": "data",
+     "label": "durable",
+     "members": [
+      "store"
+     ]
+    }
+   ],
+   "flow": [
+    "api->core",
+    "core->store"
+   ],
+   "ports": {
+    "user->app": "api",
+    "app->ext": "core"
+   }
+  }
+ ]
 }

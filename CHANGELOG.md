@@ -1,3 +1,28 @@
+## [0.13.0] — the model can size a box, and the export dims like the viewer
+
+**Two things the model could not say, and one page that forgot what the viewer knew.**
+
+- **`size` on a node.** `{ "w": 520, "h": 140 }` is a FLOOR on the box, both axes: text still decides the
+  minimum, so a request smaller than the label cannot clip it, and a node with many incoming edges gets the
+  width to land their ports apart. It is copied through the model whitelist (`src/model.ts`) — a field that
+  function drops never reaches the layout — floored in `layout/place.ts`, and validated in `schema.json`.
+  A size-driven width changes a level's aspect, so the stance can flip (LR ⇄ TB); pin `layout.direction`
+  when that matters.
+- **The exported page dims the same as the viewer.** It carries its own inlined CSS, and that copy never
+  had `.c4-focus` — an export animated with every box at full contrast. The two selectors now ship with the
+  file, so the step being narrated is the only thing at full strength and everything else steps back to 0.4.
+- **A node can point at its documentation.** `links: [{ "label": "Confluence: ADR-14", "href": "https://…" }]`
+  draws a ↗ chip in the box's top-right corner — its own anchor, because nesting it in the box's drill link
+  is invalid SVG — with `target="_blank"` and `rel="noopener noreferrer"`. **Only http(s) is accepted**; a
+  `javascript:` href is refused by name at parse time rather than dropped, since a silently ignored link
+  leaves a node that looks documented and is not. Up to 5 per node; the first is the chip, hover names it.
+- **A box can say it is not built yet.** `state`: `built | planned | partial | retired`, and **every node must
+  declare one** — absence renders as built but fails the audit. A non-built box draws a corner tag **and fails the audit** — `unbuilt=3 (billing:partial, …)` in
+  the line, `--strict` exit 1, `render --strict` refuses to write. A roadmap and an architecture can no
+  longer look the same. The box grows to hold its tag, so the label never sits under it.
+- **Docs follow the code.** `size` and `layout.direction` now have rows in the model-fields table in both
+  skill copies, and the closing line no longer claims the tool has no way to size a box.
+
 ## [0.12.7] — the flow says what it means
 
 **An edge now carries a description, and the viewer plays it.** `desc` sits beside `label` in the model: one

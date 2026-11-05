@@ -116,7 +116,7 @@ test('an invalid model answers 400 with the problems verbatim', async () => {
   const bad = JSON.stringify({
     id: 'ghostly',
     title: 'Ghost',
-    levels: [{ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }],
+    levels: [{ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }],
   })
   const res = await fetch(`${base}/api/diagrams`, { method: 'POST', body: bad })
   assert.equal(res.status, 400)
@@ -277,11 +277,11 @@ test('a failing diagram says so on its card, and a single diagram is not "1 diag
   const bad = {
     id: 'broken-audit',
     title: 'Broken',
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a' }] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a' }] }],
   }
   // the API refuses a self-loop, so write the file the way a crashed writer would leave it
   mkdirSync(join(root, 'broken-audit'), { recursive: true })
-  writeFileSync(join(root, 'broken-audit', 'model.json'), JSON.stringify({ ...bad, levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B &amp; <C>', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'x' }] }] }))
+  writeFileSync(join(root, 'broken-audit', 'model.json'), JSON.stringify({ ...bad, levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B &amp; <C>', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'x' }] }] }))
   const page = await (await fetch(`${base}/`)).text()
   assert.match(page, /<title>/, 'the grid still renders')
   assert.match(page, /&amp;/, 'a title is escaped, never injected')

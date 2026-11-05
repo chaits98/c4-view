@@ -12,8 +12,8 @@ const model = (): ReturnType<typeof parseModel> =>
     id: 'shop',
     title: 'Shop & co',
     levels: [
-      { path: '', nodes: [{ id: 'api', label: 'API', subtype: 'system' }], edges: [] },
-      { path: 'api', title: 'API container', nodes: [{ id: 'db', label: 'DB', subtype: 'service-logic' }], edges: [], ports: { 'up->api': 'db' } },
+      { path: '', nodes: [{ id: 'api', label: 'API', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'api', title: 'API container', nodes: [{ id: 'db', label: 'DB', subtype: 'service-logic', state: 'built' as const }], edges: [], ports: { 'up->api': 'db' } },
     ],
   } as never)
 

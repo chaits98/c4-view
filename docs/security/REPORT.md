@@ -6,13 +6,23 @@ scanners, a threat model, and the findings that were fixed. Every section after 
 the tree is always the report for the version in the tree. A scan that describes a version nobody runs is a
 decoration.
 
-## Re-run at 0.12.7 — 2026-11-04
+## Re-run at 0.13.0 — 2026-11-05
 
 | layer | tool | result |
 |---|---|---|
-| repo + full history | gitleaks 8 (working tree + history) | **no leaks** — 130 commits scanned |
+| repo + full history | gitleaks 8 (working tree + history) | **no leaks** — 133 commits scanned |
+| package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** over 54 files in `src/` |
+| package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.1% coverage**, 5137 ncloc, gate **OK** |
+| dependencies | `npm audit --omit=dev` | **0 vulnerabilities**; 0 runtime dependencies |
+| skill instructions | skillspector, cisco skill-scanner, skillfrisk | skillspector: clean; cisco skill-scanner: clean; skillfrisk: clean |
+
+## Re-run at 0.12.7 — 2026-11-05
+
+| layer | tool | result |
+|---|---|---|
+| repo + full history | gitleaks 8 (working tree + history) | **no leaks** — 133 commits scanned |
 | package code | Semgrep `p/security-audit` + `p/typescript` | **0 findings** over 53 files in `src/` |
-| package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.6% coverage**, 5005 ncloc, gate **OK** |
+| package code | SonarQube (self-hosted) | 0 bugs, 0 vulnerabilities, 0 hotspots, 0 code smells, 0.9% duplication, **98.6% coverage**, 5038 ncloc, gate **OK** |
 | dependencies | `npm audit --omit=dev` | **0 vulnerabilities**; 0 runtime dependencies |
 | skill instructions | skillspector, cisco skill-scanner, skillfrisk | skillspector: clean; cisco skill-scanner: clean; skillfrisk: clean |
 

@@ -228,7 +228,11 @@ an installed package.
 and that is what tells composition to draw it once. Two different boxes never share one. It is drawn on the box
 and it is how a person names a box to you ("C4V-11 does X") — without it the user describes a box by position
 and you get to guess wrong. |
+| `state` | `built` \| `planned` \| `partial` \| `retired`. **Every node must declare it** — an undeclared box is drawn as built (no tag) and **fails the audit** (`unstated=7 (browser, web, …)`), because absence is how a planned service hides among running ones. `planned`/`partial`/`retired` draw a small corner tag and fail the audit too (`unbuilt=2 (billing:partial, …)`). `--strict` exits 1 and `render --strict` refuses to write; use a non-strict render to look at a roadmap, never to ship it as the architecture. |
+| `links` | `[{ "label": "Confluence: ADR-14", "href": "https://…" }]` — external documentation for the box, **http(s) only** (a `javascript:` href is refused by name, not dropped). Up to 5; the first is drawn as a ↗ chip in the box's top-right corner, its own anchor so the box keeps its drill link. Use it for the long-form page — the diagram says what exists, the link says why. |
+| `size` | `{ "w": 520, "h": 140 }` — a FLOOR on the box, both axes. Text still decides the minimum, so a smaller request cannot clip a label. Use it when a node carries many incoming edges and needs the width to land their ports apart. A size-driven width changes total aspect, and the level may then flip stance (LR ⇄ TB) — pin `layout.direction` when that matters. |
 | `rank` | absolute column hint, only when computed order fights the truth (an external that must sit right of everything). A hint is a promise about columns: hint a node left of its predecessor and you have declared that edge backward, and the router answers with a corridor under the whole drawing. |
+| `layout` | per level: `{ "direction": "LR" \| "TB" }`. Unset = `auto`, which turns a level upright only when it exceeds 1600 px AND 3:1 and crosses no more wires. Pin it when you know the shape: a long chain reads as a column, a wide fan as a strip. Also pin it when a `size`-driven box changes the aspect and the stance flips. |
 | `flow` | the linear narration; **must** name every edge key of that level once (gated). Omit → derived depth-first from the source nodes. |
 | `groups` | C4 boundaries (e.g. "what we run" vs "what we rent"); members must be **adjacent in the drawing**.
 Do **not** wrap a drill level's interior in a group — composition already draws the dashed `frame-<host>` around
@@ -376,7 +380,7 @@ the JSON unless asked; never claim it "renders correctly" without the audit line
 
 ## What this is not
 
-Not an editor — no dragging, no resizing, no manual coordinates; a picture that needs hand placement needs a
+Not an editor — no dragging, no hand-placed boxes or coordinates; a node's `size` is a floor declared in the model, not a drag handle, and the layout still owns every coordinate; a picture that needs hand placement needs a
 better model. Not a general graph drawer — C4 semantics (levels, boundaries, typed nodes) are the product. Not
 a "hero map" for a root view the owner will read closely — that is the `c4-auto-generation` skill's rendering
 tier; `c4v` is for the levels below it.

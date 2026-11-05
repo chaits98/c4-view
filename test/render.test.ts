@@ -56,9 +56,9 @@ test('a rank hint that leaves empty ranks still routes inside the drawing', () =
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'Start', subtype: 'microservice', rank: 0 },
-          { id: 'b', label: 'End', subtype: 'microservice', rank: 5 },
-          { id: 'c', label: 'Other', subtype: 'microservice', rank: 5 },
+          { id: 'a', label: 'Start', subtype: 'microservice', state: 'built' as const, rank: 0 },
+          { id: 'b', label: 'End', subtype: 'microservice', state: 'built' as const, rank: 5 },
+          { id: 'c', label: 'Other', subtype: 'microservice', state: 'built' as const, rank: 5 },
         ],
         edges: [
           { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'long haul' },

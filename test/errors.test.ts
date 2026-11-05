@@ -22,7 +22,7 @@ const lens = (): Record<string, any> =>
 const simple = (levels: unknown[]): Record<string, any> => ({ id: 'm', title: 'M', levels })
 
 test('ports must be an object, and the key must look like an edge', () => {
-  const raw = simple([{ path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice' }], edges: [] }])
+  const raw = simple([{ path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice', state: 'built' as const }], edges: [] }])
   raw.levels[0].ports = 'nope'
   assert.throws(() => parseModel(raw), (error: Error) => {
     assert.ok(error instanceof ModelError)
@@ -32,17 +32,17 @@ test('ports must be an object, and the key must look like an edge', () => {
 })
 
 test('a port on the root level is refused: there is nothing above it', () => {
-  const raw = simple([{ path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice' }], edges: [], ports: { 'x->y': 'a' } }])
+  const raw = simple([{ path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice', state: 'built' as const }], edges: [], ports: { 'x->y': 'a' } }])
   assert.throws(() => parseModel(raw), /root level has no parent/)
 })
 
 test('a port key without "->" and a port target that is not a node id are both named', () => {
   const raw = simple([
-    { path: '', title: 'Root', nodes: [{ id: 'host', label: 'Host', subtype: 'microservice' }], edges: [] },
+    { path: '', title: 'Root', nodes: [{ id: 'host', label: 'Host', subtype: 'microservice', state: 'built' as const }], edges: [] },
     {
       path: 'host',
       title: 'Host',
-      nodes: [{ id: 'inner', label: 'Inner', subtype: 'microservice' }],
+      nodes: [{ id: 'inner', label: 'Inner', subtype: 'microservice', state: 'built' as const }],
       edges: [],
       ports: { 'no-arrow': 'inner', 'from->to': '   ', 'from->other': 'ghost' },
     },
@@ -56,7 +56,7 @@ test('a port key without "->" and a port target that is not a node id are both n
 })
 
 test('a level whose parent does not exist says which parent it expected', () => {
-  const raw = simple([{ path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice' }], edges: [] }, { path: 'gone/child', title: 'Child', nodes: [{ id: 'x', label: 'X', subtype: 'microservice' }], edges: [] }])
+  const raw = simple([{ path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice', state: 'built' as const }], edges: [] }, { path: 'gone/child', title: 'Child', nodes: [{ id: 'x', label: 'X', subtype: 'microservice', state: 'built' as const }], edges: [] }])
   const report = lensReport(parseModel(raw))
   assert.ok(report.problems.some((p) => /parent level "gone" does not exist/.test(p)), report.problems.join('\n'))
 })
@@ -111,7 +111,7 @@ test('a level with no docs yields an empty set, and one doc renders and the othe
   const dir = mkdtempSync(join(tmpdir(), 'c4v-leveldocs-'))
   mkdirSync(join(dir, 'nodes'), { recursive: true })
   writeFileSync(join(dir, 'nodes', 'a.md'), '# A\n\nDoes a thing.')
-  const level = { path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice' }, { id: 'b', label: 'B', subtype: 'microservice' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }
+  const level = { path: '', title: 'Root', nodes: [{ id: 'a', label: 'A', subtype: 'microservice', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'microservice', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }
   const docs = levelDocs(dir, level as never)
   assert.match(docs.nodes.a, /Does a thing/)
   assert.equal(docs.nodes.b, undefined, 'no file, no doc')
@@ -182,8 +182,8 @@ test('a hand-built model with no groups and no flow still expands', () => {
     id: 'hand',
     title: 'Hand',
     levels: [
-      { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'user', to: 'host' }] },
-      { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [], ports: { 'user->host': 'a' } },
+      { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person', state: 'built' as const }, { id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'user', to: 'host' }] },
+      { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic', state: 'built' as const }], edges: [], ports: { 'user->host': 'a' } },
     ],
   } as unknown as Parameters<typeof expandLevel>[0]
   const { level } = expandLevel(hand, 'host')
@@ -208,8 +208,8 @@ test('a level whose box does not exist above it is a failed audit, not a crash',
     id: 'nested',
     title: 'Nested',
     levels: [
-      { path: '', title: 'Root', nodes: [{ id: 'app', label: 'App', subtype: 'system' }], edges: [] },
-      { path: 'app/db', title: 'Ghost', nodes: [{ id: 'tbl', label: 'Tbl', subtype: 'database' }], edges: [] },
+      { path: '', title: 'Root', nodes: [{ id: 'app', label: 'App', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'app/db', title: 'Ghost', nodes: [{ id: 'tbl', label: 'Tbl', subtype: 'database', state: 'built' as const }], edges: [] },
     ],
   } as never)
   const audits = pictureAudits(broken)
@@ -226,11 +226,11 @@ test('a box that appears on two levels is drawn once: identity is the merge key'
   // the same element (same id, same identity) declared on the child level must not be drawn beside the
   // parent's copy as if it were a second box
   const raw = lens()
-  raw.levels[0].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system' })
+  raw.levels[0].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system', state: 'built' as const })
   raw.levels[0].edges.push({ from: 'ext', to: 'context1', label: 'calls', desc: 'calls in' })
   // the port lives on the child level: it names which interior node the parent edge lands on
   raw.levels[1].ports = { ...(raw.levels[1].ports ?? {}), 'ext->context1': 'a' }
-  raw.levels[1].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system' })
+  raw.levels[1].nodes.push({ id: 'ext', identity: 'EXT-1', label: 'External', subtype: 'external-system', state: 'built' as const })
   raw.levels[1].edges.push({ from: 'ext', to: 'a', label: 'asks', desc: 'asks a question' })
   const { level } = expandLevel(parseModel(raw), 'context1')
   const ids = level.nodes.map((n) => n.id)
@@ -244,11 +244,11 @@ test('a hand-built level whose flow names a missing node keeps the id instead of
     id: 'handflow',
     title: 'Hand flow',
     levels: [
-      { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }], edges: [] },
+      { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }], edges: [] },
       {
         path: 'host',
         ports: {},
-        nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }],
+        nodes: [{ id: 'a', label: 'A', subtype: 'service-logic', state: 'built' as const }],
         edges: [],
         flow: ['ghost->a', 'a->ghost'], // both ends: a missing source and a missing target
       },

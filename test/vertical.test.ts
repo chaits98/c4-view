@@ -12,7 +12,7 @@ function chain(n: number): LevelSpec {
   return {
     path: 'chain',
     title: 'Chain',
-    nodes: Array.from({ length: n }, (_, i) => ({ id: `n${i}`, label: `Node ${i}`, subtype: 'service-logic', tech: 'ts' })),
+    nodes: Array.from({ length: n }, (_, i) => ({ id: `n${i}`, label: `Node ${i}`, subtype: 'service-logic', state: 'built' as const, tech: 'ts' })),
     edges: Array.from({ length: n - 1 }, (_, i) => ({ desc: 'the payload this edge carries', from: `n${i}`, to: `n${i + 1}`, label: `step${i}`, style: 'flow' })),
     flow: Array.from({ length: n - 1 }, (_, i) => `n${i}->n${i + 1}`),
   } as LevelSpec
@@ -46,7 +46,7 @@ test('direction TB stands the picture up even when it would fit', () => {
 })
 
 test('the parser accepts TB and refuses anything else', () => {
-  const base = { id: 'm', title: 'M', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }
+  const base = { id: 'm', title: 'M', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] }
   assert.equal(parseModel({ ...base, layout: { direction: 'TB' } } as unknown as Model).layout?.direction, 'TB')
   assert.throws(() => parseModel({ ...base, layout: { direction: 'diagonal' } } as unknown as Model), /direction/)
 })
@@ -65,9 +65,9 @@ test('the full view composes every level into one picture, and it audits clean',
     id: 'deep',
     title: 'Deep',
     levels: [
-      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system' }, { id: 'out', label: 'Out', subtype: 'external-system' }], edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }] },
-      { path: 'box', nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic' }, { id: 'inner', label: 'Inner', subtype: 'service-logic' }], edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }], ports: { 'out->box': 'stage' } },
-      { path: 'box/inner', nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic' }], edges: [], ports: { 'stage->inner': 'leaf' } },
+      { path: '', nodes: [{ id: 'box', label: 'Box', subtype: 'system', state: 'built' as const }, { id: 'out', label: 'Out', subtype: 'external-system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'out', to: 'box', label: 'in' }] },
+      { path: 'box', nodes: [{ id: 'stage', label: 'Stage', subtype: 'service-logic', state: 'built' as const }, { id: 'inner', label: 'Inner', subtype: 'service-logic', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'stage', to: 'inner', label: 'next' }], ports: { 'out->box': 'stage' } },
+      { path: 'box/inner', nodes: [{ id: 'leaf', label: 'Leaf', subtype: 'service-logic', state: 'built' as const }], edges: [], ports: { 'stage->inner': 'leaf' } },
     ],
   } as never)
   const lv = fullView(model)
@@ -84,13 +84,13 @@ test('a port that named a drilled host lands on the entry of its frame', async (
   const { composeInto } = await import('../src/expand.ts')
   const parent = {
     path: '',
-    nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'host', label: 'Host', subtype: 'system' }],
+    nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }],
     edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'host', label: 'in' }],
     ports: { 'up->root': 'host' },
   }
   const child = {
     path: 'host',
-    nodes: [{ id: 'first', label: 'First', subtype: 'service-logic' }],
+    nodes: [{ id: 'first', label: 'First', subtype: 'service-logic', state: 'built' as const }],
     edges: [],
     flow: ['first->first'],
     ports: { 'a->host': 'first' },

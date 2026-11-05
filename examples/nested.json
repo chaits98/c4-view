@@ -1,59 +1,198 @@
 {
-  "id": "nested",
-  "title": "Nested bakery",
-  "levels": [
+ "id": "nested",
+ "title": "Nested bakery",
+ "levels": [
+  {
+   "path": "",
+   "title": "Containers",
+   "nodes": [
     {
-      "path": "",
-      "title": "Containers",
-      "nodes": [
-        { "id": "browser", "label": "Customer browser", "subtype": "person", "tech": "phone or laptop", "identity": "BAK-1" },
-        { "id": "shop", "label": "Shop front", "subtype": "web-application", "tech": "React 19", "identity": "BAK-2" },
-        { "id": "orders", "label": "Orders service", "subtype": "microservice", "tech": "FastAPI", "identity": "BAK-3" },
-        { "id": "ledger", "label": "Order ledger", "subtype": "database", "tech": "Postgres", "identity": "BAK-4" },
-        { "id": "kitchen", "label": "Baking floor", "subtype": "system", "tech": "two ovens", "identity": "BAK-5" }
-      ],
-      "edges": [
-        { "from": "browser", "to": "shop", "desc": "A customer opens the shop over HTTPS and gets the rendered catalogue.", "label": "HTTPS" },
-        { "from": "shop", "to": "orders", "desc": "A checkout request with its basket, posted as REST.", "label": "REST" },
-        { "from": "orders", "to": "ledger", "desc": "A settled order, written once and never amended.", "label": "writes" },
-        { "from": "orders", "to": "kitchen", "desc": "The order is queued for the kitchen as soon as payment clears.", "label": "queue" },
-        { "from": "kitchen", "to": "orders", "desc": "A completion notice, carrying the ticket id and what was short.", "label": "done", "style": "dep" }
-      ],
-      "flow": ["browser->shop", "shop->orders", "orders->ledger", "orders->kitchen", "kitchen->orders"]
+     "id": "browser",
+     "label": "Customer browser",
+     "subtype": "person",
+     "tech": "phone or laptop",
+     "identity": "BAK-1",
+     "state": "built"
     },
     {
-      "path": "orders",
-      "title": "Orders internals",
-      "nodes": [
-        { "id": "router", "label": "Router", "subtype": "service-logic", "tech": "FastAPI routers", "identity": "ORD-1" },
-        { "id": "pricing", "label": "Pricing", "subtype": "service-logic", "tech": "rules table", "identity": "ORD-2" },
-        { "id": "store", "label": "Ledger writer", "subtype": "service-logic", "tech": "SQL", "identity": "ORD-3" },
-        { "id": "queue", "label": "Queue client", "subtype": "service-logic", "tech": "Redis", "identity": "ORD-4" }
-      ],
-      "edges": [
-        { "from": "router", "to": "pricing", "desc": "The basket lines, sent for a quote before anything is written.", "label": "quote" },
-        { "from": "pricing", "to": "store", "desc": "The priced total, returned so the order can be stored with what it cost.", "label": "total" },
-        { "from": "store", "to": "queue", "desc": "The stored order id, enqueued for the kitchen.", "label": "enqueue" }
-      ],
-      "ports": {
-        "shop->orders": "router",
-        "orders->ledger": "store",
-        "orders->kitchen": "queue",
-        "kitchen->orders": "queue"
-      },
-      "flow": ["router->pricing", "pricing->store", "store->queue"]
+     "id": "shop",
+     "label": "Shop front",
+     "subtype": "web-application",
+     "tech": "React 19",
+     "identity": "BAK-2",
+     "state": "built"
     },
     {
-      "path": "orders/pricing",
-      "title": "Pricing internals",
-      "nodes": [
-        { "id": "rules", "label": "Rules table", "subtype": "config-file", "tech": "JSON", "identity": "PRC-1" },
-        { "id": "total", "label": "Total", "subtype": "service-logic", "tech": "sum + tax", "identity": "PRC-2" }
-      ],
-      "edges": [{ "from": "rules", "to": "total",
-      "desc": "Each line total after the discount rules have run, summed into one figure.", "label": "applies" }],
-      "ports": { "router->pricing": "rules", "pricing->store": "total" },
-      "flow": ["rules->total"]
+     "id": "orders",
+     "label": "Orders service",
+     "subtype": "microservice",
+     "tech": "FastAPI",
+     "identity": "BAK-3",
+     "state": "built"
+    },
+    {
+     "id": "ledger",
+     "label": "Order ledger",
+     "subtype": "database",
+     "tech": "Postgres",
+     "identity": "BAK-4",
+     "state": "built"
+    },
+    {
+     "id": "kitchen",
+     "label": "Baking floor",
+     "subtype": "system",
+     "tech": "two ovens",
+     "identity": "BAK-5",
+     "state": "built"
     }
-  ]
+   ],
+   "edges": [
+    {
+     "from": "browser",
+     "to": "shop",
+     "desc": "A customer opens the shop over HTTPS and gets the rendered catalogue.",
+     "label": "HTTPS"
+    },
+    {
+     "from": "shop",
+     "to": "orders",
+     "desc": "A checkout request with its basket, posted as REST.",
+     "label": "REST"
+    },
+    {
+     "from": "orders",
+     "to": "ledger",
+     "desc": "A settled order, written once and never amended.",
+     "label": "writes"
+    },
+    {
+     "from": "orders",
+     "to": "kitchen",
+     "desc": "The order is queued for the kitchen as soon as payment clears.",
+     "label": "queue"
+    },
+    {
+     "from": "kitchen",
+     "to": "orders",
+     "desc": "A completion notice, carrying the ticket id and what was short.",
+     "label": "done",
+     "style": "dep"
+    }
+   ],
+   "flow": [
+    "browser->shop",
+    "shop->orders",
+    "orders->ledger",
+    "orders->kitchen",
+    "kitchen->orders"
+   ]
+  },
+  {
+   "path": "orders",
+   "title": "Orders internals",
+   "nodes": [
+    {
+     "id": "router",
+     "label": "Router",
+     "subtype": "service-logic",
+     "tech": "FastAPI routers",
+     "identity": "ORD-1",
+     "state": "built"
+    },
+    {
+     "id": "pricing",
+     "label": "Pricing",
+     "subtype": "service-logic",
+     "tech": "rules table",
+     "identity": "ORD-2",
+     "state": "built"
+    },
+    {
+     "id": "store",
+     "label": "Ledger writer",
+     "subtype": "service-logic",
+     "tech": "SQL",
+     "identity": "ORD-3",
+     "state": "built"
+    },
+    {
+     "id": "queue",
+     "label": "Queue client",
+     "subtype": "service-logic",
+     "tech": "Redis",
+     "identity": "ORD-4",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "router",
+     "to": "pricing",
+     "desc": "The basket lines, sent for a quote before anything is written.",
+     "label": "quote"
+    },
+    {
+     "from": "pricing",
+     "to": "store",
+     "desc": "The priced total, returned so the order can be stored with what it cost.",
+     "label": "total"
+    },
+    {
+     "from": "store",
+     "to": "queue",
+     "desc": "The stored order id, enqueued for the kitchen.",
+     "label": "enqueue"
+    }
+   ],
+   "ports": {
+    "shop->orders": "router",
+    "orders->ledger": "store",
+    "orders->kitchen": "queue",
+    "kitchen->orders": "queue"
+   },
+   "flow": [
+    "router->pricing",
+    "pricing->store",
+    "store->queue"
+   ]
+  },
+  {
+   "path": "orders/pricing",
+   "title": "Pricing internals",
+   "nodes": [
+    {
+     "id": "rules",
+     "label": "Rules table",
+     "subtype": "config-file",
+     "tech": "JSON",
+     "identity": "PRC-1",
+     "state": "built"
+    },
+    {
+     "id": "total",
+     "label": "Total",
+     "subtype": "service-logic",
+     "tech": "sum + tax",
+     "identity": "PRC-2",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "rules",
+     "to": "total",
+     "desc": "Each line total after the discount rules have run, summed into one figure.",
+     "label": "applies"
+    }
+   ],
+   "ports": {
+    "router->pricing": "rules",
+    "pricing->store": "total"
+   },
+   "flow": [
+    "rules->total"
+   ]
+  }
+ ]
 }

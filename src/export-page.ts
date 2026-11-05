@@ -41,6 +41,13 @@ const FLOW_CSS = `
 #c4-flow-desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin:0;overflow:hidden;white-space:normal}
 #c4-flow-desc{opacity:.72}
 .c4-dot{fill:#7cc4ff;stroke:#0a111b;stroke-width:2}
+/* while the flow plays, the step IS the picture: the two nodes it joins and the edge itself keep full
+   strength, everything else steps back. The viewer has carried these rules since the focus mode shipped;
+   this page did not, so an export animated without ever dimming — the selectors must stay spelled out like
+   this, a shorter one loses to the class+attribute+element rule however specific it looks. */
+.c4-focus g[data-id],.c4-focus path[data-key],.c4-focus g[data-chip]{opacity:.4;transition:opacity .18s ease}
+.c4-focus g[data-id][data-active='true'],.c4-focus path[data-key][data-active='true'],
+.c4-focus g[data-chip][data-active='true']{opacity:1}
 `
 
 const FLOW_INK = `

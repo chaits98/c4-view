@@ -1,206 +1,217 @@
 {
-  "id": "shop",
-  "title": "Shop \u2014 container view",
-  "layout": {
-    "rankGap": 120,
-    "nodeGap": 36
-  },
-  "levels": [
+ "id": "shop",
+ "title": "Shop \u2014 container view",
+ "layout": {
+  "rankGap": 120,
+  "nodeGap": 36
+ },
+ "levels": [
+  {
+   "path": "",
+   "title": "Containers",
+   "nodes": [
     {
-      "path": "",
-      "title": "Containers",
-      "nodes": [
-        {
-          "id": "browser",
-          "label": "Customer browser",
-          "subtype": "person",
-          "tech": "mobile + desktop",
-          "identity": "SHP-1",
-          "desc": "phone or laptop"
-        },
-        {
-          "id": "web",
-          "label": "Storefront",
-          "subtype": "web-application",
-          "tech": "React 19",
-          "group": "cloud",
-          "identity": "SHP-2",
-          "desc": "what the customer sees"
-        },
-        {
-          "id": "api",
-          "label": "Orders API",
-          "subtype": "microservice",
-          "tech": "FastAPI",
-          "group": "cloud",
-          "identity": "SHP-3",
-          "desc": "validates, prices and persists an order"
-        },
-        {
-          "id": "worker",
-          "label": "Fulfilment worker",
-          "subtype": "batch-job",
-          "tech": "Celery",
-          "group": "cloud",
-          "identity": "SHP-4",
-          "desc": "picks up jobs, calls the warehouse, marks shipped"
-        },
-        {
-          "id": "db",
-          "label": "Orders db",
-          "subtype": "database",
-          "tech": "Postgres 16",
-          "group": "data",
-          "identity": "SHP-5",
-          "desc": "orders, line items, fulfilment state"
-        },
-        {
-          "id": "queue",
-          "label": "Job queue",
-          "subtype": "message-queue",
-          "tech": "Redis streams",
-          "group": "data",
-          "identity": "SHP-6",
-          "desc": "one job per paid order"
-        },
-        {
-          "id": "stripe",
-          "label": "Stripe",
-          "subtype": "external-system",
-          "tech": "payments",
-          "identity": "SHP-7",
-          "desc": "card authorisation + webhooks"
-        }
-      ],
-      "edges": [
-        {
-          "from": "browser",
-          "to": "web",
-          "desc": "A customer loads the storefront over HTTPS, with no credential beyond the session cookie.",
-          "label": "https",
-          "style": "flow"
-        },
-        {
-          "from": "web",
-          "to": "api",
-          "desc": "The storefront calls the REST API; the browser never talks to the API directly.",
-          "label": "REST",
-          "style": "flow"
-        },
-        {
-          "from": "api",
-          "to": "db",
-          "desc": "A confirmed order is written, with its line items, inside one transaction.",
-          "label": "writes orders",
-          "style": "flow"
-        },
-        {
-          "from": "api",
-          "to": "queue",
-          "desc": "The order id is enqueued so fulfilment happens after the customer is answered.",
-          "label": "enqueues",
-          "style": "flow"
-        },
-        {
-          "from": "queue",
-          "to": "worker",
-          "desc": "The worker takes one job at a time and retries a failed one three times.",
-          "label": "delivers",
-          "style": "dep"
-        },
-        {
-          "from": "worker",
-          "to": "db",
-          "desc": "The worker marks the order shipped and stamps it with the carrier reference.",
-          "label": "marks shipped",
-          "style": "flow"
-        },
-        {
-          "from": "api",
-          "to": "stripe",
-          "desc": "The card is charged for the basket total, idempotency-keyed by order id.",
-          "label": "charges",
-          "style": "tent"
-        },
-        {
-          "from": "stripe",
-          "to": "api",
-          "desc": "Stripe reports the outcome as a signed webhook the API verifies before trusting.",
-          "label": "webhook",
-          "style": "dep"
-        }
-      ],
-      "flow": [
-        "browser->web",
-        "web->api",
-        "api->stripe",
-        "stripe->api",
-        "api->db",
-        "api->queue",
-        "queue->worker",
-        "worker->db"
-      ]
+     "id": "browser",
+     "label": "Customer browser",
+     "subtype": "person",
+     "tech": "mobile + desktop",
+     "identity": "SHP-1",
+     "desc": "phone or laptop",
+     "state": "built"
     },
     {
-      "path": "api",
-      "title": "Orders API",
-      "nodes": [
-        {
-          "id": "routes",
-          "label": "HTTP routes",
-          "subtype": "api-controller",
-          "tech": "FastAPI routers"
-        },
-        {
-          "id": "service",
-          "label": "Order service",
-          "subtype": "service-logic",
-          "tech": "domain rules",
-          "desc": "the domain: pricing, stock, state machine"
-        },
-        {
-          "id": "repo",
-          "label": "Order repo",
-          "subtype": "repository",
-          "tech": "SQLAlchemy"
-        },
-        {
-          "id": "pay",
-          "label": "Payment adapter",
-          "subtype": "adapter",
-          "tech": "stripe SDK"
-        }
-      ],
-      "edges": [
-        {
-          "from": "routes",
-          "to": "service",
-          "desc": "A request body, checked against the schema before any business rule runs.",
-          "label": "validate",
-          "style": "flow"
-        },
-        {
-          "from": "service",
-          "to": "repo",
-          "desc": "The order entity, persisted through the repository rather than by the service.",
-          "label": "persist",
-          "style": "flow"
-        },
-        {
-          "from": "service",
-          "to": "pay",
-          "desc": "Amount, currency and idempotency key, handed to the payment client.",
-          "label": "authorise",
-          "style": "flow"
-        }
-      ],
-      "ports": {
-        "web->api": "routes",
-        "api->db": "repo",
-        "api->queue": "service",
-        "api->stripe": "pay",
-        "stripe->api": "pay"
-      }
+     "id": "web",
+     "label": "Storefront",
+     "subtype": "web-application",
+     "tech": "React 19",
+     "group": "cloud",
+     "identity": "SHP-2",
+     "desc": "what the customer sees",
+     "state": "built"
+    },
+    {
+     "id": "api",
+     "label": "Orders API",
+     "subtype": "microservice",
+     "tech": "FastAPI",
+     "group": "cloud",
+     "identity": "SHP-3",
+     "desc": "validates, prices and persists an order",
+     "state": "built"
+    },
+    {
+     "id": "worker",
+     "label": "Fulfilment worker",
+     "subtype": "batch-job",
+     "tech": "Celery",
+     "group": "cloud",
+     "identity": "SHP-4",
+     "desc": "picks up jobs, calls the warehouse, marks shipped",
+     "state": "built"
+    },
+    {
+     "id": "db",
+     "label": "Orders db",
+     "subtype": "database",
+     "tech": "Postgres 16",
+     "group": "data",
+     "identity": "SHP-5",
+     "desc": "orders, line items, fulfilment state",
+     "state": "built"
+    },
+    {
+     "id": "queue",
+     "label": "Job queue",
+     "subtype": "message-queue",
+     "tech": "Redis streams",
+     "group": "data",
+     "identity": "SHP-6",
+     "desc": "one job per paid order",
+     "state": "built"
+    },
+    {
+     "id": "stripe",
+     "label": "Stripe",
+     "subtype": "external-system",
+     "tech": "payments",
+     "identity": "SHP-7",
+     "desc": "card authorisation + webhooks",
+     "state": "built"
     }
-  ]
+   ],
+   "edges": [
+    {
+     "from": "browser",
+     "to": "web",
+     "desc": "A customer loads the storefront over HTTPS, with no credential beyond the session cookie.",
+     "label": "https",
+     "style": "flow"
+    },
+    {
+     "from": "web",
+     "to": "api",
+     "desc": "The storefront calls the REST API; the browser never talks to the API directly.",
+     "label": "REST",
+     "style": "flow"
+    },
+    {
+     "from": "api",
+     "to": "db",
+     "desc": "A confirmed order is written, with its line items, inside one transaction.",
+     "label": "writes orders",
+     "style": "flow"
+    },
+    {
+     "from": "api",
+     "to": "queue",
+     "desc": "The order id is enqueued so fulfilment happens after the customer is answered.",
+     "label": "enqueues",
+     "style": "flow"
+    },
+    {
+     "from": "queue",
+     "to": "worker",
+     "desc": "The worker takes one job at a time and retries a failed one three times.",
+     "label": "delivers",
+     "style": "dep"
+    },
+    {
+     "from": "worker",
+     "to": "db",
+     "desc": "The worker marks the order shipped and stamps it with the carrier reference.",
+     "label": "marks shipped",
+     "style": "flow"
+    },
+    {
+     "from": "api",
+     "to": "stripe",
+     "desc": "The card is charged for the basket total, idempotency-keyed by order id.",
+     "label": "charges",
+     "style": "tent"
+    },
+    {
+     "from": "stripe",
+     "to": "api",
+     "desc": "Stripe reports the outcome as a signed webhook the API verifies before trusting.",
+     "label": "webhook",
+     "style": "dep"
+    }
+   ],
+   "flow": [
+    "browser->web",
+    "web->api",
+    "api->stripe",
+    "stripe->api",
+    "api->db",
+    "api->queue",
+    "queue->worker",
+    "worker->db"
+   ]
+  },
+  {
+   "path": "api",
+   "title": "Orders API",
+   "nodes": [
+    {
+     "id": "routes",
+     "label": "HTTP routes",
+     "subtype": "api-controller",
+     "tech": "FastAPI routers",
+     "state": "built"
+    },
+    {
+     "id": "service",
+     "label": "Order service",
+     "subtype": "service-logic",
+     "tech": "domain rules",
+     "desc": "the domain: pricing, stock, state machine",
+     "state": "built"
+    },
+    {
+     "id": "repo",
+     "label": "Order repo",
+     "subtype": "repository",
+     "tech": "SQLAlchemy",
+     "state": "built"
+    },
+    {
+     "id": "pay",
+     "label": "Payment adapter",
+     "subtype": "adapter",
+     "tech": "stripe SDK",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "routes",
+     "to": "service",
+     "desc": "A request body, checked against the schema before any business rule runs.",
+     "label": "validate",
+     "style": "flow"
+    },
+    {
+     "from": "service",
+     "to": "repo",
+     "desc": "The order entity, persisted through the repository rather than by the service.",
+     "label": "persist",
+     "style": "flow"
+    },
+    {
+     "from": "service",
+     "to": "pay",
+     "desc": "Amount, currency and idempotency key, handed to the payment client.",
+     "label": "authorise",
+     "style": "flow"
+    }
+   ],
+   "ports": {
+    "web->api": "routes",
+    "api->db": "repo",
+    "api->queue": "service",
+    "api->stripe": "pay",
+    "stripe->api": "pay"
+   }
+  }
+ ]
 }

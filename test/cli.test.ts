@@ -31,9 +31,9 @@ function brokenModel(dir: string): string {
           // x sits directly above `a` in the same column, so the boundary over `a`
           // (16u pad + 22u label strip) reaches into x's box: a group∧node gate failure
           nodes: [
-            { id: 'x', label: 'X', subtype: 'system' },
-            { id: 'a', label: 'A', subtype: 'system' },
-            { id: 'b', label: 'B', subtype: 'system' },
+            { id: 'x', label: 'X', subtype: 'system', state: 'built' as const },
+            { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+            { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
           ],
           edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }],
           groups: [{ id: 'g', label: 'edge', members: ['a'] }],
@@ -76,7 +76,7 @@ test('a model with an unknown node exits 2', async () => {
   const file = join(dir, 'ghost.json')
   writeFileSync(
     file,
-    JSON.stringify({ id: 'g', title: 'G', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'nope' }] }] }),
+    JSON.stringify({ id: 'g', title: 'G', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'nope' }] }] }),
   )
   assert.equal(await run(['audit', file, '--strict']), 2)
 })
@@ -182,7 +182,7 @@ test('--require-docs exits 1 and names every missing doc, which is the gate an a
     JSON.stringify({
       id: 'nodocs',
       title: 'No docs',
-      levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }],
+      levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }],
     }),
   )
   assert.equal(await run(['audit', file, '--strict', '--require-docs']), 1)
@@ -203,9 +203,9 @@ test('a lens problem is a strict failure with its own line', async () => {
       id: 'flat',
       title: 'Flat',
       levels: [
-        { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person' }, { id: 'host', label: 'Host', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'user', to: 'host' }] },
+        { path: '', nodes: [{ id: 'user', label: 'User', subtype: 'person', state: 'built' as const }, { id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'user', to: 'host' }] },
         // a drill level that declares no ports, while the parent has an edge that needs one
-        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [] },
+        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic', state: 'built' as const }], edges: [] },
       ],
     }),
   )
@@ -226,8 +226,8 @@ test('--flat audits the authored level; the default audits the picture a page dr
       id: 'drill',
       title: 'Drill',
       levels: [
-        { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system' }], edges: [] },
-        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic' }], edges: [], ports: {} },
+        { path: '', nodes: [{ id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }], edges: [] },
+        { path: 'host', nodes: [{ id: 'a', label: 'A', subtype: 'service-logic', state: 'built' as const }], edges: [], ports: {} },
       ],
     }),
   )
@@ -246,7 +246,7 @@ test('--no-lens is geometry only, so a corpus fixture is judged on its drawing',
 test('c4v publish runs through the same entry point as everything else', async () => {
   const dir = workdir()
   const model = join(dir, 'solo.json')
-  writeFileSync(model, JSON.stringify({ id: 'solo', title: 'Solo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }))
+  writeFileSync(model, JSON.stringify({ id: 'solo', title: 'Solo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] }))
   assert.equal(await run(['publish', model, '--root', join(dir, 'store')]), 0)
   assert.equal(await run(['publish']), 2, 'and a bare publish is a usage error')
 })

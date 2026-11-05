@@ -27,7 +27,7 @@ test('--out resolves a relative .svg against the working directory, and a direct
 test('twenty-one missing docs say "and N more" instead of listing the lot', () => {
   const dir = mkdtempSync(join(tmpdir(), 'c4v-many-docs-'))
   const file = join(dir, 'many.json')
-  const nodes = Array.from({ length: 21 }, (_, i) => ({ id: `n${i}`, label: `N${i}`, subtype: 'system' }))
+  const nodes = Array.from({ length: 21 }, (_, i) => ({ id: `n${i}`, label: `N${i}`, subtype: 'system', state: 'built' as const }))
   writeFileSync(file, JSON.stringify({ id: 'many', title: 'Many', levels: [{ path: '', nodes, edges: [] }] }))
   const parsed = parseModel(JSON.parse(readFileSync(file, 'utf8')) as unknown)
   const lines: string[] = []
@@ -51,7 +51,7 @@ test('a fully documented model passes --require-docs with nothing printed', () =
   const file = join(dir, 'ok.json')
   writeFileSync(
     file,
-    JSON.stringify({ id: 'ok', title: 'Ok', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }),
+    JSON.stringify({ id: 'ok', title: 'Ok', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] }),
   )
   mkdirSync(join(dir, 'ok', 'nodes'), { recursive: true })
   writeFileSync(join(dir, 'ok', 'nodes', 'a.md'), '# A\n\nIt is A.')

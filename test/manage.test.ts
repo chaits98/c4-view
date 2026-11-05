@@ -21,7 +21,7 @@ const MODEL = {
     {
       path: '',
       title: 'Shop',
-      nodes: [{ id: 'api', label: 'API', subtype: 'system', desc: 'takes orders' }],
+      nodes: [{ id: 'api', label: 'API', subtype: 'system', state: 'built' as const, desc: 'takes orders' }],
       edges: [],
     },
   ],

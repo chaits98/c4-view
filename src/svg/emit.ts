@@ -81,6 +81,48 @@ function routeLayer(routed: Routed, placed: Placed, theme: Theme, flow: Map<stri
   })
 }
 
+
+/** The external-link chip: a small ↗ in the box's top-right corner, its own anchor so the box keeps
+ *  its drill link. Nested <a> is invalid SVG, which is why this is a separate layer and not a wrapper. */
+
+/** The state tag: a small square-cornered label in the box's bottom-left, inside the padding band so
+ *  it never covers the text. Absent state draws nothing — 'built' is the default, not a badge. */
+function stateLayer(level: LevelSpec, placed: Placed, theme: Theme): string[] {
+  return level.nodes.flatMap((node: NodeSpec) => {
+    const box = placed.boxes.get(node.id)
+    if (!box || !node.state || node.state === 'built') return []
+    const label = node.state.toUpperCase()
+    const w = label.length * 6 + 10
+    const h = 13
+    const x = box.x + 5
+    const y = box.y + box.h - h - 5
+    const ink = theme.fg
+    return [`<g class="c4-state" data-state="${esc(node.state)}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${theme.chipBg}" stroke="${ink}" stroke-width="1" ${node.state === 'planned' ? 'stroke-dasharray="3 2"' : ''}/><text x="${x + w / 2}" y="${y + h - 3.5}" text-anchor="middle" font-size="8" letter-spacing="0.5" fill="${ink}">${label}</text></g>`]
+  })
+}
+
+function extLinkLayer(level: LevelSpec, placed: Placed, theme: Theme): string[] {
+  return level.nodes.flatMap((node: NodeSpec) => {
+    const links = node.links
+    const box = placed.boxes.get(node.id)
+    if (!links?.length) return []
+    if (!box) return [] // coverage:invariant — place() gives every node of the level a box
+    const link = links[0]
+    const kind = SUBTYPE_KIND[node.subtype] ?? 'concept' // coverage:invariant — parseModel refuses an unknown subtype
+    const ink = theme.kinds[kind].stroke
+    const size = 16
+    const x = box.x + box.w - size - 6
+    const y = box.y + 6
+    // More than one link is common (an ADR plus its JIRA tickets). The chip opens the first and the
+    // hover names all of them, with the count on the glyph — one chip sized for ten links would eat
+    // the box, and a stack of chips is a layout problem this tool does not solve.
+    const title = links.map((l) => l.label).join(' · ')
+    const glyph = links.length > 1 ? `↗${links.length}` : '↗'
+    const w = links.length > 1 ? size + 8 : size
+    return [`<a class="c4-ext" href="${esc(link.href)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(title)}"><title>${esc(title)}</title><rect x="${x - (w - size)}" y="${y}" width="${w}" height="${size}" rx="4" fill="none" stroke="${ink}" stroke-width="1.1"/><text x="${x - (w - size) + w / 2}" y="${y + size / 2 + 3.4}" text-anchor="middle" font-size="10" fill="${ink}">${glyph}</text></a>`]
+  })
+}
+
 function nodeLayer(level: LevelSpec, placed: Placed, cfg: LayoutConfig, theme: Theme, drill: Map<string, string>, linkBase?: string, hosts?: Set<string>): string[] {
   const small = Math.max(9, cfg.fontSize - 2)
   const lh = lineHeight(cfg.fontSize)
@@ -169,6 +211,8 @@ export function emit(
     ...groupLayer(placed, theme),
     ...routeLayer(routed, placed, theme, flow, descOf),
     ...nodeLayer(level, placed, cfg, theme, drill, linkBase, options.hosts),
+    ...extLinkLayer(level, placed, theme),
+    ...stateLayer(level, placed, theme),
     ...chipLayer(routed, cfg, theme),
     ...groupLabelLayer(placed, theme),
   ]

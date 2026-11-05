@@ -19,7 +19,7 @@ function repo(): { file: string; root: string } {
   writeFileSync(file, JSON.stringify({
     id: 'shop',
     title: 'Shop',
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }],
   }))
   writeFileSync(join(c4, 'shop', 'nodes', 'a.md'), '# A\n\nThe first box.')
   writeFileSync(join(c4, 'shop', 'edges', 'a__b.md'), '# a to b\n\nThe call.')
@@ -60,7 +60,7 @@ test('--as stores the diagram under another id and keeps the docs', () => {
 test('a model with no docs publishes and says the hover will be empty', () => {
   const { file, root } = repo()
   const bare = join(file, '..', 'bare.json')
-  writeFileSync(bare, JSON.stringify({ id: 'bare', title: 'Bare', levels: [{ path: '', nodes: [{ id: 'x', label: 'X', subtype: 'system' }], edges: [] }] }))
+  writeFileSync(bare, JSON.stringify({ id: 'bare', title: 'Bare', levels: [{ path: '', nodes: [{ id: 'x', label: 'X', subtype: 'system', state: 'built' as const }], edges: [] }] }))
   assert.equal(run(['publish', bare, '--root', root]), 0)
   assert.ok(existsSync(join(root, 'bare', 'model.json')))
 })
@@ -104,8 +104,8 @@ test('one level prints "1 level", not "1 levels", and the root flag has a defaul
     id: 'one',
     title: 'One',
     levels: [
-      { path: '', nodes: [{ id: 'x', label: 'X', subtype: 'system' }], edges: [] },
-      { path: 'x', nodes: [{ id: 'y', label: 'Y', subtype: 'service-logic' }], edges: [] }, // two levels: "2 levels"
+      { path: '', nodes: [{ id: 'x', label: 'X', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'x', nodes: [{ id: 'y', label: 'Y', subtype: 'service-logic', state: 'built' as const }], edges: [] }, // two levels: "2 levels"
     ],
   }))
   assert.equal(run(['publish', bare, '--root', root]), 0)

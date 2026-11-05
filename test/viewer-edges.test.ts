@@ -31,7 +31,7 @@ test('a root level with no title says Overview rather than an empty crumb', () =
   const bare = parseModel({
     id: 'bare',
     title: 'Bare',
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }],
   } as never)
   assert.match(viewerPage(bare, ''), />Overview</)
 })

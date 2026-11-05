@@ -14,8 +14,8 @@ const STORED = parseModel({
   id: 'modes',
   title: 'Modes',
   levels: [
-    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'box', label: 'Box', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'box' }] },
-    { path: 'box', nodes: [{ id: 'in', label: 'In', subtype: 'service-logic' }], edges: [], ports: { 'a->box': 'in' } },
+    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'box', label: 'Box', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'box' }] },
+    { path: 'box', nodes: [{ id: 'in', label: 'In', subtype: 'service-logic', state: 'built' as const }], edges: [], ports: { 'a->box': 'in' } },
   ],
 } as never)
 

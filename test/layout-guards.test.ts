@@ -34,14 +34,14 @@ const chainOf = (items: string[], key = 'a->b'): Chain => ({ key, from: items[0]
 
 test('place survives a rank naming an id the item map does not have', () => {
   const ranked: Ranked = { ranks: [['a'], ['ghost', 'b']], items: itemMap([{ id: 'a' }, { id: 'b' }]), chains: [chainOf(['a', 'b'])] }
-  const p = place(ranked, { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [] }, cfg, measure)
+  const p = place(ranked, { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const }], edges: [] }, cfg, measure)
   assert.ok(numbersOf(p).every(finite), 'every coordinate is a real number')
   assert.ok(p.boxes.has('b'), 'the real node still placed')
 })
 
 test('place survives a chain whose ends are not in the item map', () => {
   const ranked: Ranked = { ranks: [['a']], items: itemMap([{ id: 'a' }]), chains: [chainOf(['gone', 'missing'], 'gone->missing')] }
-  const p = place(ranked, { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }, cfg, measure)
+  const p = place(ranked, { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }, cfg, measure)
   assert.ok(numbersOf(p).every(finite))
 })
 
@@ -51,7 +51,7 @@ test('place survives an empty level', () => {
 })
 
 test('ranking an id that appears in no edge still lands in column 0', () => {
-  const r = rank({ path: '', nodes: [{ id: 'lonely', label: 'Lonely', subtype: 'system' }], edges: [] }, cfg)
+  const r = rank({ path: '', nodes: [{ id: 'lonely', label: 'Lonely', subtype: 'system', state: 'built' as const }], edges: [] }, cfg)
   assert.deepEqual(r.ranks, [['lonely']])
   assert.equal(r.items.get('lonely')?.rank, 0)
 })

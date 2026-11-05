@@ -76,13 +76,13 @@ test('a port on an edge that never touches the host is a problem', () => {
 
 test('the host may not appear inside its own lens', () => {
   const model = base()
-  level(model, 'context1').nodes.push({ id: 'context1', label: 'Context 1 again', subtype: 'system' })
+  level(model, 'context1').nodes.push({ id: 'context1', label: 'Context 1 again', subtype: 'system', state: 'built' as const })
   assert.ok(lensReport(model).problems.some((p) => /contains "context1" itself/.test(p)))
 })
 
 test('a sibling of the host may not be re-drawn inside it', () => {
   const model = base()
-  level(model, 'context1').nodes.push({ id: 'context2', label: 'Context 2 again', subtype: 'external-system' })
+  level(model, 'context1').nodes.push({ id: 'context2', label: 'Context 2 again', subtype: 'external-system', state: 'built' as const })
   assert.ok(lensReport(model).problems.some((p) => /re-draws context2 from the level above/.test(p)))
 })
 
@@ -118,14 +118,14 @@ test('a child level that repeats a parent box with the same identity is composin
     levels: [
       {
         path: '',
-        nodes: [{ id: 'host', label: 'Host', subtype: 'system' }, { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' }, { id: 'sink', label: 'Sink', subtype: 'file-storage' }],
+        nodes: [{ id: 'host', label: 'Host', subtype: 'system', state: 'built' as const }, { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system', state: 'built' as const }, { id: 'sink', label: 'Sink', subtype: 'file-storage', state: 'built' as const }],
         edges: [{ desc: 'the payload this edge carries', from: 'ext', to: 'host' }, { desc: 'the payload this edge carries', from: 'host', to: 'sink' }],
       },
       {
         path: 'host', ports: { 'ext->host': 'a', 'host->sink': 'a' },
         nodes: [
-          { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system' },
-          { id: 'a', label: 'A', subtype: 'service-logic' },
+          { id: 'ext', identity: 'E-1', label: 'Ext', subtype: 'external-system', state: 'built' as const },
+          { id: 'a', label: 'A', subtype: 'service-logic', state: 'built' as const },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'ext', to: 'a' }],
       },
@@ -147,14 +147,14 @@ const pair = (): Record<string, any> => ({
   levels: [
     {
       path: '',
-      nodes: [{ id: 'a', identity: 'A-1', label: 'A', subtype: 'person' }, { id: 'host', identity: 'H-1', label: 'Host', subtype: 'system' }, { id: 'b', identity: 'B-1', label: 'B', subtype: 'external-system' }],
+      nodes: [{ id: 'a', identity: 'A-1', label: 'A', subtype: 'person', state: 'built' as const }, { id: 'host', identity: 'H-1', label: 'Host', subtype: 'system', state: 'built' as const }, { id: 'b', identity: 'B-1', label: 'B', subtype: 'external-system', state: 'built' as const }],
       edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'host' }, { desc: 'the payload this edge carries', from: 'host', to: 'b' }],
       flow: ['a->host', 'host->b'],
     },
     {
       path: 'host',
       ports: { 'a->host': 'inner', 'host->b': 'inner' },
-      nodes: [{ id: 'inner', identity: 'I-1', label: 'Inner', subtype: 'service-logic' }],
+      nodes: [{ id: 'inner', identity: 'I-1', label: 'Inner', subtype: 'service-logic', state: 'built' as const }],
       edges: [],
     },
   ],
@@ -169,7 +169,7 @@ test('a declared flow that skips an edge is a problem: the viewer would append i
 
 test('one id is one element: the same id with two identities is refused', () => {
   const raw = pair()
-  raw.levels[1].nodes.push({ id: 'a', identity: 'A-2', label: 'A again', subtype: 'person' })
+  raw.levels[1].nodes.push({ id: 'a', identity: 'A-2', label: 'A again', subtype: 'person', state: 'built' as const })
   const report = lensReport(parseModel(raw as never))
   assert.ok(report.problems.some((p) => /one id is one element/.test(p)), report.problems.join('\n'))
 })
@@ -186,7 +186,7 @@ test('a box with no edges cannot be a lens: its page would have no doors', () =>
 test('an id repeated with no identity on one side is still a clash', () => {
   const raw = pair()
   delete raw.levels[0].nodes[2].identity // the parent says nothing; the child still claims B-1
-  raw.levels[1].nodes.push({ id: 'b', identity: 'X-9', label: 'B again', subtype: 'external-system' })
+  raw.levels[1].nodes.push({ id: 'b', identity: 'X-9', label: 'B again', subtype: 'external-system', state: 'built' as const })
   const report = lensReport(parseModel(raw as never))
   assert.ok(report.problems.some((p) => /different identities \(none vs X-9\)/.test(p)), report.problems.join('\n'))
 })
@@ -203,8 +203,8 @@ test('an edge with no description is a lens problem, named per level', async () 
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system' },
-          { id: 'b', label: 'B', subtype: 'system' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+          { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
         ],
         edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a', desc: 'answers' }],
       },

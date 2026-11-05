@@ -6,3 +6,5 @@ sonar-scanner-work/
 coverage/
 dist/
 *.tgz
+# local render probes — never a release artifact
+.scratch/

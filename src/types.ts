@@ -28,6 +28,9 @@ export type Subtype =
   | 'c4-module' | 'schema' | 'dto' | 'constant' | 'test-file' | 'migration-file'
   | 'config-file' | 'script'
 
+/** The four states a box can be in. Closed on purpose: a free-text status becomes a comment field. */
+export type NodeState = 'built' | 'planned' | 'partial' | 'retired'
+
 /** Visual family — decides the shape and the colour token. */
 export type Kind = 'concept' | 'step' | 'tool' | 'fact'
 
@@ -52,6 +55,13 @@ export interface NodeSpec {
   /** laid-out size, set by the nested renderer so a host box can hold the picture drawn inside it */
   w?: number
   h?: number
+  /** the size the author ASKS for; a floor, never a replacement — many incoming edges need the width */
+  size?: { w?: number; h?: number }
+  /** external documentation for this box (a wiki page, a runbook). http/https only; drawn as a chip. */
+  links?: { label: string; href: string }[]
+  /** how real this box is. Absent means 'built'; anything else is drawn as a corner tag AND fails the
+   *  audit, so a picture of a roadmap can never be mistaken for a picture of the system. */
+  state?: NodeState
   /** outline override; a host box holding a child picture is always a plain rectangle */
   shape?: string
 }
@@ -211,6 +221,10 @@ export interface Routed {
 export type DensityVerdict = 'crisp' | 'ok' | 'dense' | 'over'
 
 export interface AuditReport {
+  /** nodes that declare a state other than built (`id:state`) — a non-empty list fails the page */
+  unbuilt?: string[]
+  /** nodes that declare NO state — drawn as built, refused by the audit */
+  unstated?: string[]
   /** true when this report is of a drilled picture (parent level with one box expanded) */
   composed?: boolean
   /** true when the picture is too tangled to follow: more than two wire crossings per edge */

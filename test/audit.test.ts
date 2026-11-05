@@ -11,7 +11,7 @@ import type { Box, LevelSpec, Placed, Route, Routed } from '../src/types.ts'
 
 const level = (nodes: number, edges = 0): LevelSpec => ({
   path: '',
-  nodes: Array.from({ length: nodes }, (_, i) => ({ id: `n${i}`, label: `N${i}`, subtype: 'system' as const })),
+  nodes: Array.from({ length: nodes }, (_, i) => ({ id: `n${i}`, label: `N${i}`, subtype: 'system' as const, state: 'built' as const })),
   edges: Array.from({ length: edges }, (_, i) => ({ desc: 'the payload this edge carries', from: `n${i % nodes}`, to: `n${(i + 1) % nodes}`, style: 'flow' as const })),
 })
 
@@ -137,9 +137,9 @@ test('a boundary box over a non-member is a gate, not a note', () => {
   const spec: LevelSpec = {
     path: '',
     nodes: [
-      { id: 'a', label: 'A', subtype: 'system' },
-      { id: 'b', label: 'B', subtype: 'system' },
-      { id: 'x', label: 'X', subtype: 'system' },
+      { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+      { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
+      { id: 'x', label: 'X', subtype: 'system', state: 'built' as const },
     ],
     edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' }],
     groups: [{ id: 'g', label: 'edge', members: ['a'] }],
@@ -160,9 +160,9 @@ test('a rank hint that sits level with its predecessor is reported as backward',
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system' },
-          { id: 'b', label: 'B', subtype: 'system', rank: 0 },
-          { id: 'c', label: 'C', subtype: 'system' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+          { id: 'b', label: 'B', subtype: 'system', state: 'built' as const, rank: 0 },
+          { id: 'c', label: 'C', subtype: 'system', state: 'built' as const },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }, { desc: 'the payload this edge carries', from: 'b', to: 'c' }],
       },
@@ -180,8 +180,8 @@ test('a plain chain has no backward edges', () => {
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system' },
-          { id: 'b', label: 'B', subtype: 'system' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+          { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }],
       },

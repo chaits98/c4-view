@@ -20,7 +20,7 @@ const STORED = {
   id: 'routes',
   title: 'Routes',
   levels: [
-    { path: '', title: 'Overview', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] },
+    { path: '', title: 'Overview', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] },
   ],
 }
 const ID = STORED.id
@@ -165,9 +165,9 @@ test('every route shape answers in its own content type', async () => {
     id: 'nested',
     title: 'Nested',
     levels: [
-      { path: '', title: 'Overview', nodes: [{ id: 'app', label: 'App', subtype: 'system' }], edges: [] },
-      { path: 'app', title: 'App', nodes: [{ id: 'svc', label: 'Svc', subtype: 'system' }], edges: [] },
-      { path: 'app/db', title: 'Db', nodes: [{ id: 'tbl', label: 'Tbl', subtype: 'database' }], edges: [] },
+      { path: '', title: 'Overview', nodes: [{ id: 'app', label: 'App', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'app', title: 'App', nodes: [{ id: 'svc', label: 'Svc', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'app/db', title: 'Db', nodes: [{ id: 'tbl', label: 'Tbl', subtype: 'database', state: 'built' as const }], edges: [] },
     ],
   }
   assert.equal((await fetch(`${base}/api/diagrams`, { method: 'POST', body: JSON.stringify(nested) })).status, 201)

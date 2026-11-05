@@ -11,8 +11,9 @@
 import {
   DEFAULT_LAYOUT, SUBTYPE_KIND,
   type EdgeSpec, type EdgeStyle, type GroupSpec, type LayoutConfig, type LevelSpec, type Model,
-  type NodeSpec, type Subtype,
+  type NodeSpec,
 } from './types.ts'
+import { checkNodeText, nodeOf } from './model-node.ts'
 
 export class ModelError extends Error {
   readonly problems: string[]
@@ -26,7 +27,6 @@ export class ModelError extends Error {
 const EDGE_STYLES: readonly EdgeStyle[] = ['flow', 'dep', 'tent', 'dir']
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 const ID_RULE = '[A-Za-z0-9][A-Za-z0-9_-]*'
-const TEXT_FIELDS = ['tech', 'desc', 'identity', 'group'] as const
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const str = (v: unknown): v is string => typeof v === 'string'
@@ -38,27 +38,14 @@ function checkHeader(raw: Record<string, unknown>, bad: string[]): void {
   if (!Array.isArray(raw.levels) || raw.levels.length === 0) bad.push('levels: at least one level is required')
 }
 
-/** One node in renderer shape (invalid nodes were already reported). */
-function nodeOf(raw: unknown): NodeSpec | null {
-  if (!isObj(raw) || !str(raw.id) || !str(raw.label) || !str(raw.subtype)) return null
-  const node: NodeSpec = { id: raw.id, label: raw.label, subtype: raw.subtype as Subtype }
-  if (str(raw.tech)) node.tech = raw.tech
-  if (str(raw.desc)) node.desc = raw.desc
-  if (str(raw.identity)) node.identity = raw.identity
-  if (str(raw.group)) node.group = raw.group
-  if (typeof raw.rank === 'number') node.rank = raw.rank
-  return node
-}
+/** A node's declared size floor, or null when it asks for nothing — kept out of `nodeOf` so the
+ *  whitelist stays one branch per field. */
 
-function checkNodeText(raw: Record<string, unknown>, at: string, bad: string[]): void {
-  for (const key of TEXT_FIELDS) {
-    if (raw[key] !== undefined && !str(raw[key])) bad.push(`${at}.${key}: must be a string when present`)
-  }
-  const rank = raw.rank
-  if (rank !== undefined && (typeof rank !== 'number' || !Number.isInteger(rank) || rank < 0)) {
-    bad.push(`${at}.rank: must be a non-negative integer when present`)
-  }
-}
+/** A node's external links, or null. Only http/https: a `javascript:` or `data:` href in a model
+ *  would become a live link in every page the diagram is served on. */
+
+/** One node in renderer shape (invalid nodes were already reported). */
+
 
 function checkNode(raw: Record<string, unknown>, at: string, ids: Set<string>, bad: string[]): void {
   if (!str(raw.id) || !ID.test(raw.id)) bad.push(`${at}.id: required, ${ID_RULE} (max 64)`)

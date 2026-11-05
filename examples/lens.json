@@ -1,44 +1,135 @@
 {
-  "id": "lens",
-  "title": "Lens — one box expanded in place",
-  "layout": { "rankGap": 120, "nodeGap": 40, "labelMaxChars": 28 },
-  "levels": [
+ "id": "lens",
+ "title": "Lens \u2014 one box expanded in place",
+ "layout": {
+  "rankGap": 120,
+  "nodeGap": 40,
+  "labelMaxChars": 28
+ },
+ "levels": [
+  {
+   "path": "",
+   "title": "Context",
+   "nodes": [
     {
-      "path": "",
-      "title": "Context",
-      "nodes": [
-        { "id": "user", "label": "User", "subtype": "person", "identity": "L-1" },
-        { "id": "context1", "label": "Context 1", "subtype": "system", "tech": "our system", "identity": "L-2" },
-        { "id": "context2", "label": "Context 2", "subtype": "external-system", "tech": "third party" },
-        { "id": "context3", "label": "Context 3", "subtype": "external-system", "tech": "shared store" }
-      ],
-      "edges": [
-        { "from": "user", "to": "context1", "desc": "A user drives the first context; nothing else calls it.", "label": "uses" },
-        { "from": "context1", "to": "context2", "desc": "An event the first context publishes for the second to consume.", "label": "sends" },
-        { "from": "context1", "to": "context3", "desc": "A record the first context owns and the third only reads.", "label": "writes" }
-      ],
-      "flow": ["user->context1", "context1->context2", "context1->context3"]
+     "id": "user",
+     "label": "User",
+     "subtype": "person",
+     "identity": "L-1",
+     "state": "built"
     },
     {
-      "path": "context1",
-      "title": "Inside Context 1",
-      "ports": {
-        "user->context1": "a",
-        "context1->context2": "d",
-        "context1->context3": "c"
-      },
-      "nodes": [
-        { "id": "a", "label": "a", "subtype": "ui-component", "desc": "takes the request" },
-        { "id": "b", "label": "b", "subtype": "service-logic", "desc": "decides what happens" },
-        { "id": "c", "label": "c", "subtype": "repository", "desc": "persists" },
-        { "id": "d", "label": "d", "subtype": "adapter", "desc": "talks to Context 2" }
-      ],
-      "edges": [
-        { "from": "a", "to": "b", "desc": "A synchronous call with a request body and a typed response.", "label": "calls" },
-        { "from": "b", "to": "d", "desc": "A domain event, published after the write commits.", "label": "emits" },
-        { "from": "b", "to": "c", "desc": "The state b keeps, stored so a restart does not lose it.", "label": "stores" }
-      ],
-      "flow": ["a->b", "b->d", "b->c"]
+     "id": "context1",
+     "label": "Context 1",
+     "subtype": "system",
+     "tech": "our system",
+     "identity": "L-2",
+     "state": "built"
+    },
+    {
+     "id": "context2",
+     "label": "Context 2",
+     "subtype": "external-system",
+     "tech": "third party",
+     "state": "built"
+    },
+    {
+     "id": "context3",
+     "label": "Context 3",
+     "subtype": "external-system",
+     "tech": "shared store",
+     "state": "built"
     }
-  ]
+   ],
+   "edges": [
+    {
+     "from": "user",
+     "to": "context1",
+     "desc": "A user drives the first context; nothing else calls it.",
+     "label": "uses"
+    },
+    {
+     "from": "context1",
+     "to": "context2",
+     "desc": "An event the first context publishes for the second to consume.",
+     "label": "sends"
+    },
+    {
+     "from": "context1",
+     "to": "context3",
+     "desc": "A record the first context owns and the third only reads.",
+     "label": "writes"
+    }
+   ],
+   "flow": [
+    "user->context1",
+    "context1->context2",
+    "context1->context3"
+   ]
+  },
+  {
+   "path": "context1",
+   "title": "Inside Context 1",
+   "ports": {
+    "user->context1": "a",
+    "context1->context2": "d",
+    "context1->context3": "c"
+   },
+   "nodes": [
+    {
+     "id": "a",
+     "label": "a",
+     "subtype": "ui-component",
+     "desc": "takes the request",
+     "state": "built"
+    },
+    {
+     "id": "b",
+     "label": "b",
+     "subtype": "service-logic",
+     "desc": "decides what happens",
+     "state": "built"
+    },
+    {
+     "id": "c",
+     "label": "c",
+     "subtype": "repository",
+     "desc": "persists",
+     "state": "built"
+    },
+    {
+     "id": "d",
+     "label": "d",
+     "subtype": "adapter",
+     "desc": "talks to Context 2",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "a",
+     "to": "b",
+     "desc": "A synchronous call with a request body and a typed response.",
+     "label": "calls"
+    },
+    {
+     "from": "b",
+     "to": "d",
+     "desc": "A domain event, published after the write commits.",
+     "label": "emits"
+    },
+    {
+     "from": "b",
+     "to": "c",
+     "desc": "The state b keeps, stored so a restart does not lose it.",
+     "label": "stores"
+    }
+   ],
+   "flow": [
+    "a->b",
+    "b->d",
+    "b->c"
+   ]
+  }
+ ]
 }

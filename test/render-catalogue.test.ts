@@ -22,9 +22,9 @@ const model = parseModel({
     {
       path: '',
       nodes: [
-        { id: 'svc', label: 'Service', subtype: 'system', tech: 'Node 22', desc: 'does the work', identity: 'team-payments' },
-        { id: 'plain', label: 'Plain', subtype: 'system' },
-        { id: 'db', label: 'Db', subtype: 'database', tech: 'Postgres' },
+        { id: 'svc', label: 'Service', subtype: 'system', state: 'built' as const, tech: 'Node 22', desc: 'does the work', identity: 'team-payments' },
+        { id: 'plain', label: 'Plain', subtype: 'system', state: 'built' as const },
+        { id: 'db', label: 'Db', subtype: 'database', state: 'built' as const, tech: 'Postgres' },
       ],
       edges: [
         { desc: 'the payload this edge carries', from: 'svc', to: 'db', label: 'writes', style: 'flow' },
@@ -33,7 +33,7 @@ const model = parseModel({
       groups: [{ id: 'g', label: 'Backend', members: ['svc', 'db'] }],
       flow: ['svc->db'],
     },
-    { path: 'svc', nodes: [{ id: 'inner', label: 'Inner', subtype: 'system' }], edges: [] },
+    { path: 'svc', nodes: [{ id: 'inner', label: 'Inner', subtype: 'system', state: 'built' as const }], edges: [] },
   ],
 })
 
@@ -84,7 +84,7 @@ test('every edge style draws its own stroke, and a model with no flow carries no
     title: 'Styles',
     levels: [{
       path: '',
-      nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }],
+      nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const }],
       edges: [
         { desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' },
         { desc: 'the payload this edge carries', from: 'b', to: 'a', style: 'dep' },
@@ -94,12 +94,12 @@ test('every edge style draws its own stroke, and a model with no flow carries no
   const svg = renderModel(styled).levels[0].svg
   assert.match(svg, /stroke-dasharray/, 'a dependency is dashed, a flow is not')
   // a level with no edges at all has nothing to number
-  const bare = parseModel({ id: 'bare', title: 'Bare', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  const bare = parseModel({ id: 'bare', title: 'Bare', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] })
   assert.ok(!renderModel(bare).levels[0].svg.includes('data-flow='), 'no edges, no step attribute')
 })
 
 test('a level with no title still gets one in the svg', () => {
-  const untitled = parseModel({ id: 'untitled', title: 'Untitled', levels: [{ path: 'x', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  const untitled = parseModel({ id: 'untitled', title: 'Untitled', levels: [{ path: 'x', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] })
   assert.match(renderModel(untitled, 'x').levels[0].svg, /aria-label="x"/, 'the path names it when the title is blank')
 })
 
@@ -120,8 +120,8 @@ test('the grid shows a failing card, a wide card and a single card correctly', (
 test('a breadcrumb skips a level segment the model does not have', () => {
   // a deep level whose parent was never authored: the trail must not invent a link for it
   const deep = parseModel({ id: 'deep', title: 'Deep', levels: [
-    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] },
-    { path: 'x/y', title: 'Inner', nodes: [{ id: 'b', label: 'B', subtype: 'system' }], edges: [] },
+    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] },
+    { path: 'x/y', title: 'Inner', nodes: [{ id: 'b', label: 'B', subtype: 'system', state: 'built' as const }], edges: [] },
   ] })
   const html = viewerPage(deep, 'x/y')
   assert.ok(html.includes('>Inner<'), 'the current level is named')
@@ -135,8 +135,8 @@ test('a card whose svg has no viewBox is not called wide', () => {
 
 test('a level with a path but no title is named by its path, in the crumbs and the select', () => {
   const bare = parseModel({ id: 'bare-levels', title: 'Bare', levels: [
-    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] },
-    { path: 'api/v1', nodes: [{ id: 'b', label: 'B', subtype: 'system' }], edges: [] },
+    { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] },
+    { path: 'api/v1', nodes: [{ id: 'b', label: 'B', subtype: 'system', state: 'built' as const }], edges: [] },
   ] })
   const html = viewerPage(bare, 'api/v1')
   // the select is a tree now: indented by depth, prefixed with the C4 level, path in the tooltip
@@ -150,19 +150,19 @@ test('a level with a path but no title is named by its path, in the crumbs and t
 })
 
 test('a node with a desc but no tech keeps the desc line', () => {
-  const one = parseModel({ id: 'desc-only', title: 'Desc', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', desc: 'does the thing' }], edges: [] }] })
+  const one = parseModel({ id: 'desc-only', title: 'Desc', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const, desc: 'does the thing' }], edges: [] }] })
   assert.match(viewerPage(one, ''), /A<\/strong> <code>a<\/code> — does the thing/, 'no dangling separator, no empty tech')
 })
 
 test('an edge with no label still appears in the text version, without a dash', () => {
-  const one = parseModel({ id: 'unlabelled', title: 'U', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }] })
+  const one = parseModel({ id: 'unlabelled', title: 'U', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }] })
   assert.ok(viewerPage(one, '').includes('<li>A → B</li>'), 'the flow is listed with no trailing dash')
 })
 
 test('identity and tech are drawn independently', () => {
   const model2 = parseModel({ id: 'halves', title: 'Halves', levels: [{ path: '', nodes: [
-    { id: 'a', label: 'Tech only', subtype: 'system', tech: 'Node 22' },
-    { id: 'b', label: 'Owner only', subtype: 'system', identity: 'team-payments' },
+    { id: 'a', label: 'Tech only', subtype: 'system', state: 'built' as const, tech: 'Node 22' },
+    { id: 'b', label: 'Owner only', subtype: 'system', state: 'built' as const, identity: 'team-payments' },
   ], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }] }] })
   const svg = renderModel(model2).levels[0].svg
   assert.match(svg, /Node 22/, 'tech is drawn when it is the only small line')

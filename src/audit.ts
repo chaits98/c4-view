@@ -197,7 +197,15 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
   const backward = placed.chains.filter((chain) => chain.backward).length
   const dense = isDense(crossings, level.edges.length)
   const { perEdge, verdict } = densityOf(crossings, level.edges.length)
-  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0 && !dense
+  // A box that is not built is a claim the picture cannot support: the audit refuses the page rather
+  // than letting a roadmap render as an architecture. Absent state means built, so nothing changes for
+  // a model that never mentions it.
+  // Every box must SAY what it is. Rendering treats a missing state as built (no tag), but the audit
+  // refuses the page: an undeclared box is how a planned service hides among running ones, and the
+  // default belongs in the drawing, not in the claim.
+  const unstated = level.nodes.filter((n) => n.state === undefined)
+  const unbuilt = level.nodes.filter((n) => n.state !== undefined && n.state !== 'built')
+  const ok = nodeNode === 0 && wireNode === 0 && wireWire === 0 && chipChip === 0 && chipNode === 0 && groupNode === 0 && !dense && unbuilt.length === 0 && unstated.length === 0
   return {
     level: level.path,
     backward,
@@ -211,6 +219,8 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
     chipNode,
     groupNode,
     ok,
+    unbuilt: unbuilt.map((n) => `${n.id}:${n.state}`),
+    unstated: unstated.map((n) => n.id),
     dense,
     crossingsPerEdge: perEdge,
     verdict,
@@ -220,7 +230,13 @@ export function audit(placed: Placed, routed: Routed, level: LevelSpec): AuditRe
 
 /** One-line human form, used by the CLI and the workbook. */
 export function auditLine(r: AuditReport): string {
-  const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode} group∧node=${r.groupNode}`
+  const notBuilt = r.unbuilt ?? []
+  const missing = r.unstated ?? []
+  const ids = (arr: string[]) => `${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ', …' : ''}`
+  let unbuilt = ''
+  if (missing.length) unbuilt += ` unstated=${missing.length} (${ids(missing)})`
+  if (notBuilt.length) unbuilt += ` unbuilt=${notBuilt.length} (${ids(notBuilt)})`
+  const gates = `node∧node=${r.nodeNode} wire∧node=${r.wireNode} wire∧wire=${r.wireWire} chip∧chip=${r.chipChip} chip∧node=${r.chipNode} group∧node=${r.groupNode}${unbuilt}`
   // a level with a parent is only ever served composed; saying so stops a green line being read as the
   // authored level passing
   const where = whereLabel(r)

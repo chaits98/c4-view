@@ -1,495 +1,522 @@
 {
-  "id": "c4-view",
-  "title": "c4-view — a JSON model in, a gated deterministic diagram out",
-  "levels": [
+ "id": "c4-view",
+ "title": "c4-view \u2014 a JSON model in, a gated deterministic diagram out",
+ "levels": [
+  {
+   "path": "",
+   "title": "C1 \u00b7 who asks, what answers, what it touches",
+   "nodes": [
     {
-      "path": "",
-      "title": "C1 · who asks, what answers, what it touches",
-      "nodes": [
-        {
-          "id": "agent",
-          "identity": "C4V-01",
-          "label": "Agent or owner",
-          "subtype": "person",
-          "tech": "any harness",
-          "desc": "Writes the model, runs the CLI, reads the audit line back. Never edits a drawing by hand."
-        },
-        {
-          "id": "c4view",
-          "identity": "C4V-02",
-          "label": "c4-view",
-          "subtype": "system",
-          "tech": "one npm package, no deps",
-          "desc": "Turns a JSON model into a deterministic drawing, a gate and a read-only viewer."
-        },
-        {
-          "id": "repo",
-          "identity": "C4V-03",
-          "label": "Git repository",
-          "subtype": "file-storage",
-          "tech": "model + one doc per element",
-          "desc": "Holds docs/c4/<id>.json, the docs beside it, and — if the owner said yes once — the hook."
-        },
-        {
-          "id": "harness",
-          "identity": "C4V-04",
-          "label": "Agent harness",
-          "subtype": "external-system",
-          "tech": "Claude Code, Hermes, OpenCode",
-          "desc": "Where the skill is installed: a directory of instructions another tool reads."
-        },
-        {
-          "id": "browser",
-          "identity": "C4V-05",
-          "label": "Reader",
-          "subtype": "external-system",
-          "tech": "any browser",
-          "desc": "Opens the link, pans, zooms, hovers a box. The viewer is read-only by construction."
-        }
-      ],
-      "edges": [
-        {
-          "from": "agent",
-          "to": "c4view",
-          "desc": "The agent hands over model.json: nodes, edges and their levels, and nothing else.",
-          "label": "model.json",
-          "style": "flow"
-        },
-        {
-          "from": "repo",
-          "to": "c4view",
-          "desc": "The committed model and its per-element docs, read so a render never disagrees with the repo.",
-          "label": "model + docs",
-          "style": "dep"
-        },
-        {
-          "from": "c4view",
-          "to": "repo",
-          "desc": "The drawn SVG and the gate verdict, written back so a reviewer sees the picture in the diff.",
-          "label": "SVG + gate",
-          "style": "flow"
-        },
-        {
-          "from": "c4view",
-          "to": "harness",
-          "desc": "The skill package an agent loads, so it writes models that survive the audit.",
-          "label": "skill package",
-          "style": "flow"
-        },
-        {
-          "from": "c4view",
-          "to": "browser",
-          "desc": "Self-contained HTML and SVG pages that open with no server and no network.",
-          "label": "SVG pages",
-          "style": "flow"
-        }
-      ],
-      "flow": [
-        "agent->c4view",
-        "repo->c4view",
-        "c4view->repo",
-        "c4view->harness",
-        "c4view->browser"
-      ]
+     "id": "agent",
+     "identity": "C4V-01",
+     "label": "Agent or owner",
+     "subtype": "person",
+     "tech": "any harness",
+     "desc": "Writes the model, runs the CLI, reads the audit line back. Never edits a drawing by hand.",
+     "state": "built"
     },
     {
-      "path": "c4view",
-      "title": "C2 · the containers inside c4-view",
-      "nodes": [
-        {
-          "id": "cli",
-          "identity": "C4V-10",
-          "label": "c4v CLI",
-          "subtype": "microservice",
-          "tech": "node src/cli.ts, no deps",
-          "desc": "One-shot process: parse, lay out, audit, write, and exit with the verdict."
-        },
-        {
-          "id": "server",
-          "identity": "C4V-12",
-          "label": "viewer server",
-          "subtype": "microservice",
-          "tech": "node:http, :8788",
-          "desc": "Serves the pictures it already has, behind a token. Never writes a diagram."
-        },
-        {
-          "id": "viewer",
-          "identity": "C4V-13",
-          "label": "viewer app",
-          "subtype": "web-application",
-          "tech": "public/*.js, stage.css",
-          "desc": "Zoom, hover, drill and the flow animation. Client side, no build step."
-        },
-        {
-          "id": "store",
-          "identity": "C4V-14",
-          "label": "diagram store",
-          "subtype": "file-storage",
-          "tech": "~/.c4-view/<id>/",
-          "desc": "Published models and their docs; also the repo's own docs/c4 while the CLI works."
-        },
-        {
-          "id": "hook",
-          "identity": "C4V-15",
-          "label": "git hook",
-          "subtype": "batch-job",
-          "tech": ".githooks/pre-commit",
-          "desc": "Three lines of shell in the user's repo. It owns no judgement."
-        }
-      ],
-      "edges": [
-        {
-          "from": "hook",
-          "to": "cli",
-          "desc": "A pre-commit check asks the CLI whether the staged model is still clean.",
-          "label": "gate check",
-          "style": "flow"
-        },
-        {
-          "from": "cli",
-          "to": "store",
-          "desc": "A finished diagram is published into the store as one directory per model.",
-          "label": "publishes",
-          "style": "flow"
-        },
-        {
-          "from": "cli",
-          "to": "server",
-          "desc": "The same binary starts the viewer, bound to the name and port it was given.",
-          "label": "starts",
-          "style": "flow"
-        },
-        {
-          "from": "server",
-          "to": "store",
-          "desc": "Every request reads one model directory: the server holds no state of its own between them.",
-          "label": "reads",
-          "style": "flow"
-        },
-        {
-          "from": "server",
-          "to": "viewer",
-          "desc": "The HTML shell, its stylesheets and the flow driver, served as files rather than built.",
-          "label": "HTML + JS",
-          "style": "flow"
-        }
-      ],
-      "ports": {
-        "agent->c4view": "cli",
-        "repo->c4view": "cli",
-        "c4view->repo": "cli",
-        "c4view->harness": "cli",
-        "c4view->browser": "server"
-      },
-      "flow": [
-        "hook->cli",
-        "cli->store",
-        "cli->server",
-        "server->store",
-        "server->viewer"
-      ]
+     "id": "c4view",
+     "identity": "C4V-02",
+     "label": "c4-view",
+     "subtype": "system",
+     "tech": "one npm package, no deps",
+     "desc": "Turns a JSON model into a deterministic drawing, a gate and a read-only viewer.",
+     "state": "built"
     },
     {
-      "path": "c4view/cli",
-      "title": "C3 · inside the c4v CLI",
-      "nodes": [
-        {
-          "id": "args",
-          "identity": "C4V-20",
-          "label": "Args + dispatch",
-          "subtype": "service-logic",
-          "tech": "src/cli.ts, cli-args.ts",
-          "desc": "Reads the command line, refuses what cannot work, and calls one verb."
-        },
-        {
-          "id": "parse",
-          "identity": "C4V-21",
-          "label": "Model parse",
-          "subtype": "service-logic",
-          "tech": "src/model.ts",
-          "desc": "Validates the model: ids, subtypes, ranks, ports, direction. Refuses rather than guesses."
-        },
-        {
-          "id": "rank",
-          "identity": "C4V-22",
-          "label": "Rank",
-          "subtype": "service-logic",
-          "tech": "src/layout/rank.ts",
-          "desc": "Longest-path depth, one dummy per column a long edge crosses."
-        },
-        {
-          "id": "order",
-          "identity": "C4V-23",
-          "label": "Order",
-          "subtype": "service-logic",
-          "tech": "src/layout/order.ts",
-          "desc": "Six barycentre sweeps; the ordering with fewest inversions wins."
-        },
-        {
-          "id": "place",
-          "identity": "C4V-24",
-          "label": "Place",
-          "subtype": "service-logic",
-          "tech": "src/layout/place.ts",
-          "desc": "Measures boxes, spaces columns by wire load, stacks rows, boxes up boundaries."
-        },
-        {
-          "id": "route",
-          "identity": "C4V-25",
-          "label": "Route",
-          "subtype": "service-logic",
-          "tech": "src/layout/route.ts",
-          "desc": "Orthogonal wires in gutters, one track per jog, a corridor for the loops."
-        },
-        {
-          "id": "emit",
-          "identity": "C4V-26",
-          "label": "Emit",
-          "subtype": "service-logic",
-          "tech": "src/svg/emit.ts, shapes.ts",
-          "desc": "Deterministic SVG: shapes, chips, the dashed lens frame, the drill links."
-        },
-        {
-          "id": "audit",
-          "identity": "C4V-27",
-          "label": "Audit",
-          "subtype": "service-logic",
-          "tech": "src/audit.ts, lens.ts",
-          "desc": "Counts what a reader would trip over, and the four modelling gates."
-        },
-        {
-          "id": "repo-gate",
-          "identity": "C4V-28",
-          "label": "Repo gate",
-          "subtype": "service-logic",
-          "tech": "src/gate.ts, cli-gate.ts",
-          "desc": "install, check, defer, status, uninstall — the commit-time contract."
-        },
-        {
-          "id": "publish",
-          "identity": "C4V-29",
-          "label": "Publish",
-          "subtype": "service-logic",
-          "tech": "src/cli-publish.ts, store.ts",
-          "desc": "Copies a model and its docs into the store the server reads."
-        }
-      ],
-      "edges": [
-        {
-          "from": "args",
-          "to": "parse",
-          "desc": "The model path and the flags, handed to the parser that either accepts the model or names what is wrong.",
-          "label": "model.json",
-          "style": "flow"
-        },
-        {
-          "from": "args",
-          "to": "repo-gate",
-          "desc": "The staged files, checked before anything is drawn so a bad commit fails early.",
-          "label": "gate check",
-          "style": "flow"
-        },
-        {
-          "from": "parse",
-          "to": "rank",
-          "desc": "A validated level: nodes with their subtypes, edges with their descriptions, groups.",
-          "label": "LevelSpec",
-          "style": "flow"
-        },
-        {
-          "from": "rank",
-          "to": "order",
-          "desc": "Ranked layers, so a box never lands left of something it depends on.",
-          "label": "Ranked",
-          "style": "flow"
-        },
-        {
-          "from": "order",
-          "to": "place",
-          "desc": "A stable order inside each rank, which is what keeps two runs byte-identical.",
-          "label": "Ordered",
-          "style": "flow"
-        },
-        {
-          "from": "place",
-          "to": "route",
-          "desc": "Measured boxes: every node sized to its text before a single line is drawn.",
-          "label": "Placed",
-          "style": "flow"
-        },
-        {
-          "from": "route",
-          "to": "emit",
-          "desc": "Routed edges with their lanes, jogs and label boxes, ready to be written as paths.",
-          "label": "Routed",
-          "style": "flow"
-        },
-        {
-          "from": "route",
-          "to": "audit",
-          "desc": "The same routed geometry, measured for overlaps and crossings rather than drawn.",
-          "label": "Routed",
-          "style": "flow"
-        },
-        {
-          "from": "emit",
-          "to": "publish",
-          "desc": "The finished SVG, one picture per level, written into the output directory.",
-          "label": "SVG",
-          "style": "flow"
-        },
-        {
-          "from": "args",
-          "to": "publish",
-          "desc": "Where the files go and in which format, decided before the layout starts.",
-          "label": "publish",
-          "style": "flow"
-        }
-      ],
-      "ports": {
-        "hook->cli": "args",
-        "cli->store": "publish",
-        "cli->server": "args"
-      },
-      "flow": [
-        "args->parse",
-        "parse->rank",
-        "rank->order",
-        "order->place",
-        "place->route",
-        "route->emit",
-        "route->audit",
-        "emit->publish",
-        "args->publish",
-        "args->repo-gate"
-      ]
+     "id": "repo",
+     "identity": "C4V-03",
+     "label": "Git repository",
+     "subtype": "file-storage",
+     "tech": "model + one doc per element",
+     "desc": "Holds docs/c4/<id>.json, the docs beside it, and \u2014 if the owner said yes once \u2014 the hook.",
+     "state": "built"
     },
     {
-      "path": "c4view/server",
-      "title": "C3 · inside the viewer server",
-      "nodes": [
-        {
-          "id": "guard",
-          "identity": "C4V-30",
-          "label": "Guard",
-          "subtype": "service-logic",
-          "tech": "src/security.ts",
-          "desc": "One token: query, header or cookie. Refreshes a stale cookie, never prints the token to a log."
-        },
-        {
-          "id": "routes",
-          "identity": "C4V-31",
-          "label": "Routes",
-          "subtype": "service-logic",
-          "tech": "src/routes.ts, server.ts",
-          "desc": "The URL table: pages, API, assets. Every reply carries the same security headers."
-        },
-        {
-          "id": "pages",
-          "identity": "C4V-32",
-          "label": "Viewer page",
-          "subtype": "service-logic",
-          "tech": "src/viewer-page.ts, viewer-zoom.ts",
-          "desc": "Server-renders the canvas, the level picker and the zoom presets before any script runs."
-        },
-        {
-          "id": "docs",
-          "identity": "C4V-33",
-          "label": "Hover docs",
-          "subtype": "service-logic",
-          "tech": "src/docs.ts, markdown.ts",
-          "desc": "One markdown file per node and edge, re-keyed for the level being drawn."
-        },
-        {
-          "id": "api",
-          "identity": "C4V-34",
-          "label": "Diagram API",
-          "subtype": "service-logic",
-          "tech": "src/server.ts",
-          "desc": "List, fetch, publish. Refuses a body over the limit instead of buffering it."
-        },
-        {
-          "id": "reader",
-          "identity": "C4V-35",
-          "label": "Store reader",
-          "subtype": "file-storage",
-          "tech": "src/store.ts",
-          "desc": "Reads the published models off disk; a missing directory is an empty list, not an error."
-        },
-        {
-          "id": "client",
-          "identity": "C4V-36",
-          "label": "Viewer app",
-          "subtype": "web-application",
-          "tech": "public/viewer.js, flow.js",
-          "desc": "Zoom, hover, drill, and one edge animating at a time."
-        }
-      ],
-      "edges": [
-        {
-          "from": "guard",
-          "to": "routes",
-          "desc": "An admitted request: the token matched, or the bind is loopback and needs none.",
-          "label": "allowed",
-          "style": "flow"
-        },
-        {
-          "from": "routes",
-          "to": "pages",
-          "desc": "A level path from the URL, resolved against the model before a page is built.",
-          "label": "level",
-          "style": "flow"
-        },
-        {
-          "from": "pages",
-          "to": "docs",
-          "desc": "The authored doc for each node and edge on this level, embedded for hover.",
-          "label": "hover",
-          "style": "flow"
-        },
-        {
-          "from": "routes",
-          "to": "api",
-          "desc": "A JSON request, answered with the model or the audit rather than a page.",
-          "label": "JSON",
-          "style": "flow"
-        },
-        {
-          "from": "api",
-          "to": "reader",
-          "desc": "The stored models, listed so an agent can see what the viewer already holds.",
-          "label": "models",
-          "style": "flow"
-        },
-        {
-          "from": "pages",
-          "to": "reader",
-          "desc": "The one model this page draws, read fresh on every request.",
-          "label": "model",
-          "style": "flow"
-        },
-        {
-          "from": "pages",
-          "to": "client",
-          "desc": "HTML, CSS and the flow driver, sending the whole picture on first paint.",
-          "label": "HTML + JS",
-          "style": "flow"
-        }
-      ],
-      "ports": {
-        "cli->server": "routes",
-        "server->store": "reader",
-        "server->viewer": "pages"
-      },
-      "flow": [
-        "guard->routes",
-        "routes->pages",
-        "pages->reader",
-        "pages->docs",
-        "pages->client",
-        "routes->api",
-        "api->reader"
-      ]
+     "id": "harness",
+     "identity": "C4V-04",
+     "label": "Agent harness",
+     "subtype": "external-system",
+     "tech": "Claude Code, Hermes, OpenCode",
+     "desc": "Where the skill is installed: a directory of instructions another tool reads.",
+     "state": "built"
+    },
+    {
+     "id": "browser",
+     "identity": "C4V-05",
+     "label": "Reader",
+     "subtype": "external-system",
+     "tech": "any browser",
+     "desc": "Opens the link, pans, zooms, hovers a box. The viewer is read-only by construction.",
+     "state": "built"
     }
-  ]
+   ],
+   "edges": [
+    {
+     "from": "agent",
+     "to": "c4view",
+     "desc": "The agent hands over model.json: nodes, edges and their levels, and nothing else.",
+     "label": "model.json",
+     "style": "flow"
+    },
+    {
+     "from": "repo",
+     "to": "c4view",
+     "desc": "The committed model and its per-element docs, read so a render never disagrees with the repo.",
+     "label": "model + docs",
+     "style": "dep"
+    },
+    {
+     "from": "c4view",
+     "to": "repo",
+     "desc": "The drawn SVG and the gate verdict, written back so a reviewer sees the picture in the diff.",
+     "label": "SVG + gate",
+     "style": "flow"
+    },
+    {
+     "from": "c4view",
+     "to": "harness",
+     "desc": "The skill package an agent loads, so it writes models that survive the audit.",
+     "label": "skill package",
+     "style": "flow"
+    },
+    {
+     "from": "c4view",
+     "to": "browser",
+     "desc": "Self-contained HTML and SVG pages that open with no server and no network.",
+     "label": "SVG pages",
+     "style": "flow"
+    }
+   ],
+   "flow": [
+    "agent->c4view",
+    "repo->c4view",
+    "c4view->repo",
+    "c4view->harness",
+    "c4view->browser"
+   ]
+  },
+  {
+   "path": "c4view",
+   "title": "C2 \u00b7 the containers inside c4-view",
+   "nodes": [
+    {
+     "id": "cli",
+     "identity": "C4V-10",
+     "label": "c4v CLI",
+     "subtype": "microservice",
+     "tech": "node src/cli.ts, no deps",
+     "desc": "One-shot process: parse, lay out, audit, write, and exit with the verdict.",
+     "state": "built"
+    },
+    {
+     "id": "server",
+     "identity": "C4V-12",
+     "label": "viewer server",
+     "subtype": "microservice",
+     "tech": "node:http, :8788",
+     "desc": "Serves the pictures it already has, behind a token. Never writes a diagram.",
+     "state": "built"
+    },
+    {
+     "id": "viewer",
+     "identity": "C4V-13",
+     "label": "viewer app",
+     "subtype": "web-application",
+     "tech": "public/*.js, stage.css",
+     "desc": "Zoom, hover, drill and the flow animation. Client side, no build step.",
+     "state": "built"
+    },
+    {
+     "id": "store",
+     "identity": "C4V-14",
+     "label": "diagram store",
+     "subtype": "file-storage",
+     "tech": "~/.c4-view/<id>/",
+     "desc": "Published models and their docs; also the repo's own docs/c4 while the CLI works.",
+     "state": "built"
+    },
+    {
+     "id": "hook",
+     "identity": "C4V-15",
+     "label": "git hook",
+     "subtype": "batch-job",
+     "tech": ".githooks/pre-commit",
+     "desc": "Three lines of shell in the user's repo. It owns no judgement.",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "hook",
+     "to": "cli",
+     "desc": "A pre-commit check asks the CLI whether the staged model is still clean.",
+     "label": "gate check",
+     "style": "flow"
+    },
+    {
+     "from": "cli",
+     "to": "store",
+     "desc": "A finished diagram is published into the store as one directory per model.",
+     "label": "publishes",
+     "style": "flow"
+    },
+    {
+     "from": "cli",
+     "to": "server",
+     "desc": "The same binary starts the viewer, bound to the name and port it was given.",
+     "label": "starts",
+     "style": "flow"
+    },
+    {
+     "from": "server",
+     "to": "store",
+     "desc": "Every request reads one model directory: the server holds no state of its own between them.",
+     "label": "reads",
+     "style": "flow"
+    },
+    {
+     "from": "server",
+     "to": "viewer",
+     "desc": "The HTML shell, its stylesheets and the flow driver, served as files rather than built.",
+     "label": "HTML + JS",
+     "style": "flow"
+    }
+   ],
+   "ports": {
+    "agent->c4view": "cli",
+    "repo->c4view": "cli",
+    "c4view->repo": "cli",
+    "c4view->harness": "cli",
+    "c4view->browser": "server"
+   },
+   "flow": [
+    "hook->cli",
+    "cli->store",
+    "cli->server",
+    "server->store",
+    "server->viewer"
+   ]
+  },
+  {
+   "path": "c4view/cli",
+   "title": "C3 \u00b7 inside the c4v CLI",
+   "nodes": [
+    {
+     "id": "args",
+     "identity": "C4V-20",
+     "label": "Args + dispatch",
+     "subtype": "service-logic",
+     "tech": "src/cli.ts, cli-args.ts",
+     "desc": "Reads the command line, refuses what cannot work, and calls one verb.",
+     "state": "built"
+    },
+    {
+     "id": "parse",
+     "identity": "C4V-21",
+     "label": "Model parse",
+     "subtype": "service-logic",
+     "tech": "src/model.ts",
+     "desc": "Validates the model: ids, subtypes, ranks, ports, direction. Refuses rather than guesses.",
+     "state": "built"
+    },
+    {
+     "id": "rank",
+     "identity": "C4V-22",
+     "label": "Rank",
+     "subtype": "service-logic",
+     "tech": "src/layout/rank.ts",
+     "desc": "Longest-path depth, one dummy per column a long edge crosses.",
+     "state": "built"
+    },
+    {
+     "id": "order",
+     "identity": "C4V-23",
+     "label": "Order",
+     "subtype": "service-logic",
+     "tech": "src/layout/order.ts",
+     "desc": "Six barycentre sweeps; the ordering with fewest inversions wins.",
+     "state": "built"
+    },
+    {
+     "id": "place",
+     "identity": "C4V-24",
+     "label": "Place",
+     "subtype": "service-logic",
+     "tech": "src/layout/place.ts",
+     "desc": "Measures boxes, spaces columns by wire load, stacks rows, boxes up boundaries.",
+     "state": "built"
+    },
+    {
+     "id": "route",
+     "identity": "C4V-25",
+     "label": "Route",
+     "subtype": "service-logic",
+     "tech": "src/layout/route.ts",
+     "desc": "Orthogonal wires in gutters, one track per jog, a corridor for the loops.",
+     "state": "built"
+    },
+    {
+     "id": "emit",
+     "identity": "C4V-26",
+     "label": "Emit",
+     "subtype": "service-logic",
+     "tech": "src/svg/emit.ts, shapes.ts",
+     "desc": "Deterministic SVG: shapes, chips, the dashed lens frame, the drill links.",
+     "state": "built"
+    },
+    {
+     "id": "audit",
+     "identity": "C4V-27",
+     "label": "Audit",
+     "subtype": "service-logic",
+     "tech": "src/audit.ts, lens.ts",
+     "desc": "Counts what a reader would trip over, and the four modelling gates.",
+     "state": "built"
+    },
+    {
+     "id": "repo-gate",
+     "identity": "C4V-28",
+     "label": "Repo gate",
+     "subtype": "service-logic",
+     "tech": "src/gate.ts, cli-gate.ts",
+     "desc": "install, check, defer, status, uninstall \u2014 the commit-time contract.",
+     "state": "built"
+    },
+    {
+     "id": "publish",
+     "identity": "C4V-29",
+     "label": "Publish",
+     "subtype": "service-logic",
+     "tech": "src/cli-publish.ts, store.ts",
+     "desc": "Copies a model and its docs into the store the server reads.",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "args",
+     "to": "parse",
+     "desc": "The model path and the flags, handed to the parser that either accepts the model or names what is wrong.",
+     "label": "model.json",
+     "style": "flow"
+    },
+    {
+     "from": "args",
+     "to": "repo-gate",
+     "desc": "The staged files, checked before anything is drawn so a bad commit fails early.",
+     "label": "gate check",
+     "style": "flow"
+    },
+    {
+     "from": "parse",
+     "to": "rank",
+     "desc": "A validated level: nodes with their subtypes, edges with their descriptions, groups.",
+     "label": "LevelSpec",
+     "style": "flow"
+    },
+    {
+     "from": "rank",
+     "to": "order",
+     "desc": "Ranked layers, so a box never lands left of something it depends on.",
+     "label": "Ranked",
+     "style": "flow"
+    },
+    {
+     "from": "order",
+     "to": "place",
+     "desc": "A stable order inside each rank, which is what keeps two runs byte-identical.",
+     "label": "Ordered",
+     "style": "flow"
+    },
+    {
+     "from": "place",
+     "to": "route",
+     "desc": "Measured boxes: every node sized to its text before a single line is drawn.",
+     "label": "Placed",
+     "style": "flow"
+    },
+    {
+     "from": "route",
+     "to": "emit",
+     "desc": "Routed edges with their lanes, jogs and label boxes, ready to be written as paths.",
+     "label": "Routed",
+     "style": "flow"
+    },
+    {
+     "from": "route",
+     "to": "audit",
+     "desc": "The same routed geometry, measured for overlaps and crossings rather than drawn.",
+     "label": "Routed",
+     "style": "flow"
+    },
+    {
+     "from": "emit",
+     "to": "publish",
+     "desc": "The finished SVG, one picture per level, written into the output directory.",
+     "label": "SVG",
+     "style": "flow"
+    },
+    {
+     "from": "args",
+     "to": "publish",
+     "desc": "Where the files go and in which format, decided before the layout starts.",
+     "label": "publish",
+     "style": "flow"
+    }
+   ],
+   "ports": {
+    "hook->cli": "args",
+    "cli->store": "publish",
+    "cli->server": "args"
+   },
+   "flow": [
+    "args->parse",
+    "parse->rank",
+    "rank->order",
+    "order->place",
+    "place->route",
+    "route->emit",
+    "route->audit",
+    "emit->publish",
+    "args->publish",
+    "args->repo-gate"
+   ]
+  },
+  {
+   "path": "c4view/server",
+   "title": "C3 \u00b7 inside the viewer server",
+   "nodes": [
+    {
+     "id": "guard",
+     "identity": "C4V-30",
+     "label": "Guard",
+     "subtype": "service-logic",
+     "tech": "src/security.ts",
+     "desc": "One token: query, header or cookie. Refreshes a stale cookie, never prints the token to a log.",
+     "state": "built"
+    },
+    {
+     "id": "routes",
+     "identity": "C4V-31",
+     "label": "Routes",
+     "subtype": "service-logic",
+     "tech": "src/routes.ts, server.ts",
+     "desc": "The URL table: pages, API, assets. Every reply carries the same security headers.",
+     "state": "built"
+    },
+    {
+     "id": "pages",
+     "identity": "C4V-32",
+     "label": "Viewer page",
+     "subtype": "service-logic",
+     "tech": "src/viewer-page.ts, viewer-zoom.ts",
+     "desc": "Server-renders the canvas, the level picker and the zoom presets before any script runs.",
+     "state": "built"
+    },
+    {
+     "id": "docs",
+     "identity": "C4V-33",
+     "label": "Hover docs",
+     "subtype": "service-logic",
+     "tech": "src/docs.ts, markdown.ts",
+     "desc": "One markdown file per node and edge, re-keyed for the level being drawn.",
+     "state": "built"
+    },
+    {
+     "id": "api",
+     "identity": "C4V-34",
+     "label": "Diagram API",
+     "subtype": "service-logic",
+     "tech": "src/server.ts",
+     "desc": "List, fetch, publish. Refuses a body over the limit instead of buffering it.",
+     "state": "built"
+    },
+    {
+     "id": "reader",
+     "identity": "C4V-35",
+     "label": "Store reader",
+     "subtype": "file-storage",
+     "tech": "src/store.ts",
+     "desc": "Reads the published models off disk; a missing directory is an empty list, not an error.",
+     "state": "built"
+    },
+    {
+     "id": "client",
+     "identity": "C4V-36",
+     "label": "Viewer app",
+     "subtype": "web-application",
+     "tech": "public/viewer.js, flow.js",
+     "desc": "Zoom, hover, drill, and one edge animating at a time.",
+     "state": "built"
+    }
+   ],
+   "edges": [
+    {
+     "from": "guard",
+     "to": "routes",
+     "desc": "An admitted request: the token matched, or the bind is loopback and needs none.",
+     "label": "allowed",
+     "style": "flow"
+    },
+    {
+     "from": "routes",
+     "to": "pages",
+     "desc": "A level path from the URL, resolved against the model before a page is built.",
+     "label": "level",
+     "style": "flow"
+    },
+    {
+     "from": "pages",
+     "to": "docs",
+     "desc": "The authored doc for each node and edge on this level, embedded for hover.",
+     "label": "hover",
+     "style": "flow"
+    },
+    {
+     "from": "routes",
+     "to": "api",
+     "desc": "A JSON request, answered with the model or the audit rather than a page.",
+     "label": "JSON",
+     "style": "flow"
+    },
+    {
+     "from": "api",
+     "to": "reader",
+     "desc": "The stored models, listed so an agent can see what the viewer already holds.",
+     "label": "models",
+     "style": "flow"
+    },
+    {
+     "from": "pages",
+     "to": "reader",
+     "desc": "The one model this page draws, read fresh on every request.",
+     "label": "model",
+     "style": "flow"
+    },
+    {
+     "from": "pages",
+     "to": "client",
+     "desc": "HTML, CSS and the flow driver, sending the whole picture on first paint.",
+     "label": "HTML + JS",
+     "style": "flow"
+    }
+   ],
+   "ports": {
+    "cli->server": "routes",
+    "server->store": "reader",
+    "server->viewer": "pages"
+   },
+   "flow": [
+    "guard->routes",
+    "routes->pages",
+    "pages->reader",
+    "pages->docs",
+    "pages->client",
+    "routes->api",
+    "api->reader"
+   ]
+  }
+ ]
 }

@@ -7,7 +7,7 @@ what it will do".)
 | | |
 |---|---|
 | **name** | `c4-diagram` |
-| **version** | 0.2.2 — versioned with the tool it drives |
+| **version** | 0.13.0 — versioned with the tool it drives |
 | **licence** | MIT (`LICENSE` in this directory) |
 | **owner** | the c4-view maintainer (see `GOVERNANCE.md`) |
 | **what it does** | turns "build a C4 of this repo" into a gated JSON model, deterministic SVG/PNG, and a viewer link |

@@ -36,10 +36,18 @@ function sizeItem(item: RankItem, specs: Map<string, NodeSpec>, ports: Ports, cf
   const node = specs.get(item.id)
   if (!node) return { w: item.w, h: item.h }
   // the nested renderer sizes a host box to the picture it holds, so that box is already measured
-  if (node.w !== undefined && node.h !== undefined) return { w: node.w, h: node.h }
+  // The author's size is a FLOOR on both axes: text still decides the minimum, so a request
+  // smaller than the label cannot clip it, and a node with many incoming edges gets the width that
+  // lands their ports apart instead of a box sized to its words.
+  const want = node.size ?? {}
+  const floorW = typeof want.w === 'number' ? want.w : 0
+  const floorH = typeof want.h === 'number' ? want.h : 0
+  if (node.w !== undefined && node.h !== undefined) {
+    return { w: Math.max(node.w, floorW), h: Math.max(node.h, floorH) }
+  }
   const t = measureNode(node, cfg, m)
   const p = Math.max(ports.out.get(item.id) ?? 0, ports.into.get(item.id) ?? 0)
-  const box = { w: Math.ceil(t.w), h: Math.ceil(Math.max(t.h, (p + 1) * cfg.portGap)) }
+  const box = { w: Math.max(Math.ceil(t.w), floorW), h: Math.max(Math.ceil(Math.max(t.h, (p + 1) * cfg.portGap)), floorH) }
   // A top-to-bottom drawing is laid out left-to-right and then transposed, so the space a node needs is
   // claimed on the other axis: reserve its text width as height here, and the transpose hands it back as
   // width. Without this the box ends up as wide as a row is tall and the label hangs out of it.

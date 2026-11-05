@@ -11,9 +11,9 @@ import type { LevelSpec } from '../src/types.ts'
 const level = (over: Partial<LevelSpec> = {}): LevelSpec => ({
   path: '',
   nodes: [
-    { id: 'a', label: 'A', subtype: 'system' },
-    { id: 'b', label: 'B', subtype: 'database' },
-    { id: 'c', label: 'C', subtype: 'system' },
+    { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+    { id: 'b', label: 'B', subtype: 'database', state: 'built' as const },
+    { id: 'c', label: 'C', subtype: 'system', state: 'built' as const },
   ],
   edges: [
     { desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' },
@@ -40,8 +40,8 @@ test('without a flow the order walks chains depth-first from the sources', () =>
 test('a cycle still yields every edge exactly once', () => {
   const cyclic = level({
     nodes: [
-      { id: 'a', label: 'A', subtype: 'system' },
-      { id: 'b', label: 'B', subtype: 'system' },
+      { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+      { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
     ],
     edges: [
       { desc: 'the payload this edge carries', from: 'a', to: 'b', style: 'flow' },
@@ -69,7 +69,7 @@ test('the model validator rejects a flow key that is not an edge', () => {
         levels: [
           {
             path: '',
-            nodes: [{ id: 'a', label: 'A', subtype: 'system' }, { id: 'b', label: 'B', subtype: 'system' }],
+            nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const }],
             edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b' }],
             flow: ['a->b', 'b->ghost'],
           },

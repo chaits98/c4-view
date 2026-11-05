@@ -67,7 +67,7 @@ test('a shared server refuses anonymous page requests and lets a token through',
   mkdirSync(join(root, 'demo'), { recursive: true })
   writeFileSync(
     join(root, 'demo', 'model.json'),
-    JSON.stringify({ id: 'demo', title: 'Demo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] }),
+    JSON.stringify({ id: 'demo', title: 'Demo', levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] }),
   )
   const server = await serve({ port: 0, root, host: '0.0.0.0', token: 'tok' })
   const address = server.address()

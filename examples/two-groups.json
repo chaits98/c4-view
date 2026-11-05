@@ -1,30 +1,114 @@
 {
-  "id": "groups",
-  "title": "Two boundaries, contiguous members",
-  "levels": [
+ "id": "groups",
+ "title": "Two boundaries, contiguous members",
+ "levels": [
+  {
+   "path": "",
+   "title": "Boundaries",
+   "nodes": [
     {
-      "path": "",
-      "title": "Boundaries",
-      "nodes": [
-        { "id": "user", "label": "User", "subtype": "person" },
-        { "id": "ui", "label": "Web app", "subtype": "web-application", "group": "front" },
-        { "id": "bff", "label": "BFF", "subtype": "api-gateway", "group": "front" },
-        { "id": "svc", "label": "Core service", "subtype": "service-logic", "group": "back" },
-        { "id": "repo", "label": "Repository", "subtype": "repository", "group": "back" },
-        { "id": "db", "label": "Database", "subtype": "database" }
-      ],
-      "edges": [
-        { "from": "user", "to": "ui", "desc": "A browser session, loading the interface over HTTPS.", "label": "uses", "style": "flow" },
-        { "from": "ui", "to": "bff", "desc": "A GraphQL query or mutation, batched by the client.", "label": "GraphQL", "style": "flow" },
-        { "from": "bff", "to": "svc", "desc": "A resolved field request, one call per resolver that needs data.", "label": "calls", "style": "flow" },
-        { "from": "svc", "to": "repo", "desc": "A lookup by id or a filtered list, never a raw query from the service.", "label": "reads", "style": "flow" },
-        { "from": "repo", "to": "db", "desc": "Parameterised SQL, with no value from the request interpolated into it.", "label": "SQL", "style": "flow" }
-      ],
-      "groups": [
-        { "id": "front", "label": "browser", "members": ["ui", "bff"] },
-        { "id": "back", "label": "server", "members": ["svc", "repo"] }
-      ],
-      "flow": ["user->ui", "ui->bff", "bff->svc", "svc->repo", "repo->db"]
+     "id": "user",
+     "label": "User",
+     "subtype": "person",
+     "state": "built"
+    },
+    {
+     "id": "ui",
+     "label": "Web app",
+     "subtype": "web-application",
+     "group": "front",
+     "state": "built"
+    },
+    {
+     "id": "bff",
+     "label": "BFF",
+     "subtype": "api-gateway",
+     "group": "front",
+     "state": "built"
+    },
+    {
+     "id": "svc",
+     "label": "Core service",
+     "subtype": "service-logic",
+     "group": "back",
+     "state": "built"
+    },
+    {
+     "id": "repo",
+     "label": "Repository",
+     "subtype": "repository",
+     "group": "back",
+     "state": "built"
+    },
+    {
+     "id": "db",
+     "label": "Database",
+     "subtype": "database",
+     "state": "built"
     }
-  ]
+   ],
+   "edges": [
+    {
+     "from": "user",
+     "to": "ui",
+     "desc": "A browser session, loading the interface over HTTPS.",
+     "label": "uses",
+     "style": "flow"
+    },
+    {
+     "from": "ui",
+     "to": "bff",
+     "desc": "A GraphQL query or mutation, batched by the client.",
+     "label": "GraphQL",
+     "style": "flow"
+    },
+    {
+     "from": "bff",
+     "to": "svc",
+     "desc": "A resolved field request, one call per resolver that needs data.",
+     "label": "calls",
+     "style": "flow"
+    },
+    {
+     "from": "svc",
+     "to": "repo",
+     "desc": "A lookup by id or a filtered list, never a raw query from the service.",
+     "label": "reads",
+     "style": "flow"
+    },
+    {
+     "from": "repo",
+     "to": "db",
+     "desc": "Parameterised SQL, with no value from the request interpolated into it.",
+     "label": "SQL",
+     "style": "flow"
+    }
+   ],
+   "groups": [
+    {
+     "id": "front",
+     "label": "browser",
+     "members": [
+      "ui",
+      "bff"
+     ]
+    },
+    {
+     "id": "back",
+     "label": "server",
+     "members": [
+      "svc",
+      "repo"
+     ]
+    }
+   ],
+   "flow": [
+    "user->ui",
+    "ui->bff",
+    "bff->svc",
+    "svc->repo",
+    "repo->db"
+   ]
+  }
+ ]
 }

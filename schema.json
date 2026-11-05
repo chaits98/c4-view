@@ -138,6 +138,54 @@
         "rank": {
           "type": "integer",
           "minimum": 0
+        },
+        "size": {
+          "type": "object",
+          "description": "A floor on the box, both axes. Text still decides the minimum; use it when a node has many incoming edges and needs width to land their ports apart.",
+          "properties": {
+            "w": {
+              "type": "number",
+              "minimum": 1
+            },
+            "h": {
+              "type": "number",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "links": {
+          "type": "array",
+          "maxItems": 5,
+          "description": "External documentation for this box (a wiki page, a runbook). Only http(s) is accepted; the first link is drawn as a chip in the box's corner.",
+          "items": {
+            "type": "object",
+            "required": [
+              "href"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "what the reader will find; shown on hover"
+              },
+              "href": {
+                "type": "string",
+                "maxLength": 400,
+                "pattern": "^https?://"
+              }
+            }
+          }
+        },
+        "state": {
+          "enum": [
+            "built",
+            "planned",
+            "partial",
+            "retired"
+          ],
+          "description": "How real this box is. Absent means built. Anything other than built draws a corner tag AND fails the audit, so a roadmap cannot be mistaken for the system."
         }
       }
     },

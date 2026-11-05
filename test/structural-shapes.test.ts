@@ -13,7 +13,7 @@ import { renderModel } from '../src/render.ts'
 import { indexPage } from '../src/index-page.ts'
 import { viewerPage } from '../src/viewer-page.ts'
 
-const node = (id: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({ id, label: id.toUpperCase(), subtype: 'system', ...extra })
+const node = (id: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({ id, label: id.toUpperCase(), subtype: 'system', state: 'built' as const, ...extra })
 const edge = (from: string, to: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({ from, to, desc: 'the payload this edge carries', ...extra })
 
 const shapes: Array<{ name: string; nodes: Array<Record<string, unknown>>; edges: Array<Record<string, unknown>>; groups?: Array<Record<string, unknown>> }> = [
@@ -52,7 +52,7 @@ for (const shape of shapes) {
 
 test('a gutter too narrow for one track per wire spreads them instead of overlapping', () => {
   // four wires crossing the same gutter in a cramped layout: the base tracks do not fit
-  const nodes = [['a0', 'a1', 'a2', 'a3'].map((id) => ({ id, label: id, subtype: 'system' })), ['b0', 'b1', 'b2', 'b3'].map((id) => ({ id, label: id, subtype: 'system' }))].flat()
+  const nodes = [['a0', 'a1', 'a2', 'a3'].map((id) => ({ id, label: id, subtype: 'system', state: 'built' as const })), ['b0', 'b1', 'b2', 'b3'].map((id) => ({ id, label: id, subtype: 'system', state: 'built' as const }))].flat()
   const edges = ['a0->b3', 'a1->b2', 'a2->b1', 'a3->b0'].map((pair) => {
     const [from, to] = pair.split('->')
     return { from, to, desc: 'the payload this edge carries' }
@@ -64,7 +64,7 @@ test('a gutter too narrow for one track per wire spreads them instead of overlap
 })
 
 test('dummies stack in a rank without colliding', () => {
-  const nodes = [{ id: 'a', label: 'A', subtype: 'system', rank: 0 }, { id: 'b', label: 'B', subtype: 'system', rank: 0 }, { id: 'c', label: 'C', subtype: 'system', rank: 4 }]
+  const nodes = [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const, rank: 0 }, { id: 'b', label: 'B', subtype: 'system', state: 'built' as const, rank: 0 }, { id: 'c', label: 'C', subtype: 'system', state: 'built' as const, rank: 4 }]
   const edges = [{ from: 'a', to: 'c', desc: 'calls c' }, { from: 'b', to: 'c', desc: 'calls c' }]
   const level = renderModel(parseModel({ id: 'dummies', title: 'Dummies', levels: [{ path: '', nodes, edges }] })).levels[0]
   assert.ok(level.audit.ok, `dummies are placed, not stacked: ${JSON.stringify(level.audit)}`)

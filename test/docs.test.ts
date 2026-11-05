@@ -89,8 +89,8 @@ test('levelDocs reads nodes and edges from beside the model, and skips what is m
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system' },
-          { id: 'b', label: 'B', subtype: 'system' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+          { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'calls' }],
       },
@@ -109,12 +109,12 @@ test('docsProblems names every node and edge without a doc, with the path it sho
     id: 'x',
     title: 'X',
     levels: [
-      { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] },
+      { path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] },
       {
         path: 'a',
         nodes: [
-          { id: 'inner', label: 'I', subtype: 'function' },
-          { id: 'other', label: 'O', subtype: 'function' },
+          { id: 'inner', label: 'I', subtype: 'function', state: 'built' as const },
+          { id: 'other', label: 'O', subtype: 'function', state: 'built' as const },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'inner', to: 'other', label: 'calls' }],
       },
@@ -132,9 +132,9 @@ test('a node drawn on three levels is one file, so it is reported once', () => {
     id: 'dup',
     title: 'Dup',
     levels: [
-      { path: '', nodes: [{ id: 'shared', label: 'S', subtype: 'system' }, { id: 'x', label: 'X', subtype: 'system' }], edges: [] },
-      { path: 'a', nodes: [{ id: 'shared', label: 'S', subtype: 'service-logic' }], edges: [] },
-      { path: 'b', nodes: [{ id: 'shared', label: 'S', subtype: 'service-logic' }], edges: [] },
+      { path: '', nodes: [{ id: 'shared', label: 'S', subtype: 'system', state: 'built' as const }, { id: 'x', label: 'X', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'a', nodes: [{ id: 'shared', label: 'S', subtype: 'service-logic', state: 'built' as const }], edges: [] },
+      { path: 'b', nodes: [{ id: 'shared', label: 'S', subtype: 'service-logic', state: 'built' as const }], edges: [] },
     ],
   })
   const problems = docsProblems(dir, model)

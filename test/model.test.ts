@@ -14,8 +14,8 @@ const base = (over: Record<string, unknown> = {}) => ({
     {
       path: '',
       nodes: [
-        { id: 'a', label: 'A', subtype: 'system' },
-        { id: 'b', label: 'B', subtype: 'database', tech: 'sqlite' },
+        { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+        { id: 'b', label: 'B', subtype: 'database', state: 'built' as const, tech: 'sqlite' },
       ],
       edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'writes' }],
     },
@@ -32,7 +32,7 @@ test('parses a valid model and normalises the edge style', () => {
 
 test('rejects an unknown edge target with the exact path', () => {
   const bad = base({
-    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }],
+    levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }],
   })
   assert.throws(() => parseModel(bad), (e: unknown) => {
     assert.ok(e instanceof ModelError)
@@ -46,7 +46,7 @@ test('rejects a self-loop instead of drawing an unreadable edge', () => {
     levels: [
       {
         path: '',
-        nodes: [{ id: 'a', label: 'A', subtype: 'system' }],
+        nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }],
         edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a' }],
       },
     ],
@@ -61,8 +61,8 @@ test('drops a duplicate edge but keeps the first label', () => {
         {
           path: '',
           nodes: [
-            { id: 'a', label: 'A', subtype: 'system' },
-            { id: 'b', label: 'B', subtype: 'system' },
+            { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+            { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
           ],
           edges: [
             { desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'first' },
@@ -88,9 +88,9 @@ test('drill paths follow the level path, root has no prefix', () => {
     id: 'd',
     title: 'D',
     levels: [
-      { path: '', nodes: [{ id: 'app', label: 'App', subtype: 'system' }], edges: [] },
-      { path: 'app', nodes: [{ id: 'db', label: 'DB', subtype: 'database' }], edges: [] },
-      { path: 'app/db', nodes: [{ id: 'x', label: 'X', subtype: 'function' }], edges: [] },
+      { path: '', nodes: [{ id: 'app', label: 'App', subtype: 'system', state: 'built' as const }], edges: [] },
+      { path: 'app', nodes: [{ id: 'db', label: 'DB', subtype: 'database', state: 'built' as const }], edges: [] },
+      { path: 'app/db', nodes: [{ id: 'x', label: 'X', subtype: 'function', state: 'built' as const }], edges: [] },
     ],
   })
   assert.deepEqual([...drillTargets(model, model.levels[0])], [['app', 'app']])
@@ -105,7 +105,7 @@ test('drill paths follow the level path, root has no prefix', () => {
  */
 test('every malformed model is refused, naming the place it broke', () => {
   const withLevel = (level: Record<string, unknown>) => ({ ...base(), levels: [{ path: '', nodes: [], edges: [], ...level }] })
-  const node = (over: Record<string, unknown>) => withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', ...over }] })
+  const node = (over: Record<string, unknown>) => withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const, ...over }] })
   const cases: Array<[string, unknown, RegExp]> = [
     ['not an object', 'nope', /must be a JSON object/],
     ['no id', { ...base(), id: undefined }, /id: required/],
@@ -114,13 +114,13 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['level not an object', { ...base(), levels: [42] }, /levels\[0\]: must be an object/],
     ['level path not a string', { ...base(), levels: [{ path: 7, nodes: [], edges: [] }] }, /path|level/i],
     ['nodes not an array', { ...base(), levels: [{ path: '', nodes: 'a', edges: [] }] }, /nodes/i],
-    ['edges not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: 5 }] }, /edges/i],
-    ['groups not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [], groups: {} }] }, /groups/i],
-    ['flow not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [], flow: 7 }] }, /flow/i],
+    ['edges not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: 5 }] }, /edges/i],
+    ['groups not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [], groups: {} }] }, /groups/i],
+    ['flow not an array', { ...base(), levels: [{ path: '', nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [], flow: 7 }] }, /flow/i],
     ['node not an object', withLevel({ nodes: [7] }), /nodes\[0\]: must be an object/],
     ['node with no id', node({ id: undefined }), /nodes\[0\]\.id: required/],
     ['node with no label', node({ label: '' }), /nodes\[0\]\.label: required/],
-    ['unknown subtype', node({ subtype: 'blob' }), /subtype: not a C4 subtype \(blob\)/],
+    ['unknown subtype', node({ subtype: 'blob', state: 'built' as const }), /subtype: not a C4 subtype \(blob\)/],
     ['missing subtype', node({ subtype: undefined }), /subtype: not a C4 subtype \(missing\)/],
     ['non-string tech', node({ tech: 22 }), /nodes\[0\]\.tech: must be a string when present/],
     ['non-string desc', node({ desc: 1 }), /nodes\[0\]\.desc: must be a string when present/],
@@ -129,8 +129,8 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['edge not an object', withLevel({ edges: ['a→b'] }), /edges\[0\]: must be an object/],
     ['edge with an unknown from', withLevel({ edges: [{ desc: 'the payload this edge carries', from: 'ghost', to: 'a' }] }), /edges\[0\]\.from: unknown node "ghost"/],
     ['edge with an unknown to', withLevel({ edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'ghost' }] }), /edges\[0\]\.to: unknown node "ghost"/],
-    ['edge label of the wrong type', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', label: 3 }] }), /label: must be a string when present/],
-    ['unknown edge style', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', style: 'dotted' }] }), /style: one of flow\\|dep\\|tent\\|dir/],
+    ['edge label of the wrong type', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', label: 3 }] }), /label: must be a string when present/],
+    ['unknown edge style', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', style: 'dotted' }] }), /style: one of flow\\|dep\\|tent\\|dir/],
     ['group not an object', withLevel({ groups: [1] }), /groups\[0\]: must be an object/],
     ['group with no label', withLevel({ groups: [{ id: 'g' }] }), /groups\[0\]\.label: required/],
     ['flow naming a missing edge', withLevel({ flow: ['a->b'] }), /flow\[0\]: "a->b" is not an edge of this level/],
@@ -140,9 +140,9 @@ test('every malformed model is refused, naming the place it broke', () => {
     ['node rank not an integer', node({ rank: 1.5 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['node rank below zero', node({ rank: -1 }), /nodes\[0\]\.rank: must be a non-negative integer/],
     ['no levels at all', { ...base(), levels: [] }, /at least one level/],
-    ['group with non-string members', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: [1, 2] }] }), /groups\[0\]/],
-    ['group naming a node that is not in the level', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], groups: [{ id: 'g', label: 'G', members: ['ghost'] }] }), /groups\[0\]/],
-    ['edge style that is not a string', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', style: 5 }] }), /style/],
+    ['group with non-string members', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], groups: [{ id: 'g', label: 'G', members: [1, 2] }] }), /groups\[0\]/],
+    ['group naming a node that is not in the level', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], groups: [{ id: 'g', label: 'G', members: ['ghost'] }] }), /groups\[0\]/],
+    ['edge style that is not a string', withLevel({ nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'a', style: 5 }] }), /style/],
   ]
   for (const [name, model, expected] of cases) {
     assert.throws(
@@ -157,8 +157,8 @@ test('an optional field is normalised, and a bare level gets a name', () => {
   const model = parseModel({
     ...base(),
     levels: [
-      { nodes: [{ id: 'a', label: 'A', subtype: 'system', tech: 'x', desc: 'y', identity: 'z', group: 'g' }], edges: [] },
-      { path: 'a', title: '', nodes: [{ id: 'b', label: 'B', subtype: 'system' }, { id: 'c', label: 'C', subtype: 'system' }], edges: [{ desc: 'the payload this edge carries', from: 'b', to: 'c' }] },
+      { nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const, tech: 'x', desc: 'y', identity: 'z', group: 'g' }], edges: [] },
+      { path: 'a', title: '', nodes: [{ id: 'b', label: 'B', subtype: 'system', state: 'built' as const }, { id: 'c', label: 'C', subtype: 'system', state: 'built' as const }], edges: [{ desc: 'the payload this edge carries', from: 'b', to: 'c' }] },
     ],
   })
   const [overview, child] = model.levels
@@ -170,7 +170,7 @@ test('an optional field is normalised, and a bare level gets a name', () => {
     'every present optional survives',
   )
   assert.equal(child.title, 'a', 'a blank title falls back to the path')
-  const numericTitle = parseModel({ ...base(), levels: [{ path: 'x', title: 7, nodes: [{ id: 'a', label: 'A', subtype: 'system' }], edges: [] }] })
+  const numericTitle = parseModel({ ...base(), levels: [{ path: 'x', title: 7, nodes: [{ id: 'a', label: 'A', subtype: 'system', state: 'built' as const }], edges: [] }] })
   assert.equal(numericTitle.levels[0].title, 'x', 'a title that is not a string falls back too')
   assert.equal(child.edges[0].style, 'flow', 'an edge with no style is a flow')
   assert.equal(child.edges[0].label, undefined, 'and keeps no empty label')
@@ -199,8 +199,8 @@ test('a fully specified model keeps every field it was given', () => {
         path: '',
         title: 'Everything',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system', tech: 'Node', desc: 'd', identity: 'i', group: 'g', rank: 0 },
-          { id: 'b', label: 'B', subtype: 'microservice', tech: '', desc: '', identity: '', group: '' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const, tech: 'Node', desc: 'd', identity: 'i', group: 'g', rank: 0 },
+          { id: 'b', label: 'B', subtype: 'microservice', state: 'built' as const, tech: '', desc: '', identity: '', group: '' },
         ],
         edges: [{ desc: 'the payload this edge carries', from: 'a', to: 'b', label: 'calls', style: 'dep' }],
         groups: [{ id: 'g', label: 'Group', members: ['a', 7, null, 'b'] }],
@@ -226,8 +226,8 @@ test('an edge without a description still parses, with an empty one', () => {
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system' },
-          { id: 'b', label: 'B', subtype: 'system' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+          { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
         ],
         edges: [{ from: 'a', to: 'b' }],
       },
@@ -246,8 +246,8 @@ test('a desc that is not a string is refused, by position', () => {
       {
         path: '',
         nodes: [
-          { id: 'a', label: 'A', subtype: 'system' },
-          { id: 'b', label: 'B', subtype: 'system' },
+          { id: 'a', label: 'A', subtype: 'system', state: 'built' as const },
+          { id: 'b', label: 'B', subtype: 'system', state: 'built' as const },
         ],
         edges: [{ from: 'a', to: 'b', desc: 42 }],
       },

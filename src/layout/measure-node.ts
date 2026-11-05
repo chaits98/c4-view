@@ -60,12 +60,15 @@ export function measureNode(node: NodeSpec, cfg: LayoutConfig, m: Measure): Node
   // side rules), so the box must be big enough for the text AND that band. The inset depends on
   // the box, so settle it in two passes; both are pure arithmetic, so the result is stable.
   const shape = shapeOf(node.subtype)
+  // A state tag is drawn in the box's bottom band, so the box must be tall enough to hold it: without
+  // this the tag lands on the label (measured on a real render, on both short and tall boxes).
+  const tagH = node.state && node.state !== 'built' ? 15 : 0
   let w = Math.ceil(Math.max(cfg.minW, widest + 2 * cfg.nodePadX))
-  let h = Math.ceil(textH + 2 * cfg.nodePadY)
+  let h = Math.ceil(textH + 2 * cfg.nodePadY + tagH)
   for (let pass = 0; pass < 2; pass++) {
     const inset = shapeTextInset(shape, { x: 0, y: 0, w, h })
     w = Math.ceil(Math.max(cfg.minW, widest + inset.left + inset.right + 2 * cfg.nodePadX))
-    h = Math.ceil(textH + inset.top + inset.bottom + 2 * cfg.nodePadY)
+    h = Math.ceil(textH + inset.top + inset.bottom + 2 * cfg.nodePadY + tagH)
   }
   return {
     w,
