@@ -206,6 +206,12 @@ export async function serviceCommand(
  * user sees a stack trace from inside `node_modules` and has nothing to act on.
  */
 export async function run(argv: string[]): Promise<number> {
+  // A tool that can be installed has to answer "which version am I running" without a diagram file.
+  if (argv.includes('--version') || argv.includes('-V')) {
+    const { buildStamp } = await import('./build.ts')
+    console.log(buildStamp())
+    return 0
+  }
   try {
     return await dispatch(argv)
   } catch (error) {

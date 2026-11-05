@@ -104,6 +104,24 @@ export interface ReportArgs {
   scale: number
 }
 
+/**
+ * Why the pictures failed, in the reader's words. A box that never declared what it is has nothing to do
+ * with geometry, and a message that says "geometry" sends them to nudge coordinates already correct.
+ */
+export function failureReasons(failed: AuditReport[]): string {
+  let state = 0
+  for (const a of failed) {
+    const unbuilt = a.unbuilt?.length ?? 0
+    const unstated = a.unstated?.length ?? 0
+    if (unbuilt > 0 || unstated > 0) state += 1
+  }
+  const parts: string[] = []
+  const geometry = failed.length - state
+  if (geometry > 0) parts.push(`${geometry} on geometry`)
+  if (state > 0) parts.push(`${state} on declared state`)
+  return parts.join(', ')
+}
+
 /** Print the report, write files on `render`, and decide the exit code. */
 export function reportCommand(args: ReportArgs, report: Rendered, model: Model): number {
   const audits = args.flat ? report.levels.map((l) => l.audit) : pictureAudits(model)
@@ -115,7 +133,7 @@ export function reportCommand(args: ReportArgs, report: Rendered, model: Model):
   if (!args.strict) return 0
   if (failed.length) {
     const where = args.flat ? 'level(s)' : 'picture(s)'
-    console.error(`\n${failed.length}/${audits.length} ${where} failed the geometry gate — fix the model, not the picture`)
+    console.error(`\n${failed.length}/${audits.length} ${where} failed the audit (${failureReasons(failed)}) — fix the model, not the picture`)
   }
   if (!args.noLens && report.lens.problems.length) {
     console.error(`\n${report.lens.problems.length} lens problem(s) — a drill level must be the inside of one box; fix the ports, not the drawing`)
